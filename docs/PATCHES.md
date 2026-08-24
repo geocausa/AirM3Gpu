@@ -10,17 +10,19 @@ Base commit:
 
 Checkpoint head:
 
-`335b42046b85bf91fa78dbbb30862742a3571d97`
+`1b57b289af96973badfbb8489ef379a1b3a96f07`
 
 Local checkpoint tags:
 
 - `airm3gpu-2026-08-24-rtkit-management` — management handshake boundary
 - `airm3gpu-2026-08-24-rtkit-crashlog-prealloc` — EP1 physical preallocation PASS
+- `airm3gpu-2026-08-24-rtkit-app-endpoints` — EP20/EP21 start PASS
 
 Series:
 
 1. `patches/linux/0001-drm-asahi-checkpoint-T8122-G15-bring-up-through-RTKi.patch`
 2. `patches/linux/0002-drm-asahi-map-G15-RTKit-preallocated-crashlog-memory.patch`
+3. `patches/linux/0003-drm-asahi-stage-G15-RTKit-app-endpoint-start.patch`
 
 The temporary built-in `drivers/soc/apple/rtkit.c` endpoint logger used to identify the EP1 crashlog request was intentionally excluded from this component checkpoint.
 

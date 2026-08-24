@@ -1,0 +1,107 @@
+From 1b57b289af96973badfbb8489ef379a1b3a96f07 Mon Sep 17 00:00:00 2001
+From: geocausa <geocausa@users.noreply.github.com>
+Date: Mon, 24 Aug 2026 23:14:59 +0100
+Subject: [PATCH] drm/asahi: stage G15 RTKit app endpoint start
+
+---
+ drivers/gpu/drm/asahi/driver.rs |  8 ++++----
+ drivers/gpu/drm/asahi/gpu.rs    | 27 +++++++++++++++++----------
+ 2 files changed, 21 insertions(+), 14 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/driver.rs b/drivers/gpu/drm/asahi/driver.rs
+index 2d97984d1676..138c33b1c6c3 100644
+--- a/drivers/gpu/drm/asahi/driver.rs
++++ b/drivers/gpu/drm/asahi/driver.rs
+@@ -333,15 +333,15 @@ fn probe(
+ 
+             dev_info!(
+                 pdev.as_ref(),
+-                "T8122 G15 PwrConfig PASS (14 OPPs, leak 1644/60, SRAM floor 790mV, max 21405mW); starting RTKit management-only preflight after host graph validation\n"
++                "T8122 G15 PwrConfig PASS (14 OPPs, leak 1644/60, SRAM floor 790mV, max 21405mW); starting RTKit endpoint-start preflight after host graph validation\n"
+             );
+ 
+             regs::Resources::start_cpu(pdev)?;
+-            let initdata_result = gpu::GpuManagerG15V14_7::rtkit_management_preflight(&drm, &res, cfg);
++            let initdata_result = gpu::GpuManagerG15V14_7::rtkit_endpoint_preflight(&drm, &res, cfg);
+             let stop_result = regs::Resources::stop_cpu(pdev);
+ 
+             if let Err(e) = initdata_result {
+-                dev_err!(pdev.as_ref(), "T8122 G15 RTKit management preflight failed: {:?}\n", e);
++                dev_err!(pdev.as_ref(), "T8122 G15 RTKit endpoint-start preflight failed: {:?}\n", e);
+                 let _ = stop_result;
+                 return Err(e);
+             }
+@@ -349,7 +349,7 @@ fn probe(
+ 
+             dev_info!(
+                 pdev.as_ref(),
+-                "T8122 G15 RTKit management-only PASS; ASC stopped; app endpoints/MSG_INIT intentionally blocked\n"
++                "T8122 G15 RTKit endpoint-start PASS; ASC stopped; InitData/device-control/doorbell/MSG_INIT intentionally blocked\n"
+             );
+             return Err(ENODEV);
+         }
+diff --git a/drivers/gpu/drm/asahi/gpu.rs b/drivers/gpu/drm/asahi/gpu.rs
+index 8c2081291cc3..68f04c7bf8cb 100644
+--- a/drivers/gpu/drm/asahi/gpu.rs
++++ b/drivers/gpu/drm/asahi/gpu.rs
+@@ -980,11 +980,11 @@ pub(crate) fn manager_preflight(
+         }
+     }
+ 
+-    /// G15 bring-up checkpoint: allow only the standard RTKit management
+-    /// handshake. App endpoints are discovered but never started, and MSG_INIT
+-    /// is never sent. RTKit is destroyed again before ASC is stopped by the
+-    /// caller.
+-    pub(crate) fn rtkit_management_preflight(
++    /// G15 bring-up checkpoint: complete RTKit management, then start the
++    /// firmware and doorbell application endpoints without sending InitData,
++    /// device-control traffic, a doorbell, or MSG_INIT. RTKit is destroyed
++    /// again before ASC is stopped by the caller.
++    pub(crate) fn rtkit_endpoint_preflight(
+         dev: &AsahiDevice,
+         res: &regs::Resources,
+         cfg: &'static hw::HwConfig,
+@@ -1013,12 +1013,19 @@ pub(crate) fn rtkit_management_preflight(
+                 let mut guard = mgr.rtkit.lock();
+                 let mut rtk = guard.as_mut().as_pin_mut().ok_or(EIO)?;
+ 
+-                // This performs only RTKit management/system-endpoint boot:
+-                // HELLO/EPMAP negotiation, system endpoints and AP power-on.
+-                // It does not start EP_FIRMWARE/EP_DOORBELL and sends no MSG_INIT.
++                // Complete RTKit management/system-endpoint boot first.
+                 rtk.as_mut().boot()?;
+                 let fw = rtk.as_mut().has_endpoint(EP_FIRMWARE);
+                 let doorbell = rtk.as_mut().has_endpoint(EP_DOORBELL);
++                if !fw || !doorbell {
++                    return Err(EIO);
++                }
++
++                // m1n1 starts these endpoints before it builds InitData. The
++                // RTKit core sends only STARTEP management messages here; no
++                // InitData address or application payload is sent.
++                rtk.as_mut().start_endpoint(EP_FIRMWARE)?;
++                rtk.as_mut().start_endpoint(EP_DOORBELL)?;
+                 (fw, doorbell)
+             };
+ 
+@@ -1032,7 +1039,7 @@ pub(crate) fn rtkit_management_preflight(
+             if !fw_ep || !doorbell_ep || !q21_untouched || crashed {
+                 dev_err!(
+                     dev.as_ref(),
+-                    "T8122 G15 RTKit management validation failed: fw_ep={} doorbell_ep={} q21_untouched={} crashed={}\n",
++                    "T8122 G15 RTKit endpoint-start validation failed: fw_ep={} doorbell_ep={} q21_untouched={} crashed={}\n",
+                     fw_ep,
+                     doorbell_ep,
+                     q21_untouched,
+@@ -1043,7 +1050,7 @@ pub(crate) fn rtkit_management_preflight(
+ 
+             dev_info!(
+                 dev.as_ref(),
+-                "T8122 G15 RTKit management PASS (EP20 firmware + EP21 doorbell discovered; app endpoints not started; q21 untouched); destroying RTKit without MSG_INIT\n"
++                "T8122 G15 RTKit endpoint-start PASS (EP20 firmware + EP21 doorbell started; no InitData/device-control/doorbell/MSG_INIT; q21 untouched); destroying RTKit\n"
+             );
+ 
+             // Stop mailbox RX and release any RTKit system buffers before the
+-- 
+2.53.0
+

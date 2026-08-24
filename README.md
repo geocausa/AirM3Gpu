@@ -19,12 +19,13 @@ Live hardware milestones reached:
 - Complete pre-RTKit GpuManager/channel graph construction and validation.
 - RTKit protocol v12 management handshake; firmware EP20 and doorbell EP21 are discovered but not started.
 - G15 EP1 crashlog preallocation identified as firmware-carved physical DRAM and accepted without RTKit buffer errors.
+- RTKit application endpoints EP20 + EP21 started successfully as a separate fail-closed stage.
 
-The current hard boundary is deliberately **before application endpoint startup and before `MSG_INIT`**. There is no DRM render node and no GPU work submission at this checkpoint.
+The current hard boundary is deliberately **after application endpoint startup but before InitData handoff / `MSG_INIT`**. There is no DRM render node and no GPU work submission at this checkpoint.
 
 The EP1 crashlog blocker is now closed. Live ADT and physical-memory probing prove the firmware-selected `0x1000192c000` buffer resides in firmware carveout `region-id-25`; it has no AGX UAT mapping and is directly CPU-readable as ordinary reserved DRAM. The tested driver retains it with `memremap(WB)` for RTKit lifetime, and the management handshake completes with no buffer-request failure.
 
-The next boundary is application endpoint startup itself: EP20/EP21 start semantics and the first firmware-visible InitData handoff must be audited separately before any `MSG_INIT`.
+EP20/EP21 startup is now independently validated. The next boundary is the first firmware-visible InitData handoff: the `MSG_INIT` payload and startup-read closure must be proven before the firmware is allowed to dereference the G15 InitData graph.
 
 See [Current State](docs/CURRENT-STATE.md), [Workflow](docs/WORKFLOW.md), [Patch Bases](docs/PATCHES.md), and [Recovery](docs/RECOVERY.md).
 

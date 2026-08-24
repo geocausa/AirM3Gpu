@@ -26,6 +26,7 @@ The following were independently exercised on real hardware and then torn down c
 6. Complete pre-RTKit GpuManager/channel/backing graph validation.
 7. RTKit management protocol v12 handshake and endpoint-map discovery.
 8. EP1 firmware-preallocated crashlog physical backing and successful RTKit acceptance.
+9. RTKit application endpoint EP20/EP21 startup with no InitData or application traffic.
 
 After each preflight, ASC is stopped and the driver deliberately fails closed rather than registering DRM.
 
@@ -69,7 +70,7 @@ The clean-room DPE/PPT encoder is included at `research/g15/build-g15g-c0-dpe-pp
 
 Management negotiation succeeds with protocol version 12. System endpoints are allowed to negotiate; application endpoints remain blocked.
 
-EP20 (firmware) and EP21 (doorbell) are discovered but not started. q21 remains untouched. No InitData address is sent to firmware and no `MSG_INIT` occurs.
+EP20 (firmware) and EP21 (doorbell) are discovered and can now be started independently. q21 remains untouched. No InitData address is sent to firmware and no `MSG_INIT` occurs.
 
 ### EP1 crashlog backing — closed
 
@@ -85,7 +86,7 @@ The G15 RTKit implementation now models this as firmware-preallocated physical o
 
 ### Current boundary
 
-EP20 (firmware) and EP21 (doorbell) are discovered but remain unstarted. The next stage is to audit application-endpoint start semantics and the first firmware-visible InitData handoff before allowing `MSG_INIT`.
+EP20 (firmware) and EP21 (doorbell) are now started in the tested preflight using RTKit `STARTEP` management messages only. No unknown app message, crash, q21 mutation, or buffer failure is observed. The next stage is the first firmware-visible InitData handoff and `MSG_INIT` startup-read closure.
 
 ## Explicitly not enabled
 

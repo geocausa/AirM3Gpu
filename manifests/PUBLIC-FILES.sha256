@@ -1,10 +1,11 @@
-5c5e30e5c535b4356b7e03fc30656d05b8b1dd77efd6a846512db307b32db0fe  docs/CURRENT-STATE.md
-d487011fba77d1a08fd48158690a464345c08d8f6d09a51fc4e09ddd93cd6094  docs/PATCHES.md
+c840c6e2355d66bf536dc0d42d8c59e93461cdf695e8ecfbe399cc83c6e65d2d  docs/CURRENT-STATE.md
+d0dd2759f02593e4d6e2439282007198247eaaf35ebf11dccd6206783f9d1493  docs/PATCHES.md
 d61bf1973a6d6b3e840ef7eff94cb497eb57118a711f6891e2b0ee98ca6db461  docs/RECOVERY.md
 072edbe867996f268553f3da518769548159145691000f5f6dc7f888dd84cdf7  docs/WORKFLOW.md
-e7ad9f59caeaf77708cdb91a28b08421fb9824995cf10cfac198708d768dd812  manifests/CURRENT-HASHES.txt
+59d7dff4f55f9e9ae1052e5a7723340452850372dc99043bd21d81f1a9610b0d  manifests/CURRENT-HASHES.txt
 4f16537a51cf9d1ad18841ec138b5a6090407739af7b69898c933dcafdca8fea  patches/linux/0001-drm-asahi-checkpoint-T8122-G15-bring-up-through-RTKi.patch
 258eb0243e41b10800df1daf5671c8003f358efec31caaac405e74fc8c2cc00a  patches/linux/0002-drm-asahi-map-G15-RTKit-preallocated-crashlog-memory.patch
+7a0b6374402bc2fb4c75b01ae93645470385f1b671530ea9996b118915c9f961  patches/linux/0003-drm-asahi-stage-G15-RTKit-app-endpoint-start.patch
 09f94cf355cb34847caf59bf33f46231748958c10fa37dcde7d35b1a2307ac2d  patches/mesa/0001-hk-pass-initial-load-clear-state-to-kernel.patch
 07821063a351d0306dc5cc0689979cf10c537af5a417dc5d97e390ee456ec798  patches/mesa/0002-hk-pass-depth-stencil-level-offsets-to-kernel.patch
 bc26f90769b09e298649b0fc8f5f6b0373c7e50c03f0b5926f5d285f562db569  patches/mesa/0003-hk-build-G15-EOT-state-loader-for-proven-path.patch
@@ -16,6 +17,7 @@ cb7f861f5ae4d1e0560e14f128ce1dc714b74a8e7baa44bd77063ddd7932d6d3  research/g15/G
 5a41b4b14c17b0a30b7a65f39e31968bb0902e2c25ef0ba2ad133711bc0e5ed9  research/g15/G15-MAPPING-NOTIFY.md
 e4c7398008dd5cf04abc7953075b7682b95c4c5f4f389c930488c920fa77f7c6  research/g15/G15-Q4-Q21-LAYOUT.md
 69d9cfeb423fcef8c8e320f5fe1d83b4b0f6bf569d53dc23e38a3256a9a14dc3  research/g15/G15-ROOT-SHARED.md
+0af565375aa04367ffc987592b9a25c4a42b1187f40c84753b85e79b7e51b689  research/g15/G15-RTKIT-APP-ENDPOINTS.md
 37aa651e6ec5766ee4d8b5d57a88642200416cec36062d294ca7f1b235b71350  research/g15/G15-RTKIT-CRASHLOG.md
 39d539e0ca6c6d24e36bad046d6e38b3a7e9f6f1169ba78ea23f737ad51bb294  research/g15/G15-RUNTIME-STATE.md
 271d81473bed21d46c29552faf531f74d0cebcf6bbf12fa37d3952fd85de8964  research/g15/G15-TA-COMMAND-BODY.md
