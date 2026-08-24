@@ -1,0 +1,1495 @@
+From b3d38d16c076a5b41031cbe5cec31c3cc1a894f2 Mon Sep 17 00:00:00 2001
+From: geocausa <geocausa@users.noreply.github.com>
+Date: Mon, 24 Aug 2026 21:07:35 +0100
+Subject: [PATCH] drm: asahi: checkpoint T8122 G15 bring-up through RTKit
+ management
+
+
+diff --git a/arch/arm64/boot/dts/apple/t8122-j615.dts b/arch/arm64/boot/dts/apple/t8122-j615.dts
+index 305a70087888f533e739fd2c91b3ff8fb1f350dd..504a6ea3616b674a82978730b900256376fe98b2 100644
+--- a/arch/arm64/boot/dts/apple/t8122-j615.dts
++++ b/arch/arm64/boot/dts/apple/t8122-j615.dts
+@@ -31,6 +31,22 @@ led-0 {
+ 	};
+ };
+ 
++&uat_handoff {
++	reg = <0x103 0xfff70000 0x0 0x4000>;
++};
++
++&uat_pagetables {
++	reg = <0x103 0xfff78000 0x0 0x40000>;
++};
++
++&uat_ttbs {
++	reg = <0x103 0xfffb8000 0x0 0x4000>;
++};
++
++&gpu_preflight {
++	status = "okay";
++};
++
+ &aop_mbox {
+ 	status = "okay";
+ };
+diff --git a/arch/arm64/boot/dts/apple/t8122-jxxx.dtsi b/arch/arm64/boot/dts/apple/t8122-jxxx.dtsi
+index cfd2492c2701b280ceec81e2f1eef90cb2729c49..c11ae03d17e96c1a1d7d4141c5e7091bbb7d4127 100644
+--- a/arch/arm64/boot/dts/apple/t8122-jxxx.dtsi
++++ b/arch/arm64/boot/dts/apple/t8122-jxxx.dtsi
+@@ -38,7 +38,19 @@ reserved-memory {
+ 		#address-cells = <2>;
+ 		#size-cells = <2>;
+ 		ranges;
+-		/* To be filled by loader */
++
++		/* G15 UAT bring-up regions, filled from the live Apple ADT. */
++		uat_handoff: uat-handoff {
++			reg = <0 0 0 0>;
++		};
++
++		uat_pagetables: uat-pagetables {
++			reg = <0 0 0 0>;
++		};
++
++		uat_ttbs: uat-ttbs {
++			reg = <0 0 0 0>;
++		};
+ 	};
+ 
+ 	memory@800000000 {
+diff --git a/arch/arm64/boot/dts/apple/t8122.dtsi b/arch/arm64/boot/dts/apple/t8122.dtsi
+index 9111fe3b0050dca5d1753f8b014afd4ac510333e..4c28d7aa41d91b7ae90fb2a6609b317bb71860c6 100644
+--- a/arch/arm64/boot/dts/apple/t8122.dtsi
++++ b/arch/arm64/boot/dts/apple/t8122.dtsi
+@@ -374,6 +374,43 @@ soc {
+ 		/* Required to get >32-bit DMA via DARTs */
+ 		dma-ranges = <0 0 0 0 0xffffffff 0xffffc000>;
+ 
++		/*
++		 * G15 ASC/UAT-handoff bring-up preflight. The experimental driver
++		 * starts the preloaded GFX ASC, initializes the UAT handoff/TTBs,
++		 * explicitly stops the ASC, then returns ENODEV. RTKit/initdata/DRM
++		 * registration and GPU submission remain unreachable.
++		 */
++		gpu_preflight: gpu@292400000 {
++			compatible = "apple,agx-t8122";
++			reg = <0x2 0x92400000 0x0 0x6c000>,
++			      <0x2 0x90000000 0x0 0x4000000>;
++			reg-names = "asc", "sgx";
++			mboxes = <&agx_mbox>;
++			power-domains = <&ps_gfx>;
++			memory-region = <&uat_ttbs>, <&uat_pagetables>, <&uat_handoff>;
++			memory-region-names = "ttbs", "pagetables", "handoff";
++			status = "disabled";
++		};
++
++		/*
++		 * Exact J615 /arm-io/gfx-asc mailbox. Apple ADT exposes IRQs in
++		 * not-empty/empty order [724,723,726,725]; Linux's ASC mailbox
++		 * binding uses empty/not-empty order, matching all existing T8122
++		 * nodes and yielding [723,724,725,726].
++		 */
++		agx_mbox: mbox@292408000 {
++			compatible = "apple,t8122-asc-mailbox", "apple,asc-mailbox-v4";
++			reg = <0x2 0x92408000 0x0 0x4000>;
++			interrupt-parent = <&aic>;
++			interrupts = <AIC_IRQ 723 IRQ_TYPE_LEVEL_HIGH>,
++				     <AIC_IRQ 724 IRQ_TYPE_LEVEL_HIGH>,
++				     <AIC_IRQ 725 IRQ_TYPE_LEVEL_HIGH>,
++				     <AIC_IRQ 726 IRQ_TYPE_LEVEL_HIGH>;
++			interrupt-names = "send-empty", "send-not-empty",
++					  "recv-empty", "recv-not-empty";
++			#mbox-cells = <0>;
++		};
++
+ 		cpufreq_e: cpufreq@210e20000 {
+ 			compatible = "apple,t8122-cluster-cpufreq", "apple,t8112-cluster-cpufreq";
+ 			reg = <0x2 0x10e20000 0 0x1000>;
+diff --git a/drivers/gpu/drm/asahi/driver.rs b/drivers/gpu/drm/asahi/driver.rs
+index bafcfc4edc1f6130bf6e158b519ee12c21bf86a1..2d97984d1676c8bd5ea280365f6a391d850f102a 100644
+--- a/drivers/gpu/drm/asahi/driver.rs
++++ b/drivers/gpu/drm/asahi/driver.rs
+@@ -26,6 +26,7 @@
+     gem::AsahiObject,
+     gpu,
+     hw,
++    mmu,
+     regs, //
+ };
+ 
+@@ -121,6 +122,10 @@ impl drm::driver::Driver for AsahiDriver {
+             of::DeviceId::new(c_str!("apple,agx-t8112")),
+             &hw::t8112::HWCONFIG
+         ),
++        (
++            of::DeviceId::new(c_str!("apple,agx-t8122")),
++            &hw::t8122::HWCONFIG_PREFLIGHT
++        ),
+         (
+             of::DeviceId::new(c_str!("apple,agx-t6000")),
+             &hw::t600x::HWCONFIG_T6000
+@@ -164,6 +169,191 @@ fn probe(
+ 
+         let cfg = info.ok_or(ENODEV)?;
+ 
++        if cfg.gpu_gen == hw::GpuGen::G15 {
++            // T8122 bring-up checkpoint: first validate the exact generation-7
++            // identity, then start only the preloaded GFX ASC and initialize
++            // the UAT handoff/TTB state. Do not create a GpuManager/RTKit
++            // object, build firmware initdata, start RTKit endpoints, send
++            // MSG_INIT, register DRM, or submit GPU work.
++            unsafe { pdev.dma_set_mask_and_coherent(DmaMask::try_new(cfg.uat_oas)?)? };
++
++            let res = regs::Resources::new(pdev)?;
++            res.init_mmio()?;
++            let id = res.get_gpu_id()?;
++
++            if id.gpu_gen != hw::GpuGen::G15
++                || id.gpu_variant != hw::GpuVariant::G
++                || id.gpu_rev != hw::GpuRevision::C0
++                || id.num_clusters != cfg.max_num_clusters
++                || id.num_cores != cfg.max_num_cores
++                || id.total_active_cores != cfg.max_num_cores
++                || id.core_masks.len() != 1
++                || id.core_masks[0] != 0x3ff
++            {
++                dev_err!(pdev.as_ref(), "T8122 G15 preflight identity mismatch: {:?}\n", id);
++                return Err(EIO);
++            }
++
++            dev_info!(
++                pdev.as_ref(),
++                "T8122 G15G C0 identity PASS (1 MGPU, 10/10 cores); starting UAT handoff preflight\n"
++            );
++
++            regs::Resources::start_cpu(pdev)?;
++
++            // Uat::new() needs an Asahi DRM device for its private GEM-backed
++            // page tables, but this device is never registered with DRM. This
++            // is the same uninitialized-device construction used by the normal
++            // probe path before manager setup.
++            let uninit = unsafe {
++                pin_init::pin_init_from_closure::<AsahiData, kernel::error::Error>(|_slot| Ok(()))
++            };
++            let drm: ARef<AsahiDevice> = drm::device::Device::new(pdev.as_ref(), uninit)?;
++
++            let uat_result = mmu::Uat::new(&drm, cfg, true);
++            match uat_result {
++                Ok(uat) => {
++                    dev_info!(
++                        pdev.as_ref(),
++                        "T8122 G15 UAT handoff preflight PASS; RTKit/initdata/MSG_INIT intentionally blocked\n"
++                    );
++                    core::mem::drop(uat);
++                }
++                Err(e) => {
++                    dev_err!(pdev.as_ref(), "T8122 G15 UAT handoff preflight failed: {:?}\n", e);
++                    let _ = regs::Resources::stop_cpu(pdev);
++                    return Err(e);
++                }
++            }
++
++            regs::Resources::stop_cpu(pdev)?;
++            dev_info!(pdev.as_ref(), "T8122 G15 ASC stopped after UAT preflight\n");
++
++            // The next checkpoint is deliberately CPU/DT-only. Parse the
++            // complete J615 power configuration after the ASC is stopped,
++            // validate every machine-specific input we recovered, then return
++            // ENODEV. GpuManager/initdata/RTKit/MSG_INIT remain unreachable.
++            let pwr = match hw::PwrConfig::load(&drm, cfg) {
++                Ok(pwr) => pwr,
++                Err(e) => {
++                    dev_err!(pdev.as_ref(), "T8122 G15 PwrConfig load failed: {:?}\n", e);
++                    return Err(e);
++                }
++            };
++
++            const FREQ_HZ: [u32; 14] = [
++                0, 338_000_000, 618_000_000, 796_000_000, 836_000_000, 928_000_000,
++                952_000_000, 1_056_000_000, 1_053_000_000, 1_170_000_000,
++                1_152_000_000, 1_278_000_000, 1_204_000_000, 1_338_000_000,
++            ];
++            const VOLT_MV: [u32; 14] = [
++                125, 650, 675, 720, 755, 755, 805, 805, 850, 850, 890, 890, 915, 915,
++            ];
++            const POWER_MW: [u32; 14] = [
++                0, 3516, 5774, 8103, 9376, 10194, 12037, 13102, 14799, 16149,
++                17713, 19322, 19586, 21405,
++            ];
++
++            let mut power_ok = pwr.perf_states.len() == FREQ_HZ.len();
++            if power_ok {
++                for i in 0..FREQ_HZ.len() {
++                    let ps = &pwr.perf_states[i];
++                    if ps.freq_hz != FREQ_HZ[i]
++                        || ps.pwr_mw != POWER_MW[i]
++                        || ps.volt_mv.len() != 1
++                        || ps.volt_mv[0] != VOLT_MV[i]
++                    {
++                        power_ok = false;
++                        break;
++                    }
++                }
++            }
++
++            power_ok = power_ok
++                && pwr.power_zones.is_empty()
++                && pwr.csafr.is_none()
++                && pwr.core_leak_coef.len() == 1
++                && pwr.sram_leak_coef.len() == 1
++                && pwr.core_leak_coef[0].to_bits() == 0x44cd_8000 // 1644.0
++                && pwr.sram_leak_coef[0].to_bits() == 0x4270_0000 // 60.0
++                && pwr.max_power_mw == 21_405
++                && pwr.max_freq_mhz == 1_338
++                && pwr.perf_base_pstate == 1
++                && pwr.perf_max_pstate == 13
++                && pwr.min_sram_microvolt == 790_000
++                && pwr.avg_power_filter_tc_ms == 40
++                && pwr.avg_power_ki_only.to_bits() == 0x428c_0000 // 70.0
++                && pwr.avg_power_kp.to_bits() == 0x3ff9_999a // 1.95
++                && pwr.avg_power_min_duty_cycle == 30
++                && pwr.avg_power_target_filter_tc == 1
++                && pwr.fast_die0_integral_gain.to_bits() == 0x43e1_0000 // 450.0
++                && pwr.fast_die0_proportional_gain.to_bits() == 0x4208_0000 // 34.0
++                && pwr.fast_die0_prop_tgt_delta == 0
++                && pwr.fast_die0_release_temp == 80
++                && pwr.fender_idle_off_delay_ms == 40
++                && pwr.fw_early_wake_timeout_ms == 5
++                && pwr.idle_off_delay_ms == 2
++                && pwr.idle_off_standby_timer == 700
++                && pwr.perf_boost_ce_step == 50
++                && pwr.perf_boost_min_util == 90
++                && pwr.perf_filter_drop_threshold == 0
++                && pwr.perf_filter_time_constant == 5
++                && pwr.perf_filter_time_constant2 == 200
++                && pwr.perf_integral_gain.to_bits() == 0x3f4c_28f6
++                && pwr.perf_integral_gain2.to_bits() == 0x3f4c_28f6
++                && pwr.perf_integral_min_clamp == 0
++                && pwr.perf_proportional_gain.to_bits() == 0x40ac_cccd
++                && pwr.perf_proportional_gain2.to_bits() == 0x40ac_cccd
++                && pwr.perf_reset_iters == 6
++                && pwr.perf_tgt_utilization == 85
++                && pwr.power_sample_period == 8
++                && pwr.ppm_filter_time_constant_ms == 100
++                && pwr.ppm_ki.to_bits() == 0x42c2_3333
++                && pwr.ppm_kp.to_bits() == 0x4039_999a
++                && pwr.pwr_filter_time_constant == 313
++                && pwr.pwr_integral_gain.to_bits() == 0x3ca5_9586
++                && pwr.pwr_integral_min_clamp == 0
++                && pwr.pwr_min_duty_cycle == 30
++                && pwr.pwr_proportional_gain.to_bits() == 0x40a9_0fdb
++                && pwr.pwr_sample_period_aic_clks == 200_000
++                && pwr.se_engagement_criteria == 600
++                && pwr.se_filter_time_constant == 9
++                && pwr.se_filter_time_constant_1 == 3
++                && pwr.se_inactive_threshold == 2500
++                && pwr.se_ki.to_bits() == 0xc248_0000
++                && pwr.se_ki_1.to_bits() == 0xc2c8_0000
++                && pwr.se_kp.to_bits() == 0xc0a0_0000
++                && pwr.se_kp_1.to_bits() == 0xc120_0000
++                && pwr.se_reset_criteria == 50;
++
++            if !power_ok {
++                dev_err!(pdev.as_ref(), "T8122 G15 PwrConfig mismatch: {:?}\n", pwr);
++                return Err(EIO);
++            }
++
++            dev_info!(
++                pdev.as_ref(),
++                "T8122 G15 PwrConfig PASS (14 OPPs, leak 1644/60, SRAM floor 790mV, max 21405mW); starting RTKit management-only preflight after host graph validation\n"
++            );
++
++            regs::Resources::start_cpu(pdev)?;
++            let initdata_result = gpu::GpuManagerG15V14_7::rtkit_management_preflight(&drm, &res, cfg);
++            let stop_result = regs::Resources::stop_cpu(pdev);
++
++            if let Err(e) = initdata_result {
++                dev_err!(pdev.as_ref(), "T8122 G15 RTKit management preflight failed: {:?}\n", e);
++                let _ = stop_result;
++                return Err(e);
++            }
++            stop_result?;
++
++            dev_info!(
++                pdev.as_ref(),
++                "T8122 G15 RTKit management-only PASS; ASC stopped; app endpoints/MSG_INIT intentionally blocked\n"
++            );
++            return Err(ENODEV);
++        }
++
+         unsafe { pdev.dma_set_mask_and_coherent(DmaMask::try_new(cfg.uat_oas)?)? };
+ 
+         let res = regs::Resources::new(pdev)?;
+diff --git a/drivers/gpu/drm/asahi/float.rs b/drivers/gpu/drm/asahi/float.rs
+index d58a3d284da12477de8aa0e6d1de12078b0628e1..e12c822c56915fe04aa9af67ee486793eac15890 100644
+--- a/drivers/gpu/drm/asahi/float.rs
++++ b/drivers/gpu/drm/asahi/float.rs
+@@ -49,6 +49,11 @@ pub(crate) const fn from_bits(u: u32) -> F32 {
+         F32(u)
+     }
+ 
++    /// Return the exact IEEE754 bit pattern.
++    pub(crate) const fn to_bits(self) -> u32 {
++        self.0
++    }
++
+     // Convert a `f32` value into an F32
+     //
+     // This must ONLY be used in const context. Use the `f32!{}` macro to do it safely.
+diff --git a/drivers/gpu/drm/asahi/fw/initdata.rs b/drivers/gpu/drm/asahi/fw/initdata.rs
+index 319fc610502bda858ee071dea27c10af4f9f733f..7e7fb232c3e7f9439ee50249dee26091f6dbb9fd 100644
+--- a/drivers/gpu/drm/asahi/fw/initdata.rs
++++ b/drivers/gpu/drm/asahi/fw/initdata.rs
+@@ -614,9 +614,76 @@ pub(crate) struct AuxLeakCoef {
+         pub(crate) cs_2: Array<2, F32>,
+     }
+ 
+-    /// G15-only extension appended to the inherited HwDataA prefix.
++    /// J615/C0 G15 DPE/PPT payload at HwDataA +0x3aa8.
++    ///
++    /// This is the exact zero-count bootstrap image produced by
++    /// AGXAcceleratorG15G::populateDPEPPTConfigData() on 25F84. The two
++    /// repeated 64-qword banks are represented structurally rather than as an
++    /// opaque captured byte blob.
++    #[derive(Debug)]
++    #[repr(C)]
++    pub(crate) struct G15DpePptConfig {
++        pub(crate) loop_count_000: u32,
++        pub(crate) pad_004: Pad<0xc8>,
++        pub(crate) all_ones_0cc: Array<4, U64>,
++        pub(crate) bootstrap_0ec: U64,
++        pub(crate) q_3fffff_0f4: Array<2, U64>,
++        pub(crate) pad_104: Pad<0x10>,
++        pub(crate) literal_114: U64,
++        pub(crate) pad_11c: Pad<0x20>,
++        pub(crate) literal_13c: U64,
++        pub(crate) all_ones_144: Array<4, U64>,
++        pub(crate) q_0f07_164: Array<4, U64>,
++        pub(crate) bank1_184: Array<64, U64>,
++        pub(crate) special_384: U64,
++        pub(crate) all_ones_38c: Array<4, U64>,
++        pub(crate) q_0f07_3ac: Array<4, U64>,
++        pub(crate) bank2_3cc: Array<64, U64>,
++        pub(crate) pad_5cc: Pad<0x08>,
++        pub(crate) control_5d4: U64,
++    }
++    default_zeroed!(G15DpePptConfig);
++    const _: [(); 0x5dc] = [(); core::mem::size_of::<G15DpePptConfig>()];
++    const _: [(); 0x0cc] = [(); core::mem::offset_of!(G15DpePptConfig, all_ones_0cc)];
++    const _: [(); 0x184] = [(); core::mem::offset_of!(G15DpePptConfig, bank1_184)];
++    const _: [(); 0x384] = [(); core::mem::offset_of!(G15DpePptConfig, special_384)];
++    const _: [(); 0x3cc] = [(); core::mem::offset_of!(G15DpePptConfig, bank2_3cc)];
++    const _: [(); 0x5d4] = [(); core::mem::offset_of!(G15DpePptConfig, control_5d4)];
++
++    /// Sparse SoCHot payload copied to HwDataA +0x4188 on J615/C0.
++    #[derive(Debug)]
++    #[repr(C)]
++    pub(crate) struct G15SoCHotConfig {
++        pub(crate) pad_000: Pad<0x10>,
++        pub(crate) sensor_mask_010: U64,
++        pub(crate) constant_018: U64,
++        pub(crate) pad_020: Pad<0x34>,
++    }
++    default_zeroed!(G15SoCHotConfig);
++    const _: [(); 0x54] = [(); core::mem::size_of::<G15SoCHotConfig>()];
++    const _: [(); 0x10] = [(); core::mem::offset_of!(G15SoCHotConfig, sensor_mask_010)];
++    const _: [(); 0x18] = [(); core::mem::offset_of!(G15SoCHotConfig, constant_018)];
++
++    /// G15 replacement for the inherited Shared1/2/3 through leakage-coef
++    /// region, spanning HwDataA +0x3a9c..+0x421b exactly.
++    #[derive(Debug)]
++    #[repr(C)]
++    pub(crate) struct G15HwDataAPreTail {
++        pub(crate) pad_000: Pad<0x08>,
++        pub(crate) constant_008: F32,
++        pub(crate) dpe_00c: G15DpePptConfig,
++        pub(crate) pad_5e8: Pad<0x104>,
++        pub(crate) sochot_6ec: G15SoCHotConfig,
++        pub(crate) pad_740: Pad<0x40>,
++    }
++    default_zeroed!(G15HwDataAPreTail);
++    const _: [(); 0x780] = [(); core::mem::size_of::<G15HwDataAPreTail>()];
++    const _: [(); 0x008] = [(); core::mem::offset_of!(G15HwDataAPreTail, constant_008)];
++    const _: [(); 0x00c] = [(); core::mem::offset_of!(G15HwDataAPreTail, dpe_00c)];
++    const _: [(); 0x6ec] = [(); core::mem::offset_of!(G15HwDataAPreTail, sochot_6ec)];
++
++    /// G15-only extension at HwDataA +0x421c.
+     ///
+-    /// The generated pre-G15-style object ends exactly at +0x421c, while
+     /// Apple's G15 allocation is 0x4360 bytes. Firmware directly accesses
+     /// several fields in this 0x144-byte extension. Unresolved fields remain
+     /// offset-named and zero-initialized until host semantics are proven.
+@@ -970,45 +1037,72 @@ pub(crate) struct HwDataA {
+ 
+         pub(crate) unk_3640: u32,
+         pub(crate) unk_3644: u32,
++
++        #[ver(G != G15)]
+         pub(crate) hws1: HwDataShared1,
+ 
+-        #[ver(V >= V13_0B4)]
++        #[ver(V >= V13_0B4 && G != G15)]
+         pub(crate) unk_hws2: Array<16, u16>,
+ 
++        #[ver(G != G15)]
+         pub(crate) hws2: HwDataShared2,
++        #[ver(G != G15)]
+         pub(crate) unk_3c00: u32,
++        #[ver(G != G15)]
+         pub(crate) unk_3c04: u32,
++        #[ver(G != G15)]
+         pub(crate) hws3: HwDataShared3,
++        #[ver(G != G15)]
+         pub(crate) unk_3c58: Array<0x3c, u8>,
++        #[ver(G != G15)]
+         pub(crate) unk_3c94: u32,
++        #[ver(G != G15)]
+         pub(crate) unk_3c98: U64,
++        #[ver(G != G15)]
+         pub(crate) unk_3ca0: U64,
++        #[ver(G != G15)]
+         pub(crate) unk_3ca8: U64,
++        #[ver(G != G15)]
+         pub(crate) unk_3cb0: U64,
++        #[ver(G != G15)]
+         pub(crate) ts_last_idle: U64,
++        #[ver(G != G15)]
+         pub(crate) ts_last_poweron: U64,
++        #[ver(G != G15)]
+         pub(crate) ts_last_poweroff: U64,
++        #[ver(G != G15)]
+         pub(crate) unk_3cd0: U64,
++        #[ver(G != G15)]
+         pub(crate) unk_3cd8: U64,
+ 
+-        #[ver(V >= V13_0B4)]
++        #[ver(V >= V13_0B4 && G != G15)]
+         pub(crate) unk_3ce0_0: u32,
+ 
++        #[ver(G != G15)]
+         pub(crate) unk_3ce0: u32,
++        #[ver(G != G15)]
+         pub(crate) unk_3ce4: u32,
++        #[ver(G != G15)]
+         pub(crate) unk_3ce8: u32,
++        #[ver(G != G15)]
+         pub(crate) unk_3cec: u32,
++        #[ver(G != G15)]
+         pub(crate) unk_3cf0: u32,
++        #[ver(G != G15)]
+         pub(crate) core_leak_coef: Array<8, F32>,
++        #[ver(G != G15)]
+         pub(crate) sram_leak_coef: Array<8, F32>,
+ 
+-        #[ver(V >= V13_0B4)]
++        #[ver(V >= V13_0B4 && G != G15)]
+         pub(crate) aux_leak_coef: AuxLeakCoef,
+-        #[ver(V >= V13_0B4)]
++        #[ver(V >= V13_0B4 && G != G15)]
+         pub(crate) unk_3d34_0: Array<0x18, u8>,
+ 
++        #[ver(G != G15)]
+         pub(crate) unk_3d34: Array<0x38, u8>,
+ 
++        #[ver(G == G15)]
++        pub(crate) g15_pretail_3a9c: G15HwDataAPreTail,
+         #[ver(G == G15)]
+         pub(crate) g15_tail_421c: G15HwDataATail,
+     }
+@@ -1018,6 +1112,8 @@ pub(crate) struct HwDataA {
+     no_debug!(HwDataA::ver);
+ 
+     const _: [(); 0x4360] = [(); core::mem::size_of::<HwDataAG15V14_7>()];
++    const _: [(); 0x3a94] = [(); core::mem::offset_of!(HwDataAG15V14_7, unk_3640)];
++    const _: [(); 0x3a9c] = [(); core::mem::offset_of!(HwDataAG15V14_7, g15_pretail_3a9c)];
+     const _: [(); 0x421c] = [(); core::mem::offset_of!(HwDataAG15V14_7, g15_tail_421c)];
+ 
+     #[derive(Debug, Default, Clone, Copy)]
+diff --git a/drivers/gpu/drm/asahi/gpu.rs b/drivers/gpu/drm/asahi/gpu.rs
+index 381685af9746ec0ae522cc20c53572f2b8767fa3..cc165d751fc9fe40a7a5c5570d4c319cf9ddae90 100644
+--- a/drivers/gpu/drm/asahi/gpu.rs
++++ b/drivers/gpu/drm/asahi/gpu.rs
+@@ -420,6 +420,58 @@ fn shmem_alloc(
+         mod_dev_dbg!(dev, "shmem_alloc() -> VA {:#x}\n", mapping.iova());
+         Ok(RtkitObject { vmap, mapping })
+     }
++
++    /// G15 bring-up probe: record firmware-selected RTKit shared-memory IOVAs
++    /// without mapping or acknowledging them. Keep fail-closed until the exact
++    /// backing semantics are proven.
++    fn shmem_map(
++        data: <Self::Data as ForeignOwnable>::Borrowed<'_>,
++        iova: usize,
++        size: usize,
++    ) -> Result<Self::Buffer> {
++        #[cfg(CONFIG_DEV_COREDUMP)]
++        {
++            // m1n1 AGXASC::ioread/iowrite/iotranslate strips the upper DVA
++            // tag bits before walking the AGX UAT. Mirror that only for this
++            // read-only probe; no mapping or acknowledgement is performed.
++            let asc_dva = (iova as u64) & 0x0000_00ff_ffff_ffff;
++            match data.uat.probe_lower_page(asc_dva) {
++                Ok(Some((pte, phys, cpu_page))) => dev_info!(
++                    data.dev.as_ref(),
++                    "T8122 G15 RTKit shmem_map probe: tagged DVA {:#x}, masked DVA {:#x}, size {:#x}, PTE {:#x}, phys {:#x}, cpu_page={}; intentionally refusing\n",
++                    iova,
++                    asc_dva,
++                    size,
++                    pte,
++                    phys,
++                    cpu_page
++                ),
++                Ok(None) => dev_info!(
++                    data.dev.as_ref(),
++                    "T8122 G15 RTKit shmem_map probe: tagged DVA {:#x}, masked DVA {:#x}, size {:#x}, unmapped in TTBR0; intentionally refusing\n",
++                    iova,
++                    asc_dva,
++                    size
++                ),
++                Err(e) => dev_info!(
++                    data.dev.as_ref(),
++                    "T8122 G15 RTKit shmem_map probe: tagged DVA {:#x}, masked DVA {:#x}, size {:#x}, TTBR0 probe failed {:?}; intentionally refusing\n",
++                    iova,
++                    asc_dva,
++                    size,
++                    e
++                ),
++            }
++        }
++        #[cfg(not(CONFIG_DEV_COREDUMP))]
++        dev_info!(
++            data.dev.as_ref(),
++            "T8122 G15 RTKit shmem_map probe: IOVA {:#x}, size {:#x}; intentionally refusing\n",
++            iova,
++            size
++        );
++        Err(EINVAL)
++    }
+ }
+ 
+ #[versions(AGX)]
+@@ -431,6 +483,30 @@ pub(crate) fn new(
+         res: &regs::Resources,
+         cfg: &'static hw::HwConfig,
+     ) -> Result<Arc<GpuManager::ver>> {
++        let mgr = Self::build_pre_rtkit(dev, res, cfg)?;
++        let mgr = Arc::from(mgr);
++
++        let rtkit = rtkit::RtKit::<GpuManager::ver>::new(dev.as_ref(), None, 0, mgr.clone())?;
++
++        *mgr.rtkit.lock() = Some(rtkit);
++
++        {
++            let mut rxc = mgr.rx_channels.lock();
++            rxc.event.set_manager(mgr.clone());
++        }
++
++        Ok(mgr)
++    }
++
++    /// Build and wire the complete manager object graph up to, but excluding,
++    /// RTKit construction. This is also the safe G15 bring-up boundary used by
++    /// the build-and-destroy preflight.
++    #[inline(never)]
++    fn build_pre_rtkit(
++        dev: &AsahiDevice,
++        res: &regs::Resources,
++        cfg: &'static hw::HwConfig,
++    ) -> Result<Pin<UniqueArc<GpuManager::ver>>> {
+         let uat = Self::make_uat(dev, cfg)?;
+         let dyncfg = Self::make_dyncfg(dev, res, cfg, &uat)?;
+ 
+@@ -528,8 +604,9 @@ pub(crate) fn new(
+         #[ver(G == G15)]
+         {
+             // G15 no longer exposes the legacy FwStatus object in InitData.
+-            // Keep firmware-control wiring disabled until the exact G15 shared
+-            // channel location is reconstructed from the Apple host ABI.
++            // Its exact 0x20 state + 0x1800 mapping/control ring already live
++            // in q22 +0x4568/+0x4570. Runtime notification production remains
++            // fail-closed; there is no separate legacy FwCtlChannel to wire.
+         }
+ 
+         {
+@@ -631,18 +708,337 @@ pub(crate) fn new(
+             mgr.as_mut().io_mappings_mut().push(mapping, GFP_KERNEL)?;
+         }
+ 
+-        let mgr = Arc::from(mgr);
++        Ok(mgr)
++    }
+ 
+-        let rtkit = rtkit::RtKit::<GpuManager::ver>::new(dev.as_ref(), None, 0, mgr.clone())?;
++    /// G15 bring-up checkpoint: construct the full InitData allocation tree,
++    /// validate the deterministic J615/C0 HwDataA pre-tail in CPU memory, and
++    /// drop everything without creating RTKit or sending firmware messages.
++    pub(crate) fn initdata_preflight(
++        dev: &AsahiDevice,
++        res: &regs::Resources,
++        cfg: &'static hw::HwConfig,
++    ) -> Result<()> {
++        #[ver(G != G15)]
++        {
++            let _ = (dev, res, cfg);
++            return Err(EINVAL);
++        }
+ 
+-        *mgr.rtkit.lock() = Some(rtkit);
++        #[ver(G == G15)]
++        {
++            let uat = Self::make_uat(dev, cfg)?;
++            let dyncfg = Self::make_dyncfg(dev, res, cfg, &uat)?;
++
++            let mut alloc = KernelAllocators {
++                private: alloc::DefaultAllocator::new(
++                    dev,
++                    uat.kernel_vm(),
++                    IOVA_KERN_PRIV_RANGE,
++                    0x80,
++                    mmu::PROT_FW_PRIV_RW,
++                    1024 * 1024,
++                    true,
++                    fmt!("Kernel Private"),
++                    true,
++                )?,
++                shared: alloc::DefaultAllocator::new(
++                    dev,
++                    uat.kernel_vm(),
++                    IOVA_KERN_SHARED_RANGE,
++                    0x80,
++                    mmu::PROT_FW_SHARED_RW,
++                    1024 * 1024,
++                    true,
++                    fmt!("Kernel Shared"),
++                    false,
++                )?,
++                shared_ro: alloc::DefaultAllocator::new(
++                    dev,
++                    uat.kernel_vm(),
++                    IOVA_KERN_SHARED_RO_RANGE,
++                    0x80,
++                    mmu::PROT_FW_SHARED_RO,
++                    64 * 1024,
++                    true,
++                    fmt!("Kernel RO Shared"),
++                    false,
++                )?,
++                gpu: alloc::DefaultAllocator::new(
++                    dev,
++                    uat.kernel_vm(),
++                    IOVA_KERN_GPU_RANGE,
++                    0x80,
++                    mmu::PROT_GPU_FW_SHARED_RW,
++                    64 * 1024,
++                    true,
++                    fmt!("Kernel GPU Shared"),
++                    false,
++                )?,
++                gpu_ro: alloc::DefaultAllocator::new(
++                    dev,
++                    uat.kernel_vm(),
++                    IOVA_KERN_GPU_RO_RANGE,
++                    0x80,
++                    mmu::PROT_GPU_RO_FW_PRIV_RW,
++                    1024 * 1024,
++                    true,
++                    fmt!("Kernel GPU RO Shared"),
++                    true,
++                )?,
++            };
++
++            let initdata = Self::make_initdata(dev, cfg, &dyncfg, &mut alloc)?;
++            let hwdata_a_va = initdata.runtime_pointers.hwdata_a.gpu_va().get();
++            let initdata_va = initdata.gpu_va().get();
++
++            let pre_ok = initdata.runtime_pointers.hwdata_a.with(|raw, _inner| {
++                let pre = &raw.g15_pretail_3a9c;
++                let dpe = &pre.dpe_00c;
++                let u64_is = |v: &U64, x: u64| v.0 == x;
++
++                pre.constant_008.to_bits() == 0x40a0_0000
++                    && dpe.loop_count_000 == 0
++                    && dpe.all_ones_0cc.iter().all(|v| u64_is(v, u64::MAX))
++                    && u64_is(&dpe.bootstrap_0ec, 0x0000_0000_0008_0000)
++                    && dpe
++                        .q_3fffff_0f4
++                        .iter()
++                        .all(|v| u64_is(v, 0x003f_ffff_003f_ffff))
++                    && u64_is(&dpe.literal_114, 0x003f_0000_0000_0000)
++                    && u64_is(&dpe.literal_13c, 0x2000_0000_0000_0000)
++                    && dpe.all_ones_144.iter().all(|v| u64_is(v, u64::MAX))
++                    && dpe
++                        .q_0f07_164
++                        .iter()
++                        .all(|v| u64_is(v, 0x0f07_0f07_0f07_0f07))
++                    && dpe
++                        .bank1_184
++                        .iter()
++                        .all(|v| u64_is(v, 0x03ff_ffff_03ff_ffff))
++                    && u64_is(&dpe.special_384, 0xa000_0000_0000_0017)
++                    && dpe.all_ones_38c.iter().all(|v| u64_is(v, u64::MAX))
++                    && dpe
++                        .q_0f07_3ac
++                        .iter()
++                        .all(|v| u64_is(v, 0x0f07_0f07_0f07_0f07))
++                    && dpe
++                        .bank2_3cc
++                        .iter()
++                        .all(|v| u64_is(v, 0x03ff_ffff_03ff_ffff))
++                    && u64_is(&dpe.control_5d4, 0x0000_0000_00c0_0000)
++                    && u64_is(&pre.sochot_6ec.sensor_mask_010, 0x4248)
++                    && u64_is(&pre.sochot_6ec.constant_018, 125)
++            });
++
++            if !pre_ok {
++                dev_err!(dev.as_ref(), "T8122 G15 InitData preflight HwDataA pre-tail mismatch\n");
++                return Err(EIO);
++            }
++
++            dev_info!(
++                dev.as_ref(),
++                "T8122 G15 InitData construction PASS (InitData VA {:#x}, HwDataA VA {:#x}, pre-tail 0x3a9c..0x421b exact); dropping without RTKit/MSG_INIT\n",
++                initdata_va,
++                hwdata_a_va
++            );
++
++            core::mem::drop(initdata);
++            core::mem::drop(alloc);
++            core::mem::drop(dyncfg);
++            core::mem::drop(uat);
++            Ok(())
++        }
++    }
+ 
++    /// G15 bring-up checkpoint: build and wire the complete manager graph up
++    /// to the exact RTKit construction boundary, validate all startup-visible
++    /// channel/backing pointers, then drop it without constructing RTKit or
++    /// sending MSG_INIT.
++    pub(crate) fn manager_preflight(
++        dev: &AsahiDevice,
++        res: &regs::Resources,
++        cfg: &'static hw::HwConfig,
++    ) -> Result<()> {
++        #[ver(G != G15)]
+         {
+-            let mut rxc = mgr.rx_channels.lock();
+-            rxc.event.set_manager(mgr.clone());
++            let _ = (dev, res, cfg);
++            return Err(EINVAL);
+         }
+ 
+-        Ok(mgr)
++        #[ver(G == G15)]
++        {
++            // Preserve the already-proven HwDataA deterministic pre-tail gate
++            // before advancing to the larger manager/channel object graph.
++            Self::initdata_preflight(dev, res, cfg)?;
++
++            let mgr = Self::build_pre_rtkit(dev, res, cfg)?;
++
++            let initdata_va = mgr.initdata.gpu_va().get();
++            let wrapper_va = mgr.initdata.runtime_pointers.gpu_va().get();
++            let q22_va = mgr.initdata.g15_q22.gpu_va().get();
++            let q22_state_va = mgr.initdata.g15_cache_flush_state.gpu_va().get();
++            let q22_ring_va = mgr.initdata.g15_cache_flush_ring.gpu_va().get();
++
++            let root_ok = mgr.initdata.with(|raw, _inner| {
++                raw.g15_q0_signature.0 == 0x0c08_e21e_8380_0490
++                    && raw.g15_q3_runtime_pointers.0 == wrapper_va
++                    && raw.g15_q5_host_mapped.0 == 0x0000_0001_0000_0000
++                    && raw.g15_q22.0 == q22_va
++            });
++
++            let q22_ok = mgr.initdata.g15_q22.with(|raw, _inner| {
++                raw.shared_ptr_4568.0 == q22_state_va
++                    && raw.shared_ptr_4570.0 == q22_ring_va
++                    && raw.host_flag_45c4.0 == 1
++            });
++
++            let tx_ring_ok = |r: &fw::initdata::raw::G15TxChannelRing| {
++                let read = r.read_ptr.0;
++                read != 0
++                    && r.write_ptr_shadow.0 == read + 0x10
++                    && r.write_ptr.0 == read + 0x20
++                    && r.ring.0 != 0
++            };
++
++            let wrapper_ok = mgr.initdata.runtime_pointers.with(|raw, _inner| {
++                let pipes_ok = raw.pipes.iter().all(|p| {
++                    tx_ring_ok(&p.vtx) && tx_ring_ok(&p.frag) && tx_ring_ok(&p.comp)
++                });
++
++                pipes_ok
++                    && tx_ring_ok(&raw.device_control)
++                    && raw.event.state.is_some()
++                    && raw.event.ring.is_some()
++                    && raw.fw_log.state.is_some()
++                    && raw.fw_log.ring.is_some()
++                    && raw.ktrace.state.is_some()
++                    && raw.ktrace.ring.is_some()
++                    && raw.stats.state.is_some()
++                    && raw.stats.ring.is_some()
++                    && raw.fwlog_buf.is_some()
++            });
++
++            let bufmgr_ok = mgr
++                .initdata
++                .runtime_pointers
++                .buffer_mgr_ctl_low_mapping
++                .is_some()
++                && mgr
++                    .initdata
++                    .runtime_pointers
++                    .buffer_mgr_ctl_high_mapping
++                    .is_some();
++
++            // J615/T8122 currently has no static HwConfig MMIO or SRAM mapping
++            // entries. Keep this explicit so a later table addition cannot
++            // silently bypass the preflight's mapping validation.
++            let mappings_ok = cfg.io_mappings.is_empty()
++                && cfg.sram_base.is_none()
++                && cfg.sram_size.is_none()
++                && mgr.io_mappings.is_empty();
++
++            if !(root_ok && q22_ok && wrapper_ok && bufmgr_ok && mappings_ok) {
++                dev_err!(
++                    dev.as_ref(),
++                    "T8122 G15 pre-RTKit manager validation failed: root={} q22={} wrapper={} bufmgr={} mappings={}\n",
++                    root_ok,
++                    q22_ok,
++                    wrapper_ok,
++                    bufmgr_ok,
++                    mappings_ok
++                );
++                return Err(EIO);
++            }
++
++            dev_info!(
++                dev.as_ref(),
++                "T8122 G15 pre-RTKit manager PASS (InitData {:#x}, wrapper {:#x}, q22 {:#x}, q22 ctl {:#x}/{:#x}; 12 pipe TX + device-control + RX/log/stats wired); dropping before RtKit::new/MSG_INIT\n",
++                initdata_va,
++                wrapper_va,
++                q22_va,
++                q22_state_va,
++                q22_ring_va
++            );
++
++            core::mem::drop(mgr);
++            Ok(())
++        }
++    }
++
++    /// G15 bring-up checkpoint: allow only the standard RTKit management
++    /// handshake. App endpoints are discovered but never started, and MSG_INIT
++    /// is never sent. RTKit is destroyed again before ASC is stopped by the
++    /// caller.
++    pub(crate) fn rtkit_management_preflight(
++        dev: &AsahiDevice,
++        res: &regs::Resources,
++        cfg: &'static hw::HwConfig,
++    ) -> Result<()> {
++        #[ver(G != G15)]
++        {
++            let _ = (dev, res, cfg);
++            return Err(EINVAL);
++        }
++
++        #[ver(G == G15)]
++        {
++            // Keep every previous host-side validation as a prerequisite.
++            Self::manager_preflight(dev, res, cfg)?;
++
++            let mgr = Arc::from(Self::build_pre_rtkit(dev, res, cfg)?);
++            let rtkit = rtkit::RtKit::<GpuManager::ver>::new(
++                dev.as_ref(),
++                None,
++                0,
++                mgr.clone(),
++            )?;
++            *mgr.rtkit.lock() = Some(rtkit);
++
++            let (fw_ep, doorbell_ep) = {
++                let mut guard = mgr.rtkit.lock();
++                let mut rtk = guard.as_mut().as_pin_mut().ok_or(EIO)?;
++
++                // This performs only RTKit management/system-endpoint boot:
++                // HELLO/EPMAP negotiation, system endpoints and AP power-on.
++                // It does not start EP_FIRMWARE/EP_DOORBELL and sends no MSG_INIT.
++                rtk.as_mut().boot()?;
++                let fw = rtk.as_mut().has_endpoint(EP_FIRMWARE);
++                let doorbell = rtk.as_mut().has_endpoint(EP_DOORBELL);
++                (fw, doorbell)
++            };
++
++            let q21_untouched = mgr.initdata.g15_q21.with(|raw, _inner| {
++                raw.busy.load(Ordering::Relaxed) == 0
++                    && raw.firmware_ready.load(Ordering::Relaxed) == 0
++                    && raw.power_state.load(Ordering::Relaxed) == 0
++            });
++            let crashed = mgr.crashed.load(Ordering::Relaxed);
++
++            if !fw_ep || !doorbell_ep || !q21_untouched || crashed {
++                dev_err!(
++                    dev.as_ref(),
++                    "T8122 G15 RTKit management validation failed: fw_ep={} doorbell_ep={} q21_untouched={} crashed={}\n",
++                    fw_ep,
++                    doorbell_ep,
++                    q21_untouched,
++                    crashed
++                );
++                return Err(EIO);
++            }
++
++            dev_info!(
++                dev.as_ref(),
++                "T8122 G15 RTKit management PASS (EP20 firmware + EP21 doorbell discovered; app endpoints not started; q21 untouched); destroying RTKit without MSG_INIT\n"
++            );
++
++            // Stop mailbox RX and release any RTKit system buffers before the
++            // manager/UAT disappear. The caller stops ASC immediately after.
++            let rtkit = mgr.rtkit.lock().take();
++            core::mem::drop(rtkit);
++            core::mem::drop(mgr);
++            Ok(())
++        }
+     }
+ 
+     /// Return a mutable reference to the initdata member
+diff --git a/drivers/gpu/drm/asahi/hw/mod.rs b/drivers/gpu/drm/asahi/hw/mod.rs
+index d9adb7b51de8b76c3c3dd4b9990d6e0ec2558365..82f9c6a3549d9649ad924a173e2b1b433d80a87c 100644
+--- a/drivers/gpu/drm/asahi/hw/mod.rs
++++ b/drivers/gpu/drm/asahi/hw/mod.rs
+@@ -15,6 +15,7 @@
+ pub(crate) mod t602x;
+ pub(crate) mod t8103;
+ pub(crate) mod t8112;
++pub(crate) mod t8122;
+ 
+ /// GPU generation enumeration. Note: Part of the UABI.
+ #[derive(Debug, PartialEq, Copy, Clone)]
+@@ -22,6 +23,9 @@
+ pub(crate) enum GpuGen {
+     G13 = 13,
+     G14 = 14,
++    // Generation-7 identity is exposed only for the T8122 preflight path.
++    // The driver refuses before firmware start / DRM registration.
++    G15 = 15,
+ }
+ 
+ /// GPU variant enumeration. Note: Part of the UABI.
+diff --git a/drivers/gpu/drm/asahi/hw/t8122.rs b/drivers/gpu/drm/asahi/hw/t8122.rs
+new file mode 100644
+index 0000000000000000000000000000000000000000..3f66a27ca1aa5015040039088a0af6ac51db7526
+--- /dev/null
++++ b/drivers/gpu/drm/asahi/hw/t8122.rs
+@@ -0,0 +1,95 @@
++// SPDX-License-Identifier: GPL-2.0-only OR MIT
++
++//! Preflight-only hardware identity for T8122 (M3 / G15G).
++//!
++//! This is deliberately *not* a runtime HwConfig. The platform driver consumes
++//! only the identity/topology fields before returning ENODEV, prior to DMA/UAT,
++//! ASC firmware start, initdata construction, or DRM registration. Every field
++//! that belongs to those later lifecycles remains zero/empty rather than being
++//! inherited from an older SoC by analogy.
++
++use crate::f32;
++use super::*;
++
++pub(crate) const HWCONFIG_PREFLIGHT: super::HwConfig = HwConfig {
++    chip_id: 0x8122,
++    gpu_gen: GpuGen::G15,
++    gpu_variant: GpuVariant::G,
++    gpu_core: GpuCore::G15G,
++
++    // G15 UAT geometry is independently closed: 42-bit bank-local VA
++    // roots and a 42-bit physical/root limit. Apple G15 host timing code and
++    // the J615 clock-ref both independently establish the 24 MHz base clock.
++    base_clock_hz: 24_000_000,
++    uat_ias: 42,
++    uat_oas: 42,
++    num_dies: 1,
++
++    // Exact E009 J615 powered-ID result: one MGPU, ten core bits.
++    max_num_clusters: 1,
++    max_num_cores: 10,
++
++    // Modern get_gpu_id() defines fragment units from the core count; the
++    // exact J615 powered topology therefore has ten frags. ID_COUNTS_2[23:16]
++    // independently gives four GPs.
++    max_num_frags: 10,
++    max_num_gps: 4,
++    preempt1_size: 0,
++    preempt2_size: 0,
++    preempt3_size: 0,
++    compute_preempt1_size: 0,
++    clustering: None,
++    render: HwRenderConfig { tiling_control: 0 },
++
++    // Exact J615 / 25F84 host-driver InitData scalars. These are not consumed
++    // by the current preflight-only path, but keeping them exact prevents a
++    // later runtime enablement from silently inheriting older-SoC values.
++    //
++    // FastDie output +0x10 is zero; process-node=4 selects the G15G 110 C
++    // default; HwDataA +0x1280 is allocation-zero and has no G15 host writer.
++    da: HwConfigA {
++        unk_87c: 0,
++        unk_8cc: 11_000,
++        unk_e24: 0,
++    },
++    db: HwConfigB {
++        // Runtime /arm-io chip-revision is 0x20, and Apple stores >> 4 here.
++        unk_454: 2,
++        // Explicitly zeroed by AGXArmFirmware::initFirmwareData().
++        unk_4e0: 0,
++        // High dword of the explicit zero qword pair copied from +0x1dc8.
++        unk_534: 0,
++        unk_ab8: 0,
++        unk_abc: 0,
++        // Explicit G15 host bootstrap value.
++        unk_b30: 1,
++    },
++    shared1_tab: &[],
++    shared1_a4: 0,
++    shared2_tab: &[],
++    shared2_unk_508: 0,
++    shared2_curves: None,
++    shared3_unk: 0,
++    shared3_tab: &[],
++    // Apple configurePowerAndPerformanceController() seeds 700 us and the
++    // exact J615 ADT has no gpu-idleoff-standby-timer override.
++    idle_off_standby_timer_default: 700,
++    unk_hws2_4: None,
++    unk_hws2_24: 0,
++    global_unk_54: 0,
++    // AGXAcceleratorG15G::populateSRAMPowerScaleData() fills 1.02.
++    sram_k: f32!(1.02),
++    unk_coef_a: &[],
++    unk_coef_b: &[],
++    global_tab: None,
++    has_csafr: false,
++    // G15G populateFastDieDeviceConfigData() replaces the required FastDie0
++    // sensor mask with 0x4248. The later mask copies are independently zero
++    // on G15; initdata.rs handles that generation-specific duplication rule.
++    fast_sensor_mask: [0x4248, 0],
++    fast_sensor_mask_alt: [0, 0],
++    fast_die0_sensor_present: 0,
++    io_mappings: &[],
++    sram_base: None,
++    sram_size: None,
++};
+diff --git a/drivers/gpu/drm/asahi/initdata.rs b/drivers/gpu/drm/asahi/initdata.rs
+index 6f73df0a63804857f6a4ea0a90bf09d32a88a6fd..59dda2cb5a1b73567aaad157b546e23735bab309 100644
+--- a/drivers/gpu/drm/asahi/initdata.rs
++++ b/drivers/gpu/drm/asahi/initdata.rs
+@@ -211,6 +211,56 @@ fn t81xx_data(
+         })
+     }
+ 
++    /// Construct the exact J615/C0 G15 HwDataA pre-tail at +0x3a9c.
++    ///
++    /// The DPE dynamic patch count is zero on this path, so the C0 payload is
++    /// deterministic. SoCHot discovers MTR sensors 3,6,8,9,11,14 on J615
++    /// (bitmap 0x4b48) and masks them with 0x4248, yielding 0x4248.
++    fn g15_hwdata_a_pretail() -> impl Init<raw::G15HwDataAPreTail> {
++        pin_init::init_zeroed::<raw::G15HwDataAPreTail>().chain(|ret| {
++            const Q_BANK: u64 = 0x03ff_ffff_03ff_ffff;
++            const Q_3FFFFF: u64 = 0x003f_ffff_003f_ffff;
++            const Q_0F07: u64 = 0x0f07_0f07_0f07_0f07;
++
++            ret.constant_008 = F32::from_bits(0x40a0_0000); // 5.0f
++
++            let dpe = &mut ret.dpe_00c;
++            for v in dpe.all_ones_0cc.iter_mut() {
++                *v = U64(u64::MAX);
++            }
++            dpe.bootstrap_0ec = U64(0x0000_0000_0008_0000);
++            for v in dpe.q_3fffff_0f4.iter_mut() {
++                *v = U64(Q_3FFFFF);
++            }
++            dpe.literal_114 = U64(0x003f_0000_0000_0000);
++            dpe.literal_13c = U64(0x2000_0000_0000_0000);
++            for v in dpe.all_ones_144.iter_mut() {
++                *v = U64(u64::MAX);
++            }
++            for v in dpe.q_0f07_164.iter_mut() {
++                *v = U64(Q_0F07);
++            }
++            for v in dpe.bank1_184.iter_mut() {
++                *v = U64(Q_BANK);
++            }
++            dpe.special_384 = U64(0xa000_0000_0000_0017);
++            for v in dpe.all_ones_38c.iter_mut() {
++                *v = U64(u64::MAX);
++            }
++            for v in dpe.q_0f07_3ac.iter_mut() {
++                *v = U64(Q_0F07);
++            }
++            for v in dpe.bank2_3cc.iter_mut() {
++                *v = U64(Q_BANK);
++            }
++            dpe.control_5d4 = U64(0x0000_0000_00c0_0000);
++
++            ret.sochot_6ec.sensor_mask_010 = U64(0x4248);
++            ret.sochot_6ec.constant_018 = U64(125);
++            Ok(())
++        })
++    }
++
+     /// Create the HwDataA structure. This mostly contains power-related configuration.
+     fn hwdata_a(&mut self) -> Result<GpuObject<HwDataA::ver>> {
+         let pwr = &self.dyncfg.pwr;
+@@ -411,7 +461,14 @@ fn hwdata_a(&mut self) -> Result<GpuObject<HwDataA::ver>> {
+                             ..Zeroable::init_zeroed()
+                         })
+                     },
++                    // G15 only programs the primary FastDie mask at HwDataA
++                    // +0x8ac. The generated second copy at +0x1278 remains
++                    // zero from the allocation clear; older generations clone
++                    // the configured mask here.
++                    #[ver(G != G15)]
+                     fast_die0_sensor_mask_2: U64(cfg.fast_sensor_mask[0]),
++                    #[ver(G == G15)]
++                    fast_die0_sensor_mask_2: U64(0),
+                     #[ver(G >= G14X)]
+                     fast_die1_sensor_mask_2: U64(cfg.fast_sensor_mask[1]),
+                     unk_e24: cfg.da.unk_e24,
+@@ -423,10 +480,16 @@ fn hwdata_a(&mut self) -> Result<GpuObject<HwDataA::ver>> {
+                     fast_die0_sensor_present: U64(cfg.fast_die0_sensor_present as u64),
+                     unk_163c: 1,
+                     unk_3644: 0,
++                    #[ver(G != G15)]
+                     hws1 <- Self::hw_shared1(cfg),
++                    #[ver(G != G15)]
+                     hws2 <- Self::hw_shared2(cfg, dyncfg),
++                    #[ver(G != G15)]
+                     hws3 <- Self::hw_shared3(cfg),
++                    #[ver(G != G15)]
+                     unk_3ce8: 1,
++                    #[ver(G == G15)]
++                    g15_pretail_3a9c <- Self::g15_hwdata_a_pretail(),
+                     ..Zeroable::init_zeroed()
+                 })
+                 .chain(|raw| {
+@@ -434,15 +497,17 @@ fn hwdata_a(&mut self) -> Result<GpuObject<HwDataA::ver>> {
+                         raw.sram_k[i] = self.cfg.sram_k;
+                     }
+ 
++                    #[ver(G != G15)]
+                     for (i, coef) in pwr.core_leak_coef.iter().enumerate() {
+                         raw.core_leak_coef[i] = *coef;
+                     }
+ 
++                    #[ver(G != G15)]
+                     for (i, coef) in pwr.sram_leak_coef.iter().enumerate() {
+                         raw.sram_leak_coef[i] = *coef;
+                     }
+ 
+-                    #[ver(V >= V13_0B4)]
++                    #[ver(V >= V13_0B4 && G != G15)]
+                     if let Some(csafr) = pwr.csafr.as_ref() {
+                         for (i, coef) in csafr.leak_coef_afr.iter().enumerate() {
+                             raw.aux_leak_coef.cs_1[i] = *coef;
+@@ -478,7 +543,7 @@ fn hwdata_a(&mut self) -> Result<GpuObject<HwDataA::ver>> {
+                         raw.power_zones[i].unk_10 = 1320000000;
+                     }
+ 
+-                    #[ver(V >= V13_0B4 && G >= G14X)]
++                    #[ver(V >= V13_0B4 && G >= G14X && G != G15)]
+                     for (i, j) in raw.hws2.g14.curve2.t1.iter().enumerate() {
+                         raw.unk_hws2[i] = if *j == 0xffff { 0 } else { j / 2 };
+                     }
+diff --git a/drivers/gpu/drm/asahi/mmu.rs b/drivers/gpu/drm/asahi/mmu.rs
+index 684546af520bb7255a54e6faa4b9bfe3b44d6ebd..f3e34a1776d9ca245e4bd0e9b8cb3d3e9f2586a5 100644
+--- a/drivers/gpu/drm/asahi/mmu.rs
++++ b/drivers/gpu/drm/asahi/mmu.rs
+@@ -1259,9 +1259,14 @@ fn current_slot(&self) -> Option<u32> {
+     }
+ 
+     /// Initialize the handoff region
+-    fn init(&self) -> Result {
++    fn init(&self, g15: bool) -> Result {
+         self.magic_ap.store(PPL_MAGIC, Ordering::Relaxed);
+-        self.cur_slot.store(0, Ordering::Relaxed);
++        // Apple G15 AGXUnifiedAddressTranslator::initHandoff() writes
++        // 0xffffffff at +0x18 for the no-current-slot sentinel. Older
++        // generations use the existing zero sentinel; current_slot() accepts
++        // both representations as None.
++        self.cur_slot
++            .store(if g15 { u32::MAX } else { 0 }, Ordering::Relaxed);
+         self.unk3.store(0, Ordering::Relaxed);
+         fence(Ordering::SeqCst);
+ 
+@@ -1831,6 +1836,25 @@ pub(crate) fn dump_kernel_pages(&self) -> Result<KVVec<pgtable::DumpedPage>> {
+         inner.page_table.dump_pages(IOVA_KERN_FULL_RANGE)
+     }
+ 
++    /// Read-only G15 bring-up helper for a single TTBR0 page. This does not
++    /// allocate, map, unmap, or alter page-table state.
++    #[cfg(CONFIG_DEV_COREDUMP)]
++    pub(crate) fn probe_lower_page(&self, iova: u64) -> Result<Option<(u64, u64, bool)>> {
++        let start = iova & !(UAT_PGMSK as u64);
++        let end = start + UAT_PGSZ as u64;
++        let mut inner = self.kernel_lower_vm.inner.exec_lock(None, false)?;
++        let pages = inner.page_table.dump_pages(start..end)?;
++
++        for page in pages {
++            return Ok(Some((
++                page.pte,
++                page.pte & pgtable::PTE_ADDR_BITS,
++                page.data.is_some(),
++            )));
++        }
++        Ok(None)
++    }
++
+     /// Returns the base physical address of the TTBAT region.
+     pub(crate) fn ttb_base(&self) -> u64 {
+         let inner = self.inner.lock();
+@@ -2038,7 +2062,7 @@ pub(crate) fn new(
+             );
+         }
+ 
+-        inner.handoff().init()?;
++        inner.handoff().init(cfg.gpu_gen == hw::GpuGen::G15)?;
+ 
+         dev_info!(dev.as_ref(), "MMU: Initializing TTBs\n");
+ 
+diff --git a/drivers/gpu/drm/asahi/queue/render.rs b/drivers/gpu/drm/asahi/queue/render.rs
+index 0523cc6002ac3789c0fd0b8e1b344368873a7ad8..5d85e330695e209894e11204012fcfbc59164983 100644
+--- a/drivers/gpu/drm/asahi/queue/render.rs
++++ b/drivers/gpu/drm/asahi/queue/render.rs
+@@ -431,6 +431,19 @@ pub(super) fn submit_render(
+             & uapi::drm_asahi_render_flags_DRM_ASAHI_RENDER_HAS_LOAD_CLEAR as u32
+             != 0;
+ 
++        #[ver(G == G15)]
++        if cmdbuf.eot_state_loader == 0
++            || cmdbuf.eot_state_loader
++                != (cmdbuf.eot_state_loader & 0x0000_ffff_ffff_ffc0)
++        {
++            cls_pr_debug!(
++                Errors,
++                "Invalid G15 EOT state-loader GPUVA ({:#x})\n",
++                cmdbuf.eot_state_loader
++            );
++            return Err(EINVAL);
++        }
++
+         if cmdbuf.width_px == 0
+             || cmdbuf.height_px == 0
+             || cmdbuf.width_px > 16384
+@@ -1177,22 +1190,16 @@ pub(super) fn submit_render(
+                     #[ver(G == G15)]
+                     registers: fw::job::raw::RegisterArray::new(
+                         inner_weak_ptr!(_ptr, registers.registers),
+-                        |_r| {
+-                            // Exact G15 command geometry uses the register-list body,
+-                            // but individual 3D register entries are not yet imported.
+-                            // Keep the proven/common inputs type-checked without emitting
+-                            // unverified register programming. Apple also has three optional
++                        |r| {
++                            // Exact G15G/C0 normal 3D register-list geometry and producers
++                            // are closed and emitted below. Apple also has three optional
+                             // G15 registers gated by AGXPerfCtrSampler state; fresh/inactive
+                             // sampler state makes that outer gate false, so they are not part
+                             // of the base render list and stay absent until G15 perf sampling
+                             // has its own independently correct lifecycle.
+-                            // PM register 0x1ca28 is now fully constructible from the
+-                            // reconstructed per-slot Parameter Scene Allocations resource. Keep
+-                            // it non-emitting with the rest of the G15 RegisterArray until the
+-                            // complete base list crosses the runtime-enablement boundary.
+-                            // RTM/common formulas independently matched to the existing
+-                            // kernel-owned geometry producers. Keep these typed here so later
+-                            // list import cannot silently drift while G15 emission is disabled.
++                            // PM register 0x1ca28 is constructed from the reconstructed
++                            // per-slot Parameter Scene Allocations resource. RTM/common formulas
++                            // independently match existing kernel-owned geometry producers.
+                             let g15_isp_mtile_size: u64 = (tile_info.utiles_per_mtile_y
+                                 | (tile_info.utiles_per_mtile_x << 16))
+                                 .into();
+@@ -1207,7 +1214,7 @@ pub(super) fn submit_render(
+                             let g15_blocks_per_utile =
+                                 ((cmdbuf.sample_size_B as u32) * g15_samples_per_utile)
+                                     .div_ceil(2048);
+-                            let g15_aux_fb = inner.aux_fb.gpu_pointer();
++                            let g15_aux_fb: u64 = inner.aux_fb.gpu_pointer().into();
+                             let g15_rgn_stride: u64 = (tile_info.params.rgn_size as u64) << 26;
+                             // Exact Apple selectors include private modes 2/3, but Linux's
+                             // existing render ABI exposes only the historical normal tiler mode
+@@ -1303,6 +1310,95 @@ pub(super) fn submit_render(
+                             // Render +0x674. G15 0x1a0f9 masks that dword with
+                             // 0xfffffff8, so its exact value is zero in both cases.
+                             let g15_sampled_reg_1a0f9: u64 = 0;
++                            // Exact G15 EOT 0x15351 is the GPUVA of the
++                            // userspace-generated I/O-to-register ESL bytecode.
++                            // Apple inserts address bits 6..47 and leaves the
++                            // remaining bits zero on the ordinary 24G84 path.
++                            // Honeykrisp now owns the command-lifetime ESL allocation and
++                            // the UAPI validation above guarantees the exact 64-byte-aligned
++                            // 48-bit GPUVA form consumed by the ordinary G15 register.
++                            let g15_eot_state_loader_reg_15351: u64 =
++                                cmdbuf.eot_state_loader;
++                            // Exact normal G15G/C0 Fragment list. The initial 0x1739 seed
++                            // is outside the 74 helper-emitted entries in the Apple trace.
++                            // The conditional 0x17e1 VRS seed is absent because current Linux
++                            // has no rasterization-rate-map producer (g15_vrs_reg_101c1 == 0).
++                            r.add(0x1739, 1);
++                            r.add(0x10009, utile_config.into());
++                            r.add(0x15379, cmdbuf.eot.rsrc_spec.into());
++                            r.add(0x15381, cmdbuf.eot.usc.into());
++                            r.add(0x15369, cmdbuf.bg.rsrc_spec.into());
++                            r.add(0x15371, cmdbuf.bg.usc.into());
++                            r.add(0x15131, cmdbuf.isp_merge_upper_x.into());
++                            r.add(0x15139, cmdbuf.isp_merge_upper_y.into());
++                            r.add(0x100a1, 0);
++                            r.add(0x15069, 0);
++                            r.add(0x15071, 0);
++                            r.add(0x16058, g15_raw5f0_reg_16058);
++                            r.add(0x10019, cmdbuf.ppp_multisamplectl);
++                            r.add(0x100b1, g15_isp_mtile_size);
++                            r.add(0x16030, g15_isp_mtile_size);
++                            r.add(0x100d9, g15_te_screen);
++                            r.add(0x10791, g15_vrs_reg_10791);
++                            r.add(0x16098, inner.scene.tvb_heapmeta_pointer().into());
++                            r.add(0x15109, cmdbuf.isp_scissor_base & !0x3);
++                            r.add(0x15101, cmdbuf.isp_dbias_base & !0x3);
++                            r.add(0x15021, g15_aux_reg_15021);
++                            r.add(0x15211, g15_fb_dimensions);
++                            r.add(0x15049, g15_aux_reg_15049);
++                            r.add(0x10051, g15_blocks_per_utile.into());
++                            r.add(0x15321, cmdbuf.isp_zls_pixels.into());
++                            r.add(0x15301, cmdbuf.isp_bgobjdepth.into());
++                            r.add(0x15309, load_bgobjvals);
++                            r.add(0x15311, cmdbuf.isp_oclqry_base & !0xf);
++                            r.add(0x15319, cmdbuf.zls_ctrl);
++                            r.add(0x15349, 0);
++                            r.add(0x15351, g15_eot_state_loader_reg_15351);
++                            r.add(0x15329, cmdbuf.depth.base);
++                            r.add(0x15331, cmdbuf.depth.base);
++                            r.add(0x15339, cmdbuf.stencil.base);
++                            r.add(0x15341, cmdbuf.stencil.base);
++                            r.add(0x15231, g15_native_resolve_reg_15231);
++                            r.add(0x15221, g15_depth_aux_reg_15221);
++                            r.add(0x15239, g15_depth_aux_reg_15239);
++                            r.add(0x15229, g15_stencil_aux_reg_15229);
++                            r.add(0x15401, cmdbuf.depth.stride as u64);
++                            r.add(0x15421, cmdbuf.depth.stride as u64);
++                            r.add(0x15409, cmdbuf.stencil.stride as u64);
++                            r.add(0x15429, cmdbuf.stencil.stride as u64);
++                            r.add(0x153c1, cmdbuf.depth.comp_base);
++                            r.add(0x15411, cmdbuf.depth.comp_stride as u64);
++                            r.add(0x153c9, cmdbuf.depth.comp_base);
++                            r.add(0x15431, cmdbuf.depth.comp_stride as u64);
++                            r.add(0x153d1, cmdbuf.stencil.comp_base);
++                            r.add(0x15419, cmdbuf.stencil.comp_stride as u64);
++                            r.add(0x153d9, cmdbuf.stencil.comp_base);
++                            r.add(0x15439, cmdbuf.stencil.comp_stride as u64);
++                            r.add(0x16429, inner.scene.tvb_tilemap_pointer().into());
++                            r.add(0x16060, inner.scene.tvb_layermeta_pointer().into());
++                            r.add(0x16431, g15_rgn_stride);
++                            r.add(0x10039, g15_tile_config);
++                            r.add(0x16020, 0);
++                            r.add(0x16451, 0);
++                            r.add(0x15359, 0);
++                            r.add(0x100b8, g15_reg_100b8);
++                            r.add(0x16461, g15_aux_fb);
++                            r.add(0x16090, g15_aux_fb);
++                            r.add(0x120a1, g15_raw600_reg_120a1);
++                            r.add(0x101e9, g15_raw600_reg_101e9);
++                            r.add(0x16068, g15_tilecfg);
++                            r.add(0x1a0a9, g15_clear_reg_1a0a9);
++                            r.add(0x1a0b1, g15_memoryless_reg_1a0b1);
++                            r.add(0x1a079, g15_vrs_reg_1a079);
++                            r.add(0x1a081, g15_vrs_reg_1a081);
++                            r.add(0x1a0d9, g15_vrs_reg_1a0d9);
++                            r.add(0x1a0e1, g15_vrs_reg_1a0e1);
++                            r.add(0x101c1, g15_vrs_reg_101c1);
++                            r.add(0x0d469, g15_vrs_reg_0d469);
++                            r.add(0x1a0f9, g15_sampled_reg_1a0f9);
++                            r.add(0x1c838, 0xffff_ffff);
++                            r.add(0x1ca28, g15_pm_scene_reg_1ca28);
++
+                             let _ = (
+                                 g15_fb_dimensions,
+                                 g15_blocks_per_utile,
+@@ -1338,6 +1434,7 @@ pub(super) fn submit_render(
+                                 g15_vrs_reg_1a0d9,
+                                 g15_vrs_reg_1a0e1,
+                                 g15_sampled_reg_1a0f9,
++                                g15_eot_state_loader_reg_15351,
+                                 g15_pm_record_gpuva,
+                                 g15_pm_page_metrics_gpuva,
+                                 load_bgobjvals,
+diff --git a/drivers/gpu/drm/asahi/regs.rs b/drivers/gpu/drm/asahi/regs.rs
+index 93f5dbfd34fe86aeb02235638a92af78c07e9d1b..afb2ee8b1ffcd43e4102637c6fe5684d8657dade 100644
+--- a/drivers/gpu/drm/asahi/regs.rs
++++ b/drivers/gpu/drm/asahi/regs.rs
+@@ -293,6 +293,21 @@ pub(crate) fn start_cpu(pdev: &platform::Device<Core>) -> Result {
+         Ok(())
+     }
+ 
++    /// Stop the ASC coprocessor CPU.
++    ///
++    /// Used by the fail-closed T8122 UAT-handoff preflight so the preloaded
++    /// firmware is explicitly stopped before platform genpd detaches/powers
++    /// the GPU domain off. This is the exact inverse of `start_cpu()`.
++    pub(crate) fn stop_cpu(pdev: &platform::Device<Core>) -> Result {
++        let asc_req = pdev.io_request_by_name(c_str!("asc")).ok_or(EINVAL)?;
++        let asc_iomem = KBox::pin_init(asc_req.iomap_sized::<ASC_CTL_SIZE>(), GFP_KERNEL)?;
++        let res = asc_iomem.access(pdev.as_ref())?.relaxed();
++
++        let val = res.read32(CPU_CONTROL);
++        res.write32(val & !CPU_RUN, CPU_CONTROL);
++        Ok(())
++    }
++
+     /// Get the GPU identification info from registers.
+     ///
+     /// See [`hw::GpuIdConfig`] for the result.
+@@ -334,6 +349,13 @@ pub(crate) fn get_gpu_id(&self) -> Result<hw::GpuIdConfig> {
+                 // Clusters per die * num dies
+                 ((id_counts_1 >> 8) & 0xff) * ((id_counts_1 >> 16) & 0xf)
+             }
++            7 => {
++                // G15: E007 static reconstruction + guarded E009 powered probe
++                // prove the packed core mask begins at SGX +0xe01500 and the
++                // exported topology count is the MGPU count from ID_COUNTS_1.
++                core_mask_regs.push(self.sgx_read32::<CORE_MASKS_G14X>(), GFP_KERNEL)?;
++                g15_mgpu_count_from_id_counts_1(id_counts_1)
++            }
+             a => {
+                 dev_err!(self.dev.as_ref(), "Unknown GPU generation {}\n", a);
+                 return Err(ENODEV);
+@@ -410,6 +432,7 @@ pub(crate) fn get_gpu_id(&self) -> Result<hw::GpuIdConfig> {
+                 4 => hw::GpuGen::G13,
+                 5 => hw::GpuGen::G14,
+                 6 => hw::GpuGen::G14, // G14X has a separate ID
++                7 => hw::GpuGen::G15,
+                 a => {
+                     dev_err!(self.dev.as_ref(), "Unknown GPU generation {}\n", a);
+                     return Err(ENODEV);
+diff --git a/include/uapi/drm/asahi_drm.h b/include/uapi/drm/asahi_drm.h
+index 557cdf5d67a6c35085e02e537e7fa823fb23ec11..9b5631626c4622176fc2ffef67f7938c5e6fe236 100644
+--- a/include/uapi/drm/asahi_drm.h
++++ b/include/uapi/drm/asahi_drm.h
+@@ -1128,6 +1128,16 @@ struct drm_asahi_cmd_render {
+ 	 * stencil image plane, excluding any array-layer offset.
+ 	 */
+ 	__u64 stencil_level_offset;
++
++	/**
++	 * @eot_state_loader: GPU address of the end-of-tile state-loader program.
++	 *
++	 * Newer GPU generations can execute a small I/O-to-register state-loader
++	 * program before the EOT USC program. The address is 64-byte aligned.
++	 * Older generations ignore this field. Since render commands are
++	 * size-versioned, older userspace that omits it is read as zero.
++	 */
++	__u64 eot_state_loader;
+ };
+ 
+ /**
+-- 
+2.53.0
+

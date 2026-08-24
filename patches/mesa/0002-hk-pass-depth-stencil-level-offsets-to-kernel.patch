@@ -1,0 +1,83 @@
+From fa706f10b7c3d7fa9af91b02da62e664aa18f94c Mon Sep 17 00:00:00 2001
+From: geocausa <geocausa@users.noreply.github.com>
+Date: Sun, 23 Aug 2026 15:52:10 +0100
+Subject: [PATCH 2/3] hk: pass depth stencil level offsets to kernel
+
+
+diff --git a/include/drm-uapi/asahi_drm.h b/include/drm-uapi/asahi_drm.h
+index c4fbfc502b6239218f66424b549480276df9a56b..557cdf5d67a6c35085e02e537e7fa823fb23ec11 100644
+--- a/include/drm-uapi/asahi_drm.h
++++ b/include/drm-uapi/asahi_drm.h
+@@ -1116,6 +1116,18 @@ struct drm_asahi_cmd_render {
+ 
+ 	/** @ts_frag: Timestamps for the fragment portion of the render */
+ 	struct drm_asahi_timestamps ts_frag;
++
++	/**
++	 * @depth_level_offset: Byte offset of the selected mip level within the
++	 * depth image plane, excluding any array-layer offset.
++	 */
++	__u64 depth_level_offset;
++
++	/**
++	 * @stencil_level_offset: Byte offset of the selected mip level within the
++	 * stencil image plane, excluding any array-layer offset.
++	 */
++	__u64 stencil_level_offset;
+ };
+ 
+ /**
+diff --git a/src/asahi/vulkan/hk_cmd_buffer.h b/src/asahi/vulkan/hk_cmd_buffer.h
+index 2ac32c67ca75ee4899d2e163e0c919e10fe56900..cb0e794a7b682579a164153f1945e9861b625de2 100644
+--- a/src/asahi/vulkan/hk_cmd_buffer.h
++++ b/src/asahi/vulkan/hk_cmd_buffer.h
+@@ -167,11 +167,13 @@ struct hk_render_registers {
+    struct {
+       uint32_t dimensions;
+       uint64_t buffer, meta;
++      uint64_t level_offset;
+       uint32_t stride, meta_stride;
+    } depth;
+ 
+    struct {
+       uint64_t buffer, meta;
++      uint64_t level_offset;
+       uint32_t stride, meta_stride;
+    } stencil;
+ 
+diff --git a/src/asahi/vulkan/hk_cmd_draw.c b/src/asahi/vulkan/hk_cmd_draw.c
+index 72eef1f1c0e7db4f23733f661043ba221a1565c3..844b37eb227f241b4a4de56456f29aeef7b626cb 100644
+--- a/src/asahi/vulkan/hk_cmd_draw.c
++++ b/src/asahi/vulkan/hk_cmd_draw.c
+@@ -656,6 +656,7 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
+              desc->format == PIPE_FORMAT_Z16_UNORM ||
+              desc->format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT);
+ 
++      render->cr.depth.level_offset = ail_get_level_offset_B(z_layout, level);
+       render->cr.depth.buffer =
+          hk_image_base_address(image, 0) +
+          ail_get_layer_level_B(z_layout, first_layer, level);
+@@ -708,6 +709,7 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
+       unsigned level = view->vk.base_mip_level;
+       unsigned first_layer = view->vk.base_array_layer;
+ 
++      render->cr.stencil.level_offset = ail_get_level_offset_B(s_layout, level);
+       render->cr.stencil.buffer =
+          hk_image_base_address(image, plane) +
+          ail_get_layer_level_B(s_layout, first_layer, level);
+diff --git a/src/asahi/vulkan/hk_queue.c b/src/asahi/vulkan/hk_queue.c
+index e03dc6c08739936f25c301f7212fbb7e6d79b6e5..991acf127ddca63fdfe7bba7dd3eed22a52cc402 100644
+--- a/src/asahi/vulkan/hk_queue.c
++++ b/src/asahi/vulkan/hk_queue.c
+@@ -137,6 +137,8 @@ asahi_fill_vdm_command(struct hk_device *dev, struct hk_cs *cs,
+    c->stencil.stride = cs->cr.stencil.stride;
+    c->stencil.comp_base = cs->cr.stencil.meta;
+    c->stencil.comp_stride = cs->cr.stencil.meta_stride;
++   c->depth_level_offset = cs->cr.depth.level_offset;
++   c->stencil_level_offset = cs->cr.stencil.level_offset;
+ 
+    if (cs->cr.dbias_is_int == U_TRISTATE_YES) {
+       c->flags |= DRM_ASAHI_RENDER_DBIAS_IS_INT;
+-- 
+2.53.0
+

@@ -1,0 +1,72 @@
+From 1ca5933cb046140e222c9df3ec1e81dc4e9a150d Mon Sep 17 00:00:00 2001
+From: geocausa <geocausa@users.noreply.github.com>
+Date: Sun, 23 Aug 2026 14:49:31 +0100
+Subject: [PATCH 1/3] hk: pass initial load clear state to kernel
+
+
+diff --git a/include/drm-uapi/asahi_drm.h b/include/drm-uapi/asahi_drm.h
+index de67f1c603afd42753982c7ed593619f394df527..c4fbfc502b6239218f66424b549480276df9a56b 100644
+--- a/include/drm-uapi/asahi_drm.h
++++ b/include/drm-uapi/asahi_drm.h
+@@ -789,6 +789,15 @@ enum drm_asahi_render_flags {
+ 	 */
+ 	DRM_ASAHI_RENDER_NO_VERTEX_CLUSTERING = (1U << 2),
+ 
++	/**
++	 * @DRM_ASAHI_RENDER_HAS_LOAD_CLEAR: At least one attachment is cleared
++	 * by the initial render operation.
++	 *
++	 * This is distinct from @DRM_ASAHI_RENDER_PROCESS_EMPTY_TILES: a clear
++	 * may be present even when empty tiles do not need to be processed.
++	 */
++	DRM_ASAHI_RENDER_HAS_LOAD_CLEAR = (1U << 3),
++
+ 	/**
+ 	 * @DRM_ASAHI_RENDER_DBIAS_IS_INT: Use integer depth bias formula.
+ 	 *
+diff --git a/src/asahi/vulkan/hk_cmd_buffer.h b/src/asahi/vulkan/hk_cmd_buffer.h
+index b8f16d3f3acaadd5b44bc4cafcd4b0d1164c09e5..2ac32c67ca75ee4899d2e163e0c919e10fe56900 100644
+--- a/src/asahi/vulkan/hk_cmd_buffer.h
++++ b/src/asahi/vulkan/hk_cmd_buffer.h
+@@ -161,6 +161,7 @@ struct hk_render_registers {
+    struct agx_zls_control_packed zls_control, zls_control_partial;
+    uint32_t depth_dimensions;
+    bool process_empty_tiles;
++   bool has_load_clear;
+    enum u_tristate dbias_is_int;
+ 
+    struct {
+diff --git a/src/asahi/vulkan/hk_cmd_draw.c b/src/asahi/vulkan/hk_cmd_draw.c
+index 5823c6575fd4ebd6db7f4efa1d153ad7473bf834..72eef1f1c0e7db4f23733f661043ba221a1565c3 100644
+--- a/src/asahi/vulkan/hk_cmd_draw.c
++++ b/src/asahi/vulkan/hk_cmd_draw.c
+@@ -880,6 +880,12 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
+    if (clear_att[clear_count].aspectMask != 0)
+       clear_count++;
+ 
++   /* G15+ has a distinct initial-load-clear control bit. Keep it on the
++    * first render control stream only; partial/split streams must not inherit
++    * it from persistent render state.
++    */
++   cs->cr.has_load_clear = clear_count > 0;
++
+    if (clear_count > 0 && incomplete_render_area) {
+       const VkClearRect clear_rect = {
+          .rect = render->area,
+diff --git a/src/asahi/vulkan/hk_queue.c b/src/asahi/vulkan/hk_queue.c
+index e7e6aec2e51f77bcfde06b15e5acd5b634f92c49..e03dc6c08739936f25c301f7212fbb7e6d79b6e5 100644
+--- a/src/asahi/vulkan/hk_queue.c
++++ b/src/asahi/vulkan/hk_queue.c
+@@ -201,6 +201,9 @@ asahi_fill_vdm_command(struct hk_device *dev, struct hk_cs *cs,
+    if (cs->cr.process_empty_tiles)
+       c->flags |= DRM_ASAHI_RENDER_PROCESS_EMPTY_TILES;
+ 
++   if (cs->cr.has_load_clear)
++      c->flags |= DRM_ASAHI_RENDER_HAS_LOAD_CLEAR;
++
+    if (cs->scratch.vs.main || cs->scratch.vs.preamble) {
+       c->flags |= DRM_ASAHI_RENDER_VERTEX_SCRATCH;
+       c->vertex_helper.data = dev->scratch.vs.buf->va->addr;
+-- 
+2.53.0
+

@@ -1,0 +1,758 @@
+From d36216e783a3714eca0b734afb0df2301ece8739 Mon Sep 17 00:00:00 2001
+From: geocausa <geocausa@users.noreply.github.com>
+Date: Mon, 24 Aug 2026 13:20:04 +0100
+Subject: [PATCH 3/3] hk: build G15 EOT state loader for proven path
+
+
+diff --git a/include/drm-uapi/asahi_drm.h b/include/drm-uapi/asahi_drm.h
+index 557cdf5d67a6c35085e02e537e7fa823fb23ec11..9b5631626c4622176fc2ffef67f7938c5e6fe236 100644
+--- a/include/drm-uapi/asahi_drm.h
++++ b/include/drm-uapi/asahi_drm.h
+@@ -1128,6 +1128,16 @@ struct drm_asahi_cmd_render {
+ 	 * stencil image plane, excluding any array-layer offset.
+ 	 */
+ 	__u64 stencil_level_offset;
++
++	/**
++	 * @eot_state_loader: GPU address of the end-of-tile state-loader program.
++	 *
++	 * Newer GPU generations can execute a small I/O-to-register state-loader
++	 * program before the EOT USC program. The address is 64-byte aligned.
++	 * Older generations ignore this field. Since render commands are
++	 * size-versioned, older userspace that omits it is read as zero.
++	 */
++	__u64 eot_state_loader;
+ };
+ 
+ /**
+diff --git a/src/asahi/lib/agx_g15_esl.c b/src/asahi/lib/agx_g15_esl.c
+new file mode 100644
+index 0000000000000000000000000000000000000000..f0378ca50ce6007f7607ecd1d2767d3694e7a70d
+--- /dev/null
++++ b/src/asahi/lib/agx_g15_esl.c
+@@ -0,0 +1,355 @@
++/* SPDX-License-Identifier: MIT */
++
++#include "agx_g15_esl.h"
++#include "agx_pack.h"
++
++#include <assert.h>
++#include <string.h>
++
++static inline void
++emit_u16(uint8_t **p, uint16_t v)
++{
++   (*p)[0] = v;
++   (*p)[1] = v >> 8;
++   *p += 2;
++}
++
++static inline void
++emit_u32(uint8_t **p, uint32_t v)
++{
++   for (unsigned i = 0; i < 4; ++i)
++      (*p)[i] = v >> (i * 8);
++   *p += 4;
++}
++
++static inline void
++emit_u64(uint8_t **p, uint64_t v)
++{
++   for (unsigned i = 0; i < 8; ++i)
++      (*p)[i] = v >> (i * 8);
++   *p += 8;
++}
++
++void
++agx_g15_esl_encode_copy0(uint8_t out[4], uint8_t dst, uint8_t src,
++                         bool gather)
++{
++   /*
++    * Recovered from the G15 COPY_0 emitter. The low instruction byte carries
++    * source half-register bits 1..5; source bits 5..6 also select the register
++    * class in byte 2 for the ordinary register-to-register form.
++    */
++   out[0] = 0x0b | ((src & 0x3e) << 3);
++   out[1] = dst;
++   out[2] = gather ? 0x81 : (0x09 + (((src >> 5) & 0x3) * 0x40));
++   out[3] = 0x04;
++}
++
++static inline void
++store_u32(uint8_t *p, uint32_t v)
++{
++   for (unsigned i = 0; i < 4; ++i)
++      p[i] = v >> (i * 8);
++}
++
++static inline void
++store_u64(uint8_t *p, uint64_t v)
++{
++   for (unsigned i = 0; i < 8; ++i)
++      p[i] = v >> (i * 8);
++}
++
++bool
++agx_g15_eot_format_metadata(uint8_t channels, uint8_t type,
++                            uint8_t *selector, uint8_t *components)
++{
++   uint8_t bits;
++
++   switch (channels) {
++   case AGX_CHANNELS_R8:
++      *components = 1;
++      bits = 8;
++      break;
++   case AGX_CHANNELS_R8G8:
++      *components = 2;
++      bits = 8;
++      break;
++   case AGX_CHANNELS_R8G8B8A8:
++      *components = 4;
++      bits = 8;
++      break;
++   case AGX_CHANNELS_R16:
++      *components = 1;
++      bits = 16;
++      break;
++   case AGX_CHANNELS_R16G16:
++      *components = 2;
++      bits = 16;
++      break;
++   case AGX_CHANNELS_R16G16B16A16:
++      *components = 4;
++      bits = 16;
++      break;
++   case AGX_CHANNELS_R32:
++      *components = 1;
++      bits = 32;
++      break;
++   case AGX_CHANNELS_R32G32:
++      *components = 2;
++      bits = 32;
++      break;
++   case AGX_CHANNELS_R32G32B32A32:
++      *components = 4;
++      bits = 32;
++      break;
++   case AGX_CHANNELS_R5G6B5:
++      *components = 3;
++      *selector = 14;
++      return type == AGX_TEXTURE_TYPE_UNORM;
++   case AGX_CHANNELS_R4G4B4A4:
++   case AGX_CHANNELS_R5G5B5A1:
++      *components = 4;
++      *selector = 14;
++      return type == AGX_TEXTURE_TYPE_UNORM;
++   case AGX_CHANNELS_R10G10B10A2:
++      *components = 4;
++      if (type == AGX_TEXTURE_TYPE_UNORM)
++         *selector = 19;
++      else if (type == AGX_TEXTURE_TYPE_UINT)
++         *selector = 18;
++      else
++         return false;
++      return true;
++   case AGX_CHANNELS_R11G11B10:
++      *components = 3;
++      *selector = 21;
++      return type == AGX_TEXTURE_TYPE_FLOAT;
++   case AGX_CHANNELS_R9G9B9E5:
++      *components = 3;
++      *selector = 20;
++      return type == AGX_TEXTURE_TYPE_FLOAT;
++   default:
++      return false;
++   }
++
++   if (bits == 8) {
++      switch (type) {
++      case AGX_TEXTURE_TYPE_UNORM: *selector = 3; return true;
++      case AGX_TEXTURE_TYPE_SNORM: *selector = 2; return true;
++      case AGX_TEXTURE_TYPE_UINT:  *selector = 5; return true;
++      case AGX_TEXTURE_TYPE_SINT:  *selector = 4; return true;
++      default: return false;
++      }
++   } else if (bits == 16) {
++      switch (type) {
++      case AGX_TEXTURE_TYPE_UNORM: *selector = 7; return true;
++      case AGX_TEXTURE_TYPE_SNORM: *selector = 6; return true;
++      case AGX_TEXTURE_TYPE_UINT:  *selector = 9; return true;
++      case AGX_TEXTURE_TYPE_SINT:  *selector = 8; return true;
++      case AGX_TEXTURE_TYPE_FLOAT: *selector = 12; return true;
++      default: return false;
++      }
++   } else {
++      switch (type) {
++      case AGX_TEXTURE_TYPE_UINT:  *selector = 11; return true;
++      case AGX_TEXTURE_TYPE_SINT:  *selector = 10; return true;
++      case AGX_TEXTURE_TYPE_FLOAT: *selector = 17; return true;
++      default: return false;
++      }
++   }
++}
++
++uint32_t
++agx_g15_eot_format_word(uint8_t format_selector, uint8_t components,
++                        uint8_t tile_offset_B, uint16_t sample_size_B,
++                        uint8_t mode)
++{
++   assert(format_selector < 0x20);
++   assert(components < 8);
++   assert(sample_size_B > 0 && sample_size_B <= 0x100);
++
++   const uint8_t normalized_offset = tile_offset_B / sample_size_B;
++
++   return ((uint32_t)(components & 0x7) << 26) |
++          ((uint32_t)mode << 16) |
++          ((uint32_t)(format_selector & 0x1f) << 8) | normalized_offset;
++}
++
++uint32_t
++agx_g15_eot_ordinary_key_config(uint16_t sample_size_B)
++{
++   assert(sample_size_B >= 8 && sample_size_B <= 0x100);
++   assert((sample_size_B & 7) == 0);
++   return 0x00400000 | ((uint32_t)sample_size_B << 4) | 1;
++}
++
++bool
++agx_g15_eot_ordinary_ldshdr(
++   uint8_t out[AGX_G15_EOT_UBER_LDSHDR_SIZE], uint16_t sample_size_B,
++   uint16_t tile_width_px, uint16_t tile_height_px, uint8_t nr_samples)
++{
++   /*
++    * 25F84 RenderUSCStateLoader feeds SpecLM::encodeImageBlockData with:
++    *   sample_size_B >> 2, max(samples, 1), tile width, tile height.
++    * For the proven eot_uber path the latter three values are 1, 32, 32.
++    * The SPECLM encoder then folds sample_size_B / 8 into bits 25..29 of
++    * the eight-byte LDSHDR transform. Keep unsupported shapes fail-closed.
++    */
++   if (nr_samples != 1 || tile_width_px != 32 || tile_height_px != 32 ||
++       sample_size_B < 8 || sample_size_B > 64 || (sample_size_B & 7))
++      return false;
++
++   const uint16_t imageblock_units = sample_size_B / 8;
++   const uint16_t word1 = 0x412a | (imageblock_units << 9);
++   const uint64_t encoded = 0x0000004b00000077ULL | ((uint64_t)word1 << 16);
++
++   store_u64(out, encoded);
++   return true;
++}
++
++size_t
++agx_g15_build_eot_uber_aux(
++   uint8_t out[AGX_G15_EOT_UBER_AUX_SIZE], uint64_t aux_gpuva,
++   const uint8_t pbe[AGX_G15_EOT_MAX_RTS][AGX_G15_EOT_PBE_SIZE],
++   const uint32_t format_words[AGX_G15_EOT_MAX_RTS], uint8_t rt_mask,
++   uint32_t key_config)
++{
++   assert((aux_gpuva & 0x3f) == 0);
++   memset(out, 0, AGX_G15_EOT_UBER_AUX_SIZE);
++
++   store_u64(out + 0x000, aux_gpuva + 0x020);
++   store_u64(out + 0x008, UINT64_MAX);
++   store_u64(out + 0x010, UINT64_MAX);
++   store_u64(out + 0x018, UINT64_MAX);
++
++   for (unsigned rt = 0; rt < AGX_G15_EOT_MAX_RTS; ++rt) {
++      if (!(rt_mask & (1u << rt)))
++         continue;
++      memcpy(out + 0x020 + (rt * 0x20), pbe[rt], AGX_G15_EOT_PBE_SIZE);
++      store_u32(out + 0x22c + (rt * 4), format_words[rt]);
++   }
++
++   store_u64(out + 0x220, aux_gpuva + 0x228);
++   store_u32(out + 0x274, rt_mask);
++   store_u32(out + 0x278, key_config);
++   store_u32(out + 0x2bc, UINT32_MAX);
++   return AGX_G15_EOT_UBER_AUX_SIZE;
++}
++
++static inline void
++emit_copy0(uint8_t **p, uint8_t dst, uint8_t src, bool gather)
++{
++   agx_g15_esl_encode_copy0(*p, dst, src, gather);
++   *p += 4;
++}
++
++static void
++emit_absolute_round(uint8_t **p)
++{
++   /* Two short scheduled LDIMM forms. */
++   static const uint8_t short0[14] = {
++      0x67, 0x00, 0x54, 0x28, 0x02, 0x00, 0x00,
++      0x00, 0x5d, 0x00, 0x44, 0x40, 0x26, 0x00,
++   };
++   static const uint8_t short1[14] = {
++      0x67, 0x00, 0x54, 0x24, 0x02, 0x00, 0x00,
++      0x00, 0x59, 0x00, 0x00, 0x40, 0x26, 0x00,
++   };
++
++   memcpy(*p, short0, sizeof(short0));
++   *p += sizeof(short0);
++   memcpy(*p, short1, sizeof(short1));
++   *p += sizeof(short1);
++
++   /* Eight repeated scheduled LDIMM/COPY forms. */
++   for (unsigned i = 0; i < 8; ++i) {
++      const uint8_t dst = 0x66 - (i * 8);
++      const uint8_t selector = 0x0e - (i * 2);
++      const uint8_t end = (i == 7) ? 0x04 : 0x00;
++      const uint8_t insn[14] = {
++         0x67, 0x00, 0x54, dst, 0x17, 0x00, 0x00,
++         0x00, 0x57, end, selector, 0x40, 0x26, 0x00,
++      };
++
++      memcpy(*p, insn, sizeof(insn));
++      *p += sizeof(insn);
++   }
++}
++
++static void
++emit_profile_round(uint8_t **p)
++{
++   /*
++    * Individual G15 IOTO control instructions surrounding the ordinary EOT
++    * copy round. Keeping them separate makes the recovered boundaries explicit
++    * and allows later replacement by general instruction emitters.
++    */
++   emit_u64(p, 0x0200000050aa0177ULL);
++   emit_u64(p, 0x0005002a00f70006ULL);
++   emit_u64(p, 0x002801c00000000ULL);
++   emit_u64(p, 0x0611811400000000ULL);
++   emit_u64(p, 0x002800c00000000ULL);
++   emit_u64(p, 0x0054119f00000004ULL);
++   emit_u64(p, 0x801c0510a8080002ULL);
++   emit_u64(p, 0x120f000000040002ULL);
++   emit_u32(p, 0x004c0054);
++}
++
++size_t
++agx_g15_build_eot_uber_esl(
++   uint8_t out[AGX_G15_EOT_UBER_ESL_SIZE], uint64_t aux_gpuva,
++   const uint8_t ldshdr[AGX_G15_EOT_UBER_LDSHDR_SIZE])
++{
++   assert((aux_gpuva & 0x3f) == 0);
++
++   uint8_t *p = out;
++
++   /* Four scheduled pointer/control instructions. */
++   emit_u64(&p, 0x000000000002802cULL);
++   emit_u64(&p, 0x000000000002803cULL);
++   emit_u64(&p, 0x0020000e0042a07cULL);
++   emit_u64(&p, 0x000000040042808cULL);
++
++   emit_absolute_round(&p);
++   assert((size_t)(p - out) == AGX_G15_EOT_UBER_LDSHDR_OFFSET);
++
++   memcpy(p, ldshdr, AGX_G15_EOT_UBER_LDSHDR_SIZE);
++   p += AGX_G15_EOT_UBER_LDSHDR_SIZE;
++
++   emit_profile_round(&p);
++
++   for (uint8_t src = 0x4a; src <= 0x4e; src += 2)
++      emit_copy0(&p, 0x00, src, true);
++
++   /* Four two-byte NOPs fill the round. */
++   emit_u16(&p, 0x0806);
++   emit_u16(&p, 0x0006);
++   emit_u16(&p, 0x0006);
++   emit_u16(&p, 0x0006);
++
++   static const uint8_t copies[][2] = {
++      {0x28, 0x04}, {0x2a, 0x06}, {0x2c, 0x08}, {0x24, 0x00},
++      {0x26, 0x02}, {0x66, 0x42}, {0x68, 0x44}, {0x6a, 0x46},
++      {0x6c, 0x48}, {0x5e, 0x3a}, {0x60, 0x3c}, {0x62, 0x3e},
++      {0x64, 0x40}, {0x56, 0x32}, {0x58, 0x34}, {0x5a, 0x36},
++      {0x5c, 0x38}, {0x4e, 0x2a}, {0x50, 0x2c}, {0x52, 0x2e},
++      {0x54, 0x30}, {0x46, 0x22}, {0x48, 0x24}, {0x4a, 0x26},
++      {0x4c, 0x28}, {0x3e, 0x1a}, {0x40, 0x1c}, {0x42, 0x1e},
++      {0x44, 0x20}, {0x36, 0x12}, {0x38, 0x14}, {0x3a, 0x16},
++      {0x3c, 0x18}, {0x2e, 0x0a}, {0x30, 0x0c}, {0x32, 0x0e},
++      {0x34, 0x10},
++   };
++
++   for (unsigned i = 0; i < sizeof(copies) / sizeof(copies[0]); ++i)
++      emit_copy0(&p, copies[i][0], copies[i][1], false);
++
++   emit_u32(&p, 0x0000000e);
++   assert((size_t)(p - out) == AGX_G15_EOT_UBER_ESL_SIZE);
++
++   /* Split G15 gather-table GPUVA relocation observed on the 25F84 path. */
++   out[4] = (aux_gpuva >> 6) & 0xff;
++   out[6] = (aux_gpuva >> 13) & 0xff;
++   out[12] = (aux_gpuva >> 18) & 0xff;
++
++   return p - out;
++}
+diff --git a/src/asahi/lib/agx_g15_esl.h b/src/asahi/lib/agx_g15_esl.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..fd7ea17a7a872e489398e55b6a2f38a98e9a9c57
+--- /dev/null
++++ b/src/asahi/lib/agx_g15_esl.h
+@@ -0,0 +1,63 @@
++/* SPDX-License-Identifier: MIT */
++#pragma once
++
++#include <stdbool.h>
++#include <stddef.h>
++#include <stdint.h>
++
++#define AGX_G15_EOT_UBER_ESL_SIZE 0x1a4
++#define AGX_G15_EOT_UBER_LDSHDR_OFFSET 0xac
++#define AGX_G15_EOT_UBER_LDSHDR_SIZE 8
++#define AGX_G15_EOT_UBER_AUX_SIZE 0x2c0
++#define AGX_G15_EOT_PBE_SIZE 24
++#define AGX_G15_EOT_MAX_RTS 8
++
++/*
++ * Encode the COPY_0 form used by the ordinary G15 EOT state loader.
++ *
++ * dst/src are half-register indices. gather selects the gather-buffer operand
++ * class used by the EOT metadata copies.
++ */
++void agx_g15_esl_encode_copy0(uint8_t out[4], uint8_t dst, uint8_t src,
++                              bool gather);
++
++uint32_t agx_g15_eot_format_word(uint8_t format_selector, uint8_t components,
++                                 uint8_t tile_offset_B,
++                                 uint16_t sample_size_B, uint8_t mode);
++
++/* Translate the existing PBE channel/type metadata into the G15 EOT selector
++ * and component-count fields. Returns false for an unsupported combination.
++ */
++bool agx_g15_eot_format_metadata(uint8_t channels, uint8_t type,
++                                 uint8_t *selector, uint8_t *components);
++
++uint32_t agx_g15_eot_ordinary_key_config(uint16_t sample_size_B);
++
++/*
++ * Encode the eight-byte LDSHDR transform used by the ordinary G15 eot_uber
++ * loader. This is the 25F84 SPECLM encoding for single-sampled 32x32 tiles.
++ * sample_size_B is the aligned tilebuffer bytes-per-sample allocation.
++ * Returns false when the render state is outside the proven eot_uber class.
++ */
++bool agx_g15_eot_ordinary_ldshdr(
++   uint8_t out[AGX_G15_EOT_UBER_LDSHDR_SIZE], uint16_t sample_size_B,
++   uint16_t tile_width_px, uint16_t tile_height_px, uint8_t nr_samples);
++
++size_t agx_g15_build_eot_uber_aux(
++   uint8_t out[AGX_G15_EOT_UBER_AUX_SIZE], uint64_t aux_gpuva,
++   const uint8_t pbe[AGX_G15_EOT_MAX_RTS][AGX_G15_EOT_PBE_SIZE],
++   const uint32_t format_words[AGX_G15_EOT_MAX_RTS], uint8_t rt_mask,
++   uint32_t key_config);
++
++/*
++ * Build the ordinary G15 eot_uber state-loader program.
++ *
++ * aux_gpuva is the 64-byte-aligned GPU address of the late EOT gather table.
++ * ldshdr is the eight-byte LDSHDR instruction produced for this render pass.
++ *
++ * This is intentionally scoped to the eot_uber variant. Other G15 EOT
++ * variants use different programs and must not be routed through this helper.
++ */
++size_t agx_g15_build_eot_uber_esl(
++   uint8_t out[AGX_G15_EOT_UBER_ESL_SIZE], uint64_t aux_gpuva,
++   const uint8_t ldshdr[AGX_G15_EOT_UBER_LDSHDR_SIZE]);
+diff --git a/src/asahi/lib/meson.build b/src/asahi/lib/meson.build
+index e50a70eff5184ac06777c4df2c29411d7ae84f54..86c4f7c46ff3f46d25d8a14ddd93574928d7a7d9 100644
+--- a/src/asahi/lib/meson.build
++++ b/src/asahi/lib/meson.build
+@@ -10,6 +10,7 @@ libasahi_lib_files = files(
+   'agx_device_virtio.c',
+   'agx_linker.c',
+   'agx_bg_eot.c',
++  'agx_g15_esl.c',
+   'agx_tilebuffer.c',
+   'agx_nir_lower_msaa.c',
+   'agx_nir_lower_sample_intrinsics.c',
+@@ -75,6 +76,7 @@ if with_tests
+       'libasahi_tests',
+       files(
+         'tests/test-packing.cpp',
++        'tests/test-g15-esl.cpp',
+         'tests/test-tilebuffer.cpp',
+       ),
+       c_args : [c_msvc_compat_args, no_override_init_args],
+diff --git a/src/asahi/lib/tests/test-g15-esl.cpp b/src/asahi/lib/tests/test-g15-esl.cpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..dfb500995a66c3fdba1ed6547792d8ba967fe34c
+--- /dev/null
++++ b/src/asahi/lib/tests/test-g15-esl.cpp
+@@ -0,0 +1,136 @@
++/* SPDX-License-Identifier: MIT */
++
++#include "agx_g15_esl.h"
++
++#include <gtest/gtest.h>
++#include <string.h>
++
++TEST(G15ESL, Copy0)
++{
++   const struct {
++      uint8_t dst, src;
++      bool gather;
++      uint32_t word;
++   } cases[] = {
++      {0x28, 0x04, false, 0x0409282b},
++      {0x66, 0x42, false, 0x0489661b},
++      {0x5e, 0x3a, false, 0x04495edb},
++      {0x40, 0x1c, false, 0x040940eb},
++      {0x00, 0x4a, true, 0x0481005b},
++      {0x00, 0x4e, true, 0x0481007b},
++   };
++
++   for (const auto &c : cases) {
++      uint8_t encoded[4];
++      agx_g15_esl_encode_copy0(encoded, c.dst, c.src, c.gather);
++
++      uint32_t word = encoded[0] | ((uint32_t)encoded[1] << 8) |
++                      ((uint32_t)encoded[2] << 16) |
++                      ((uint32_t)encoded[3] << 24);
++      ASSERT_EQ(word, c.word);
++   }
++}
++
++TEST(G15ESL, EOTUberRelocations)
++{
++   uint8_t out[AGX_G15_EOT_UBER_ESL_SIZE];
++   const uint8_t ldshdr[AGX_G15_EOT_UBER_LDSHDR_SIZE] = {
++      0x10, 0x21, 0x32, 0x43, 0x54, 0x65, 0x76, 0x87,
++   };
++   const uint64_t aux = 0x0000010000128600ULL;
++
++   ASSERT_EQ(agx_g15_build_eot_uber_esl(out, aux, ldshdr), sizeof(out));
++   ASSERT_EQ(out[4], (aux >> 6) & 0xff);
++   ASSERT_EQ(out[6], (aux >> 13) & 0xff);
++   ASSERT_EQ(out[12], (aux >> 18) & 0xff);
++   ASSERT_EQ(memcmp(out + AGX_G15_EOT_UBER_LDSHDR_OFFSET, ldshdr,
++                    sizeof(ldshdr)),
++             0);
++
++   /* The recovered ordinary path ends with the IOTO end marker. */
++   ASSERT_EQ(out[sizeof(out) - 4], 0x0e);
++   ASSERT_EQ(out[sizeof(out) - 3], 0x00);
++   ASSERT_EQ(out[sizeof(out) - 2], 0x00);
++   ASSERT_EQ(out[sizeof(out) - 1], 0x00);
++}
++
++
++TEST(G15ESL, EOTOrdinaryLdshdr)
++{
++   uint8_t out[AGX_G15_EOT_UBER_LDSHDR_SIZE];
++   const uint8_t captured[AGX_G15_EOT_UBER_LDSHDR_SIZE] = {
++      0x77, 0x00, 0x2a, 0x43, 0x4b, 0x00, 0x00, 0x00,
++   };
++
++   ASSERT_TRUE(agx_g15_eot_ordinary_ldshdr(out, 8, 32, 32, 1));
++   ASSERT_EQ(memcmp(out, captured, sizeof(captured)), 0);
++
++   /* The helper is deliberately scoped to the dynamically proven class. */
++   ASSERT_FALSE(agx_g15_eot_ordinary_ldshdr(out, 8, 32, 16, 1));
++   ASSERT_FALSE(agx_g15_eot_ordinary_ldshdr(out, 8, 32, 32, 4));
++   ASSERT_FALSE(agx_g15_eot_ordinary_ldshdr(out, 7, 32, 32, 1));
++}
++
++TEST(G15ESL, EOTFormatWords)
++{
++   ASSERT_EQ(agx_g15_eot_format_word(3, 4, 0, 8, 2), 0x10020300u);
++   ASSERT_EQ(agx_g15_eot_format_word(12, 4, 0, 8, 2), 0x10020c00u);
++   ASSERT_EQ(agx_g15_eot_ordinary_key_config(8), 0x00400081u);
++   ASSERT_EQ(agx_g15_eot_ordinary_key_config(16), 0x00400101u);
++}
++
++TEST(G15ESL, EOTUberAuxLayout)
++{
++   uint8_t out[AGX_G15_EOT_UBER_AUX_SIZE];
++   uint8_t pbe[AGX_G15_EOT_MAX_RTS][AGX_G15_EOT_PBE_SIZE] = {};
++   uint32_t formats[AGX_G15_EOT_MAX_RTS] = {};
++   const uint8_t captured_pbe[AGX_G15_EOT_PBE_SIZE] = {
++      0x22,0x0a,0xc6,0x3f,0xc0,0x0f,0x00,0x08,
++      0x00,0x80,0x00,0x00,0x10,0x00,0x00,0x80,
++      0x00,0x84,0x00,0x00,0x10,0x00,0x00,0x00,
++   };
++   memcpy(pbe[0], captured_pbe, sizeof(captured_pbe));
++   formats[0] = agx_g15_eot_format_word(3, 4, 0, 8, 2);
++   const uint64_t aux = 0x0000010000128600ULL;
++   ASSERT_EQ(agx_g15_build_eot_uber_aux(out, aux, pbe, formats, 1,
++                                        agx_g15_eot_ordinary_key_config(8)), sizeof(out));
++   uint64_t qword; uint32_t word;
++   memcpy(&qword, out + 0x000, 8); ASSERT_EQ(qword, aux + 0x20);
++   memcpy(&qword, out + 0x220, 8); ASSERT_EQ(qword, aux + 0x228);
++   ASSERT_EQ(memcmp(out + 0x020, captured_pbe, sizeof(captured_pbe)), 0);
++   memcpy(&word, out + 0x22c, 4); ASSERT_EQ(word, 0x10020300u);
++   memcpy(&word, out + 0x274, 4); ASSERT_EQ(word, 1u);
++   memcpy(&word, out + 0x278, 4); ASSERT_EQ(word, 0x00400081u);
++   memcpy(&word, out + 0x2bc, 4); ASSERT_EQ(word, 0xffffffffu);
++}
++
++
++TEST(G15ESL, EOTFormatMetadata)
++{
++   struct Case { uint8_t ch, type, selector, components; } cases[] = {
++      {AGX_CHANNELS_R8, AGX_TEXTURE_TYPE_UNORM, 3, 1},
++      {AGX_CHANNELS_R8G8B8A8, AGX_TEXTURE_TYPE_SNORM, 2, 4},
++      {AGX_CHANNELS_R8G8B8A8, AGX_TEXTURE_TYPE_UINT, 5, 4},
++      {AGX_CHANNELS_R8G8B8A8, AGX_TEXTURE_TYPE_SINT, 4, 4},
++      {AGX_CHANNELS_R16, AGX_TEXTURE_TYPE_UNORM, 7, 1},
++      {AGX_CHANNELS_R16G16, AGX_TEXTURE_TYPE_SNORM, 6, 2},
++      {AGX_CHANNELS_R16G16B16A16, AGX_TEXTURE_TYPE_UINT, 9, 4},
++      {AGX_CHANNELS_R16G16B16A16, AGX_TEXTURE_TYPE_SINT, 8, 4},
++      {AGX_CHANNELS_R16G16B16A16, AGX_TEXTURE_TYPE_FLOAT, 12, 4},
++      {AGX_CHANNELS_R32, AGX_TEXTURE_TYPE_UINT, 11, 1},
++      {AGX_CHANNELS_R32G32, AGX_TEXTURE_TYPE_SINT, 10, 2},
++      {AGX_CHANNELS_R32G32B32A32, AGX_TEXTURE_TYPE_FLOAT, 17, 4},
++      {AGX_CHANNELS_R5G6B5, AGX_TEXTURE_TYPE_UNORM, 14, 3},
++      {AGX_CHANNELS_R4G4B4A4, AGX_TEXTURE_TYPE_UNORM, 14, 4},
++      {AGX_CHANNELS_R10G10B10A2, AGX_TEXTURE_TYPE_UNORM, 19, 4},
++      {AGX_CHANNELS_R10G10B10A2, AGX_TEXTURE_TYPE_UINT, 18, 4},
++      {AGX_CHANNELS_R11G11B10, AGX_TEXTURE_TYPE_FLOAT, 21, 3},
++      {AGX_CHANNELS_R9G9B9E5, AGX_TEXTURE_TYPE_FLOAT, 20, 3},
++   };
++   for (const auto &c : cases) {
++      uint8_t selector = 0, components = 0;
++      ASSERT_TRUE(agx_g15_eot_format_metadata(c.ch, c.type, &selector, &components));
++      ASSERT_EQ(selector, c.selector);
++      ASSERT_EQ(components, c.components);
++   }
++}
+diff --git a/src/asahi/vulkan/hk_cmd_buffer.h b/src/asahi/vulkan/hk_cmd_buffer.h
+index cb0e794a7b682579a164153f1945e9861b625de2..55c82dc29bf782ba9bb9b57b92f31f4403ab8a38 100644
+--- a/src/asahi/vulkan/hk_cmd_buffer.h
++++ b/src/asahi/vulkan/hk_cmd_buffer.h
+@@ -151,6 +151,9 @@ struct hk_attachment {
+ struct hk_bg_eot {
+    uint64_t usc;
+    struct agx_counts_packed counts;
++
++   /* G15 I/O-to-register program executed before the EOT USC. */
++   uint64_t state_loader;
+ };
+ 
+ struct hk_render_registers {
+diff --git a/src/asahi/vulkan/hk_cmd_draw.c b/src/asahi/vulkan/hk_cmd_draw.c
+index 844b37eb227f241b4a4de56456f29aeef7b626cb..6fb1e5a2378a7bf521b10153ad0ac2e86af78357 100644
+--- a/src/asahi/vulkan/hk_cmd_draw.c
++++ b/src/asahi/vulkan/hk_cmd_draw.c
+@@ -11,6 +11,7 @@
+ #include "agx_compile.h"
+ #include "agx_compiler.h"
+ #include "agx_device.h"
++#include "agx_g15_esl.h"
+ #include "agx_helpers.h"
+ #include "agx_linker.h"
+ #include "agx_nir_lower_vbo.h"
+@@ -264,6 +265,85 @@ is_attachment_stored(const VkRenderingAttachmentInfo *att)
+           att->resolveMode != VK_RESOLVE_MODE_NONE;
+ }
+ 
++static uint64_t
++hk_build_g15_eot_state_loader(struct hk_cmd_buffer *cmd,
++                              const VkRenderingInfo *info,
++                              struct agx_bg_eot_key *key,
++                              bool partial_render,
++                              bool incomplete_render_area)
++{
++   struct hk_device *dev = hk_cmd_buffer_device(cmd);
++
++   /*
++    * First bring-up gate: exactly the 25F84 class captured dynamically.
++    * Broaden only after each additional variant is independently validated.
++    */
++   if (dev->dev.params.gpu_generation != 15 || partial_render ||
++       incomplete_render_area || key->tib.layered ||
++       key->tib.nr_samples != 1 || key->tib.sample_size_B != 8 ||
++       key->tib.tile_size != 32 * 32 || agx_tilebuffer_spills(&key->tib))
++      return 0;
++
++   if (info->pDepthAttachment || info->pStencilAttachment)
++      return 0;
++
++   if (info->colorAttachmentCount < 1 || key->op[0] != AGX_EOT_STORE)
++      return 0;
++
++   for (unsigned rt = 0; rt < info->colorAttachmentCount; ++rt) {
++      const VkRenderingAttachmentInfo *att = &info->pColorAttachments[rt];
++
++      if (att->resolveMode != VK_RESOLVE_MODE_NONE)
++         return 0;
++
++      /* The captured ordinary eot_uber path has exactly RT0 active. */
++      if (rt > 0 && key->op[rt] != AGX_BG_EOT_NONE)
++         return 0;
++   }
++
++   struct hk_rendering_state *render = &cmd->state.gfx.render;
++   struct hk_image_view *iview = render->color_att[0].iview;
++   if (!iview)
++      return 0;
++
++   const enum pipe_format logical = key->tib.logical_format[0];
++   const struct ail_pixel_format_entry *fmt = &ail_pixel_format[logical];
++   uint8_t selector, components;
++   if (!agx_g15_eot_format_metadata(fmt->channels, fmt->type, &selector,
++                                    &components) ||
++       selector != 3 || components != 4)
++      return 0;
++
++   uint8_t ldshdr[AGX_G15_EOT_UBER_LDSHDR_SIZE];
++   if (!agx_g15_eot_ordinary_ldshdr(ldshdr, key->tib.sample_size_B, 32, 32,
++                                    key->tib.nr_samples))
++      return 0;
++
++   struct agx_ptr aux =
++      hk_pool_alloc(cmd, AGX_G15_EOT_UBER_AUX_SIZE, 64);
++   struct agx_ptr esl =
++      hk_pool_usc_alloc(cmd, AGX_G15_EOT_UBER_ESL_SIZE, 64);
++   if (!aux.cpu || !esl.cpu)
++      return 0;
++
++   static_assert(sizeof(struct agx_pbe_packed) == AGX_G15_EOT_PBE_SIZE,
++                 "G15 EOT PBE size");
++
++   uint8_t pbe[AGX_G15_EOT_MAX_RTS][AGX_G15_EOT_PBE_SIZE] = {{0}};
++   uint32_t format_words[AGX_G15_EOT_MAX_RTS] = {0};
++   memcpy(pbe[0], &iview->planes[0].eot, AGX_G15_EOT_PBE_SIZE);
++   format_words[0] = agx_g15_eot_format_word(
++      selector, components, agx_tilebuffer_offset_B(&key->tib, 0),
++      key->tib.sample_size_B, 2);
++
++   agx_g15_build_eot_uber_aux(aux.cpu, aux.gpu, pbe, format_words, 1,
++                              agx_g15_eot_ordinary_key_config(
++                                 key->tib.sample_size_B));
++   agx_g15_build_eot_uber_esl(esl.cpu, aux.gpu, ldshdr);
++
++   return esl.gpu;
++}
++
+ static struct hk_bg_eot
+ hk_build_bg_eot(struct hk_cmd_buffer *cmd, const VkRenderingInfo *info,
+                 bool store, bool partial_render, bool incomplete_render_area)
+@@ -454,6 +534,11 @@ hk_build_bg_eot(struct hk_cmd_buffer *cmd, const VkRenderingInfo *info,
+ 
+    struct hk_bg_eot ret = {.usc = t.gpu};
+ 
++   if (store) {
++      ret.state_loader = hk_build_g15_eot_state_loader(
++         cmd, info, &key, partial_render, incomplete_render_area);
++   }
++
+    agx_pack(&ret.counts, COUNTS, cfg) {
+       cfg.uniform_register_count = shader->info.push_count;
+       cfg.preshader_register_count = shader->info.nr_preamble_gprs;
+diff --git a/src/asahi/vulkan/hk_queue.c b/src/asahi/vulkan/hk_queue.c
+index 991acf127ddca63fdfe7bba7dd3eed22a52cc402..25b4194d7af67c225775c2ef8e1841392c36a1de 100644
+--- a/src/asahi/vulkan/hk_queue.c
++++ b/src/asahi/vulkan/hk_queue.c
+@@ -175,6 +175,7 @@ asahi_fill_vdm_command(struct hk_device *dev, struct hk_cs *cs,
+ 
+    c->bg.usc = cs->cr.bg.main.usc | 4;
+    c->eot.usc = cs->cr.eot.main.usc | 4;
++   c->eot_state_loader = cs->cr.eot.main.state_loader;
+    c->partial_bg.usc = cs->cr.bg.partial.usc | 4;
+    c->partial_eot.usc = cs->cr.eot.partial.usc | 4;
+ 
+-- 
+2.53.0
+

@@ -1,0 +1,27 @@
+# AirM3Gpu is a source/research checkpoint repository, not an artifact store.
+*.bin
+*.dat
+*.trace
+*.ko
+*.o
+*.elf
+*.dtb
+*.dtbo
+*.img
+*.Image
+boot.bin*
+Module.symvers
+modules.order
+__pycache__/
+*.pyc
+
+# Reverse-engineering databases and machine-local extracts stay private.
+*.gpr
+*.rep/
+*ghidra-project*/
+apple-host-*/
+apple-userspace-*/
+private/
+runtime/
+checkpoints/
+artifacts/
