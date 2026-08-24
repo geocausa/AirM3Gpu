@@ -25,6 +25,7 @@ The following were independently exercised on real hardware and then torn down c
 5. Complete G15 InitData construction and CPU-side validation, followed by destruction.
 6. Complete pre-RTKit GpuManager/channel/backing graph validation.
 7. RTKit management protocol v12 handshake and endpoint-map discovery.
+8. EP1 firmware-preallocated crashlog physical backing and successful RTKit acceptance.
 
 After each preflight, ASC is stopped and the driver deliberately fails closed rather than registering DRM.
 
@@ -70,17 +71,21 @@ Management negotiation succeeds with protocol version 12. System endpoints are a
 
 EP20 (firmware) and EP21 (doorbell) are discovered but not started. q21 remains untouched. No InitData address is sent to firmware and no `MSG_INIT` occurs.
 
-### Current blocker
+### EP1 crashlog backing — closed
 
-System endpoint EP1 (crashlog) sends:
+System endpoint EP1 sends:
 
 - raw request `0x1041000192c000`
 - buffer size `0x4000`
-- DVA `0x1000192c000`
+- supplied address `0x1000192c000`
 
-m1n1's AGX ASC I/O path masks AGX DVAs to 40 bits before UAT access, yielding `0x192c000`. Read-only page-table probes show both the tagged address and the low-40 address are unmapped in the TTBR0 root Linux currently constructs.
+The iBoot-populated live ADT places the address inside firmware carveout `region-id-25` (`0x10001888000..0x10001f73fff`). Read-only AGX UAT walks show that neither the full address nor the low-40 `0x192c000` form has a TTBR0 mapping, including after RTKit management boot. A bounded `memremap(WB)` succeeds and reads the firmware fill pattern `0xefefefefefefefef`.
 
-Therefore the buffer must **not** be guessed as normal RAM, blindly `ioremap()`ed, or inserted into the UAT without proving the G15 private/ASC mapper contract.
+The G15 RTKit implementation now models this as firmware-preallocated physical ordinary memory, distinct from host-allocated GEM/UAT buffers. Live validation completes with zero GPU `failed buffer request` messages. See `research/g15/G15-RTKIT-CRASHLOG.md`.
+
+### Current boundary
+
+EP20 (firmware) and EP21 (doorbell) are discovered but remain unstarted. The next stage is to audit application-endpoint start semantics and the first firmware-visible InitData handoff before allowing `MSG_INIT`.
 
 ## Explicitly not enabled
 

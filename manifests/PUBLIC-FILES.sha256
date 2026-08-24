@@ -1,9 +1,10 @@
-fd8dda7937da1905db988ee6bf8b11c59a6d512421e09ae44654af6f972c676d  docs/CURRENT-STATE.md
-af1b46ce07489f0e48b312ee0a20f770464c2b748cdccc9ea0ae9a5ce1ebe05f  docs/PATCHES.md
+5c5e30e5c535b4356b7e03fc30656d05b8b1dd77efd6a846512db307b32db0fe  docs/CURRENT-STATE.md
+d487011fba77d1a08fd48158690a464345c08d8f6d09a51fc4e09ddd93cd6094  docs/PATCHES.md
 d61bf1973a6d6b3e840ef7eff94cb497eb57118a711f6891e2b0ee98ca6db461  docs/RECOVERY.md
 072edbe867996f268553f3da518769548159145691000f5f6dc7f888dd84cdf7  docs/WORKFLOW.md
-b6b29028e63c992e7e1657f8f809fe96e208dc598e74b97bdbedac17a051bc55  manifests/CURRENT-HASHES.txt
+e7ad9f59caeaf77708cdb91a28b08421fb9824995cf10cfac198708d768dd812  manifests/CURRENT-HASHES.txt
 4f16537a51cf9d1ad18841ec138b5a6090407739af7b69898c933dcafdca8fea  patches/linux/0001-drm-asahi-checkpoint-T8122-G15-bring-up-through-RTKi.patch
+258eb0243e41b10800df1daf5671c8003f358efec31caaac405e74fc8c2cc00a  patches/linux/0002-drm-asahi-map-G15-RTKit-preallocated-crashlog-memory.patch
 09f94cf355cb34847caf59bf33f46231748958c10fa37dcde7d35b1a2307ac2d  patches/mesa/0001-hk-pass-initial-load-clear-state-to-kernel.patch
 07821063a351d0306dc5cc0689979cf10c537af5a417dc5d97e390ee456ec798  patches/mesa/0002-hk-pass-depth-stencil-level-offsets-to-kernel.patch
 bc26f90769b09e298649b0fc8f5f6b0373c7e50c03f0b5926f5d285f562db569  patches/mesa/0003-hk-build-G15-EOT-state-loader-for-proven-path.patch
@@ -15,6 +16,7 @@ cb7f861f5ae4d1e0560e14f128ce1dc714b74a8e7baa44bd77063ddd7932d6d3  research/g15/G
 5a41b4b14c17b0a30b7a65f39e31968bb0902e2c25ef0ba2ad133711bc0e5ed9  research/g15/G15-MAPPING-NOTIFY.md
 e4c7398008dd5cf04abc7953075b7682b95c4c5f4f389c930488c920fa77f7c6  research/g15/G15-Q4-Q21-LAYOUT.md
 69d9cfeb423fcef8c8e320f5fe1d83b4b0f6bf569d53dc23e38a3256a9a14dc3  research/g15/G15-ROOT-SHARED.md
+37aa651e6ec5766ee4d8b5d57a88642200416cec36062d294ca7f1b235b71350  research/g15/G15-RTKIT-CRASHLOG.md
 39d539e0ca6c6d24e36bad046d6e38b3a7e9f6f1169ba78ea23f737ad51bb294  research/g15/G15-RUNTIME-STATE.md
 271d81473bed21d46c29552faf531f74d0cebcf6bbf12fa37d3952fd85de8964  research/g15/G15-TA-COMMAND-BODY.md
 5be0bb89b4ce13967ff8a1301a4f332dac6267d4b8ead6d87683d5c9bf381e1e  research/g15/G15-VERTEX-COMMAND.md

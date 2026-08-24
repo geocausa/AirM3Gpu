@@ -1,0 +1,222 @@
+From 335b42046b85bf91fa78dbbb30862742a3571d97 Mon Sep 17 00:00:00 2001
+From: geocausa <geocausa@users.noreply.github.com>
+Date: Mon, 24 Aug 2026 23:02:50 +0100
+Subject: [PATCH] drm/asahi: map G15 RTKit preallocated crashlog memory
+
+---
+ drivers/gpu/drm/asahi/gpu.rs | 102 ++++++++++++++++++++---------------
+ rust/kernel/io/mem.rs        |  42 ++++++++++++++-
+ 2 files changed, 99 insertions(+), 45 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/gpu.rs b/drivers/gpu/drm/asahi/gpu.rs
+index cc165d751fc9..8c2081291cc3 100644
+--- a/drivers/gpu/drm/asahi/gpu.rs
++++ b/drivers/gpu/drm/asahi/gpu.rs
+@@ -349,12 +349,29 @@ pub(crate) struct RtkitObject {
+     mapping: mmu::KernelMapping,
+ }
+ 
+-impl rtkit::Buffer for RtkitObject {
++pub(crate) struct RtkitPrealloc {
++    phys: usize,
++    mem: Mem,
++}
++
++pub(crate) enum RtkitBuffer {
++    Allocated(RtkitObject),
++    Preallocated(RtkitPrealloc),
++}
++
++impl rtkit::Buffer for RtkitBuffer {
+     fn iova(&self) -> Result<usize> {
+-        Ok(self.mapping.iova() as usize)
++        Ok(match self {
++            Self::Allocated(obj) => obj.mapping.iova() as usize,
++            Self::Preallocated(obj) => obj.phys,
++        })
+     }
++
+     fn buf(&mut self) -> Result<IoSysMapRef<'_, u8>> {
+-        Ok(self.vmap.get())
++        Ok(match self {
++            Self::Allocated(obj) => obj.vmap.get(),
++            Self::Preallocated(obj) => obj.mem.as_iosys_map(),
++        })
+     }
+ }
+ 
+@@ -362,7 +379,7 @@ fn buf(&mut self) -> Result<IoSysMapRef<'_, u8>> {
+ #[vtable]
+ impl rtkit::Operations for GpuManager::ver {
+     type Data = Arc<GpuManager::ver>;
+-    type Buffer = RtkitObject;
++    type Buffer = RtkitBuffer;
+ 
+     fn recv_message(data: <Self::Data as ForeignOwnable>::Borrowed<'_>, ep: u8, msg: u64) {
+         let dev = &data.dev;
+@@ -418,59 +435,56 @@ fn shmem_alloc(
+             true,
+         )?;
+         mod_dev_dbg!(dev, "shmem_alloc() -> VA {:#x}\n", mapping.iova());
+-        Ok(RtkitObject { vmap, mapping })
++        Ok(RtkitBuffer::Allocated(RtkitObject { vmap, mapping }))
+     }
+ 
+-    /// G15 bring-up probe: record firmware-selected RTKit shared-memory IOVAs
+-    /// without mapping or acknowledging them. Keep fail-closed until the exact
+-    /// backing semantics are proven.
+     fn shmem_map(
+         data: <Self::Data as ForeignOwnable>::Borrowed<'_>,
+         iova: usize,
+         size: usize,
+     ) -> Result<Self::Buffer> {
+-        #[cfg(CONFIG_DEV_COREDUMP)]
++        #[ver(G != G15)]
+         {
+-            // m1n1 AGXASC::ioread/iowrite/iotranslate strips the upper DVA
+-            // tag bits before walking the AGX UAT. Mirror that only for this
+-            // read-only probe; no mapping or acknowledgement is performed.
+-            let asc_dva = (iova as u64) & 0x0000_00ff_ffff_ffff;
+-            match data.uat.probe_lower_page(asc_dva) {
+-                Ok(Some((pte, phys, cpu_page))) => dev_info!(
+-                    data.dev.as_ref(),
+-                    "T8122 G15 RTKit shmem_map probe: tagged DVA {:#x}, masked DVA {:#x}, size {:#x}, PTE {:#x}, phys {:#x}, cpu_page={}; intentionally refusing\n",
+-                    iova,
+-                    asc_dva,
+-                    size,
+-                    pte,
+-                    phys,
+-                    cpu_page
+-                ),
+-                Ok(None) => dev_info!(
++            let _ = (data, iova, size);
++            return Err(EINVAL);
++        }
++
++        #[ver(G == G15)]
++        {
++            // G15 RTKit supplies its crashlog as a firmware-owned physical
++            // DRAM allocation. The exact J615 live ADT places the observed
++            // buffer inside a carveout, and live probing proves it has no AGX
++            // UAT PTE but is CPU-readable with a WB memremap.
++            //
++            // Keep this deliberately narrow during bring-up: only accept the
++            // high G15 DRAM aperture, page-aligned buffers, and a bounded size.
++            if (iova >> 40) != 1
++                || (iova & (mmu::UAT_PGSZ - 1)) != 0
++                || size == 0
++                || size > 0x0100_0000
++            {
++                dev_err!(
+                     data.dev.as_ref(),
+-                    "T8122 G15 RTKit shmem_map probe: tagged DVA {:#x}, masked DVA {:#x}, size {:#x}, unmapped in TTBR0; intentionally refusing\n",
++                    "G15 RTKit rejected preallocated buffer PA {:#x}, size {:#x}\n",
+                     iova,
+-                    asc_dva,
+                     size
+-                ),
+-                Err(e) => dev_info!(
+-                    data.dev.as_ref(),
+-                    "T8122 G15 RTKit shmem_map probe: tagged DVA {:#x}, masked DVA {:#x}, size {:#x}, TTBR0 probe failed {:?}; intentionally refusing\n",
+-                    iova,
+-                    asc_dva,
+-                    size,
+-                    e
+-                ),
++                );
++                return Err(EINVAL);
+             }
++
++            // SAFETY: G15 firmware supplied this address as an RTKit
++            // preallocated ordinary-memory buffer. The aperture/alignment/size
++            // checks above keep MMIO and malformed requests out, and live J615
++            // evidence confirms the buffer resides in firmware-carved DRAM.
++            let mem = unsafe { Mem::try_new_phys(iova as u64, size, (MemFlag::WB).into())? };
++            mod_dev_dbg!(
++                data.dev.as_ref(),
++                "G15 RTKit mapped firmware-preallocated physical buffer {:#x}+{:#x}\n",
++                iova,
++                size
++            );
++            Ok(RtkitBuffer::Preallocated(RtkitPrealloc { phys: iova, mem }))
+         }
+-        #[cfg(not(CONFIG_DEV_COREDUMP))]
+-        dev_info!(
+-            data.dev.as_ref(),
+-            "T8122 G15 RTKit shmem_map probe: IOVA {:#x}, size {:#x}; intentionally refusing\n",
+-            iova,
+-            size
+-        );
+-        Err(EINVAL)
+     }
+ }
+ 
+diff --git a/rust/kernel/io/mem.rs b/rust/kernel/io/mem.rs
+index 599538dab9a8..baeeb7254058 100644
+--- a/rust/kernel/io/mem.rs
++++ b/rust/kernel/io/mem.rs
+@@ -21,6 +21,10 @@
+         Mmio,
+         MmioRaw, //
+     },
++    iosys_map::{
++        IoSysMapRef,
++        RawIoSysMap, //
++    },
+     prelude::*,
+ };
+ 
+@@ -372,13 +376,49 @@ impl Mem {
+     /// allocated through the `dma` module.
+     pub unsafe fn try_new(res: Resource, flags: MemFlags) -> Result<Self> {
+         let size: usize = res.size().try_into()?;
++        // SAFETY: The caller of `try_new` guarantees the resource is safe to map,
++        // and the owned Resource prevents this specific resource value from being
++        // reused through this interface.
++        unsafe { Self::try_new_phys(res.start(), size, flags) }
++    }
+ 
+-        let addr = unsafe { bindings::memremap(res.start(), size, flags.into()) };
++    /// Tries to map a physical non-MMIO memory range directly.
++    ///
++    /// This is the resource-less counterpart of [`Self::try_new`], for firmware
++    /// interfaces which provide a physical address dynamically rather than via
++    /// a firmware-described [`Resource`].
++    ///
++    /// # Safety
++    ///
++    /// The caller must ensure that `start..start + size` names ordinary memory
++    /// with no MMIO side effects, remains valid for the lifetime of the returned
++    /// mapping, and is not concurrently mapped with incompatible cache attributes.
++    pub unsafe fn try_new_phys(
++        start: io::resource::PhysAddr,
++        size: usize,
++        flags: MemFlags,
++    ) -> Result<Self> {
++        let addr = unsafe { bindings::memremap(start, size, flags.into()) };
+         let ptr = NonNull::new(addr).ok_or(ENOMEM)?;
+         // INVARIANT: `ptr` is non-null and was returned by `memremap`, so it is valid.
+         Ok(Self { ptr, size })
+     }
+ 
++    /// Returns this memory mapping as an [`IoSysMapRef`] of bytes.
++    pub fn as_iosys_map(&mut self) -> IoSysMapRef<'_, u8> {
++        let map = RawIoSysMap::from_raw(bindings::iosys_map {
++            is_iomem: false,
++            __bindgen_anon_1: bindings::iosys_map__bindgen_ty_1 {
++                vaddr: self.ptr().cast(),
++            },
++        });
++
++        // SAFETY: `map` points to this `Mem` object's live memremap mapping and
++        // is valid for exactly `self.size` bytes. The returned lifetime is tied
++        // to the mutable borrow of `self`.
++        unsafe { IoSysMapRef::new(map, self.size) }
++    }
++
+     /// Returns the base address of the memory mapping as a raw pointer.
+     ///
+     /// It is up to the caller to use this pointer safely, depending on the requirements of the
+-- 
+2.53.0
+
