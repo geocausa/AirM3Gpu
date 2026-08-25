@@ -4,7 +4,7 @@ Experimental, clean-room bring-up work for the Apple M3 / T8122 G15 GPU on Asahi
 
 This repository is the **public, reproducible checkpoint** for the work. It intentionally does not contain Apple firmware, kernelcaches, extracted proprietary binaries, Ghidra databases, boot images, built kernel modules, or raw machine-local captures. Those are kept outside this repository; only derived facts, original research notes/scripts, hashes, and source patches are published here.
 
-## Current checkpoint — 2026-08-24
+## Current research state — 2026-08-25
 
 Target hardware: MacBook Air M3 (J615 / T8122), GPU identified at runtime as G15G C0.
 
@@ -25,7 +25,7 @@ The current hard boundary is deliberately **after application endpoint startup b
 
 The EP1 crashlog blocker is now closed. Live ADT and physical-memory probing prove the firmware-selected `0x1000192c000` buffer resides in firmware carveout `region-id-25`; it has no AGX UAT mapping and is directly CPU-readable as ordinary reserved DRAM. The tested driver retains it with `memremap(WB)` for RTKit lifetime, and the management handshake completes with no buffer-request failure.
 
-EP20/EP21 startup is now independently validated. The next boundary is the first firmware-visible InitData handoff: the `MSG_INIT` payload and startup-read closure must be proven before the firmware is allowed to dereference the G15 InitData graph.
+EP20/EP21 startup is independently validated. The pre-`MSG_INIT` audit has since found concrete blockers in the first firmware-read HwDataB image, including the missing RGX firmware mapping pointer at `+0x6a8`. The next boundary is therefore a CPU/build-only startup-image validation, not a live `MSG_INIT`. See `research/g15/G15-PRE-MSG-INIT-AUDIT.md`.
 
 See [Current State](docs/CURRENT-STATE.md), [Workflow](docs/WORKFLOW.md), [Patch Bases](docs/PATCHES.md), and [Recovery](docs/RECOVERY.md).
 

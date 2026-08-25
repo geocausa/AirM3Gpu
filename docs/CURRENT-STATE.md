@@ -1,6 +1,8 @@
 # Current G15 Bring-up State
 
-Checkpoint date: 2026-08-24
+Research state: 2026-08-25
+
+Last live checkpoint: 2026-08-24
 
 ## Hardware identity
 
@@ -86,14 +88,13 @@ The G15 RTKit implementation now models this as firmware-preallocated physical o
 
 ### Current boundary
 
-EP20 (firmware) and EP21 (doorbell) are now started in the tested preflight using RTKit `STARTEP` management messages only. No unknown app message, crash, q21 mutation, or buffer failure is observed. The next stage is the first firmware-visible InitData handoff and `MSG_INIT` startup-read closure.
+EP20 (firmware) and EP21 (doorbell) are now started in the tested preflight using RTKit `STARTEP` management messages only. No unknown app message, crash, q21 mutation, or buffer failure is observed. The next stage is **not yet** a live `MSG_INIT`. A pre-handoff startup-read audit found mandatory HwDataB fields that are still incomplete: `+0x6a8` (`io_mappings[3].virt_addr`, the firmware RGX register base) would be zero in the promoted source, the J615 chip-info tuple has two mismatched words, and the G15 startup tail still needs exact reconstruction. See `research/g15/G15-PRE-MSG-INIT-AUDIT.md`.
 
 ## Explicitly not enabled
 
-- no application RTKit endpoint start
 - no `MSG_INIT`
 - no DRM registration/render node
 - no queue submission
 - no general G15 render support claim
 
-The next live stage must remain behind a separately proven mapping boundary.
+The next live stage must remain behind a separately proven mapping and first-read HwDataB boundary. `MSG_INIT` is explicitly blocked until the byte-level startup image validates.
