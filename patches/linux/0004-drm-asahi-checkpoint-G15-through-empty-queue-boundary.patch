@@ -1,0 +1,3766 @@
+# AirM3Gpu Linux checkpoint delta
+# Base: 1b57b289af96973badfbb8489ef379a1b3a96f07
+# Head: 2f08f68bb2efdadf2d337441553c1f682152a748
+# Generated: 2026-08-26
+
+diff --git a/drivers/gpu/drm/asahi/alloc.rs b/drivers/gpu/drm/asahi/alloc.rs
+index d0d6e79592552fc1e10c167b559009008d47fb66..2c513f310591128e003f9422a9349008429231d0 100644
+--- a/drivers/gpu/drm/asahi/alloc.rs
++++ b/drivers/gpu/drm/asahi/alloc.rs
+@@ -16,7 +16,8 @@
+     drm::mm,
+     error::Result,
+     prelude::*,
+-    str::CString, //
++    str::CString,
++    sync::{Arc, Mutex}, //
+ };
+ 
+ use crate::debug::*;
+@@ -443,6 +444,8 @@ fn gpu_ptr(&self) -> u64 { self.gpu_ptr }
+     fn device(&self) -> &AsahiDevice { &self.dev }
+ }
+ 
++pub(crate) type G15SharedGpuObject<T> =
++    GpuObject<T, GenericAlloc<T, G15SharedBank1Allocation>>;
+ pub(crate) type G15SharedGpuArray<T> =
+     GpuArray<T, GenericAlloc<T, G15SharedBank1Allocation>>;
+ 
+@@ -453,6 +456,7 @@ pub(crate) struct G15SharedBank1Allocator {
+     prot: mmu::Prot,
+     min_align: usize,
+     cpu_maps: bool,
++    notifier: Option<Arc<Mutex<mmu::G15MappingNotifier>>>,
+ }
+ 
+ impl G15SharedBank1Allocator {
+@@ -462,9 +466,10 @@ pub(crate) fn new(
+         min_align: usize,
+         prot: mmu::Prot,
+         mut cpu_maps: bool,
++        notifier: Option<Arc<Mutex<mmu::G15MappingNotifier>>>,
+     ) -> Self {
+         if debug_enabled(DebugFlags::ForceCPUMaps) { cpu_maps = true; }
+-        Self { dev: dev.into(), bank1, prot, min_align, cpu_maps }
++        Self { dev: dev.into(), bank1, prot, min_align, cpu_maps, notifier }
+     }
+ }
+ 
+@@ -486,6 +491,7 @@ fn alloc(&mut self, size: usize, align: usize) -> Result<Self::Raw> {
+             self.min_align.max(mmu::UAT_PGSZ) as u64,
+             self.prot,
+             true,
++            self.notifier.clone(),
+         )?;
+         let iova = mapping.iova();
+         let ptr = unsafe { p.add(offset) };
+diff --git a/drivers/gpu/drm/asahi/channel.rs b/drivers/gpu/drm/asahi/channel.rs
+index d375230dab534aaa4d6337544400ad81d5b79fe4..769c428f151028cfa3f42873a3f70f1e2eaae004 100644
+--- a/drivers/gpu/drm/asahi/channel.rs
++++ b/drivers/gpu/drm/asahi/channel.rs
+@@ -277,10 +277,31 @@ pub(crate) fn to_raw_g15(&self) -> raw::G15TxChannelRing {
+         self.ch.ring.to_raw_g15_tx()
+     }
+ 
+-    /// Submits a Pipe kick command to the firmware.
+-    pub(crate) fn send(&mut self, msg: &PipeMsg::ver) {
++    /// Submits a Pipe kick command to the firmware and returns the TX ring
++    /// position that firmware must consume. Normal submission ignores the
++    /// token; bounded bring-up probes use it to prove the queue-registration
++    /// handler has returned before any backing object can be retired.
++    pub(crate) fn send(&mut self, msg: &PipeMsg::ver) -> u32 {
+         cls_dev_dbg!(PipeCh, self.dev, "Pipe: {:?}\n", msg);
+-        self.ch.put(msg);
++        self.ch.put(msg)
++    }
++
++    pub(crate) fn wait_for(&mut self, wptr: u32) -> Result {
++        self.ch.wait_for(wptr, 1000)
++    }
++
++    /// Snapshot the exact G15 TX channel state as
++    /// (read_ptr, write_ptr_shadow, write_ptr, host_wptr).
++    pub(crate) fn g15_state(&self) -> (u32, u32, u32, u32) {
++        self.ch.ring.state.with(|raw, _inner| {
++            (
++                raw.read_ptr.load(core::sync::atomic::Ordering::Acquire),
++                raw.write_ptr_shadow
++                    .load(core::sync::atomic::Ordering::Acquire),
++                raw.write_ptr.load(core::sync::atomic::Ordering::Acquire),
++                self.ch.wptr,
++            )
++        })
+     }
+ }
+ 
+@@ -373,13 +394,23 @@ pub(crate) fn poll(&mut self) {
+ 
+                     cls_dev_dbg!(EventCh, self.dev, "Event: {:?}\n", msg);
+                     match msg {
+-                        EventMsg::Fault => match self.gpu.as_ref() {
+-                            Some(gpu) => gpu.handle_fault(),
+-                            None => {
+-                                dev_crit!(
+-                                    self.dev.as_ref(),
+-                                    "EventChannel: No GPU manager available!\n"
+-                                )
++                        EventMsg::Fault => {
++                            #[ver(G == G15)]
++                            {
++                                // Exact RTKit-2419 G15 Apple host behavior: event tag 0
++                                // dispatches AGXArmFirmware::handleFirmwareControllerEvent(),
++                                // whose G15 implementation is an empty `bti; ret`. Do not
++                                // inherit the pre-G15 GPU-fault/recovery action here.
++                            }
++                            #[ver(G != G15)]
++                            match self.gpu.as_ref() {
++                                Some(gpu) => gpu.handle_fault(),
++                                None => {
++                                    dev_crit!(
++                                        self.dev.as_ref(),
++                                        "EventChannel: No GPU manager available!\n"
++                                    )
++                                }
+                             }
+                         },
+                         EventMsg::Timeout {
+diff --git a/drivers/gpu/drm/asahi/driver.rs b/drivers/gpu/drm/asahi/driver.rs
+index 138c33b1c6c37e63778bc79f2960806e714fb3b1..6773baf7d017cf2ceebb3af7217d10e0c0ce08e5 100644
+--- a/drivers/gpu/drm/asahi/driver.rs
++++ b/drivers/gpu/drm/asahi/driver.rs
+@@ -229,6 +229,15 @@ fn probe(
+             regs::Resources::stop_cpu(pdev)?;
+             dev_info!(pdev.as_ref(), "T8122 G15 ASC stopped after UAT preflight\n");
+ 
++            // E030: E029 closed the shared bank-1 ownership/backend boundary.
++            // Continue through the already-proven persistent manager/RTKit/DRM
++            // path so the existing zero-payload submit gate can retry only the
++            // E024 empty QueueInfo publication. No command work is enabled.
++            dev_info!(
++                pdev.as_ref(),
++                "T8122 G15 E030 shared bank-1 backend PASS; continuing to bounded persistent runtime\n"
++            );
++
+             // The next checkpoint is deliberately CPU/DT-only. Parse the
+             // complete J615 power configuration after the ASC is stopped,
+             // validate every machine-specific input we recovered, then return
+@@ -333,25 +342,36 @@ fn probe(
+ 
+             dev_info!(
+                 pdev.as_ref(),
+-                "T8122 G15 PwrConfig PASS (14 OPPs, leak 1644/60, SRAM floor 790mV, max 21405mW); starting RTKit endpoint-start preflight after host graph validation\n"
++                "T8122 G15 PwrConfig PASS (14 OPPs, leak 1644/60, SRAM floor 790mV, max 21405mW); starting persistent manager/DRM checkpoint\n"
+             );
+ 
++            // E015: transition from the bounded teardown checkpoint to the
++            // normal persistent manager/RTKit lifetime, but keep userspace
++            // completely below File::open() so no GPU-visible command path is
++            // reachable yet.
+             regs::Resources::start_cpu(pdev)?;
+-            let initdata_result = gpu::GpuManagerG15V14_7::rtkit_endpoint_preflight(&drm, &res, cfg);
+-            let stop_result = regs::Resources::stop_cpu(pdev);
+-
+-            if let Err(e) = initdata_result {
+-                dev_err!(pdev.as_ref(), "T8122 G15 RTKit endpoint-start preflight failed: {:?}\n", e);
+-                let _ = stop_result;
+-                return Err(e);
++            let gpu = gpu::GpuManagerG15V14_7::new(&drm, &res, cfg)?
++                as Arc<dyn gpu::GpuManager>;
++
++            let data = try_pin_init!(AsahiData {
++                gpu,
++                pdev: pdev.into(),
++                resources: res,
++            });
++
++            let ptr: *const AsahiData = &raw const **drm;
++            unsafe {
++                data.__pinned_init(ptr as *mut AsahiData)?;
+             }
+-            stop_result?;
++
++            (*drm).gpu.init()?;
++            drm::driver::Registration::new_foreign_owned(&drm, pdev.as_ref(), 0)?;
+ 
+             dev_info!(
+                 pdev.as_ref(),
+-                "T8122 G15 RTKit endpoint-start PASS; ASC stopped; InitData/device-control/doorbell/MSG_INIT intentionally blocked\n"
++                "T8122 G15 persistent RTKit + DRM registration PASS; unbound range-0 VM mapping + passive queue lifecycle enabled, special bindings/submissions blocked\n"
+             );
+-            return Err(ENODEV);
++            return Ok(Self { drm });
+         }
+ 
+         unsafe { pdev.dma_set_mask_and_coherent(DmaMask::try_new(cfg.uat_oas)?)? };
+diff --git a/drivers/gpu/drm/asahi/file.rs b/drivers/gpu/drm/asahi/file.rs
+index 3cc2414cd9c3b4cd12ba3def6c7ac0aaa7d97630..99f492d71149e16a605cfeed4933dfe39bbe8235 100644
+--- a/drivers/gpu/drm/asahi/file.rs
++++ b/drivers/gpu/drm/asahi/file.rs
+@@ -14,6 +14,7 @@
+     buffer,
+     driver,
+     gem,
++    hw,
+     mmu,
+     module_parameters,
+     queue,
+@@ -246,6 +247,18 @@ fn as_raw(&self) -> *mut bindings::drm_file {
+ unsafe impl AnyBitPattern for uapi::drm_asahi_gem_bind_op {}
+ 
+ impl File {
++    /// G15 userspace gate for operations that cross the current safe boundary.
++    /// Normal VM_BIND remains private/unbound and queue construction is now
++    /// passive apart from the native q22 range-7 resource notifications. Keep
++    /// special kernel object bindings and all submission paths fail-closed.
++    fn reject_g15_runtime_mutation(device: &AsahiDevice) -> Result<()> {
++        if device.gpu.get_cfg().gpu_gen == hw::GpuGen::G15 {
++            Err(ENODEV)
++        } else {
++            Ok(())
++        }
++    }
++
+     fn new(id: u64) -> impl PinInit<Self, Error> {
+         unsafe {
+             pin_init::pin_init_from_closure(move |slot: *mut Self| {
+@@ -818,6 +831,7 @@ pub(crate) fn gem_bind_object(
+         data: &mut uapi::drm_asahi_gem_bind_object,
+         file: &DrmFile,
+     ) -> Result<u32> {
++        Self::reject_g15_runtime_mutation(device)?;
+         mod_dev_dbg!(
+             device,
+             "[File {} VM {}]: IOCTL: gem_bind_object op={:?} handle={:#x?} flags={:#x?} {:#x?}:{:#x?} object_handle={:#x?}\n",
+@@ -1021,15 +1035,59 @@ pub(crate) fn submit(
+     ) -> Result<u32> {
+         debug::update_debug_flags();
+ 
+-        if data.flags != 0 || data.pad != 0 {
++        let is_g15 = device.gpu.get_cfg().gpu_gen == hw::GpuGen::G15;
++        const G15_EMPTY_QUEUE_PROBE_FLAGS: u32 = 0x4731_3550; // "G15P"
++        const G15_EMPTY_QUEUE_PROBE_PAD: u32 = 0x4530_3333; // "E033"
++
++        if is_g15 {
++            // Lab-only discriminator. A plain all-zero SUBMIT is common enough
++            // for ambient userspace to hit accidentally after DRM registration.
++            // Require an explicit two-word signature before any VM bind or
++            // QueueInfo publication can occur. Ordinary G15 submissions remain
++            // fail-closed with ENODEV.
++            if data.flags != G15_EMPTY_QUEUE_PROBE_FLAGS
++                || data.pad != G15_EMPTY_QUEUE_PROBE_PAD
++            {
++                return Err(ENODEV);
++            }
++        } else if data.flags != 0 || data.pad != 0 {
+             cls_pr_debug!(Errors, "submit: Invalid arguments\n");
+             return Err(EINVAL);
+         }
+ 
++        if is_g15 {
++            // E033 is an explicit signed zero-payload probe, not a partial enablement
++            // of ordinary userspace submission. Real Mesa submissions remain
++            // rejected before queue lookup/VM publication.
++            if data.syncs != 0
++                || data.cmdbuf != 0
++                || data.in_sync_count != 0
++                || data.out_sync_count != 0
++                || data.cmdbuf_size != 0
++            {
++                return Err(ENODEV);
++            }
++
++            let queue: Arc<Mutex<KBox<dyn queue::Queue>>> = file
++                .inner()
++                .queues()
++                .lock()
++                .get(data.queue_id.try_into()?)
++                .ok_or(ENOENT)?
++                .into();
++            let slot = queue.lock().preflight_vm_bind()?;
++            dev_info!(
++                device.as_ref(),
++                "T8122 G15 VM bind + empty QueueInfo publish/release PASS (slot {}); command parsing/execution blocked\n",
++                slot
++            );
++            return Err(ENODEV);
++        }
++
+         let gpu = &device.gpu;
+         gpu.update_globals();
+ 
+-        // Upgrade to Arc<T> to drop the XArray lock early
++        // Upgrade to Arc<T> to drop the XArray lock early.
+         let queue: Arc<Mutex<KBox<dyn queue::Queue>>> = file
+             .inner()
+             .queues()
+diff --git a/drivers/gpu/drm/asahi/fw/channels.rs b/drivers/gpu/drm/asahi/fw/channels.rs
+index a85ae2f0810d98757d6c9a92a32859eaa625bdd4..5e7608d62f39e437ebb90033c69c48b82efe68d9 100644
+--- a/drivers/gpu/drm/asahi/fw/channels.rs
++++ b/drivers/gpu/drm/asahi/fw/channels.rs
+@@ -74,6 +74,10 @@ impl GpuStruct for FwLogChannelState {
+     type Raw<'a> = Array<6, raw::ChannelState<'a>>;
+ }
+ 
++// Exact RTKit-2419 G15 FWLog producer uses six adjacent 0x30-byte
++// ChannelState records at wrapper +0x1c8.
++static_assert!(core::mem::size_of::<Array<6, raw::ChannelState<'static>>>() == 0x120);
++
+ impl RxChannelState for FwLogChannelState {
+     const SUB_CHANNELS: usize = 6;
+ 
+@@ -131,15 +135,30 @@ pub(crate) enum PipeType {
+ #[derive(Debug, Copy, Clone, Default)]
+ #[repr(C)]
+ pub(crate) struct RunWorkQueueMsg {
++    // RTKit-2419 G15 replaced the inherited pipe-ring payload with a compact
++    // 0x18-byte scheduler entry. Apple AGXArmFirmware::encodeAcceleratorRingCommand()
++    // writes the fields in this exact order.
++    #[ver(G == G15)]
++    pub(crate) g15_timestamp: U64,
++    #[ver(G != G15)]
+     pub(crate) pipe_type: PipeType,
+     pub(crate) work_queue: Option<GpuWeakPointer<super::workqueue::QueueInfo::ver>>,
++    #[ver(G != G15)]
+     pub(crate) wptr: u32,
++    #[ver(G != G15)]
+     pub(crate) event_slot: u32,
++    #[ver(G != G15)]
+     pub(crate) is_new: bool,
++    #[ver(G == G15)]
++    pub(crate) g15_pipe_type: PipeType,
++    #[ver(G == G15)]
++    pub(crate) g15_wptr: u16,
++    #[ver(G == G15)]
++    pub(crate) g15_event_slot: u8,
++    #[ver(G == G15)]
++    pub(crate) g15_is_new: bool,
+     #[ver(V >= V13_2 && G == G14)]
+     pub(crate) __pad: Pad<0x2b>,
+-    #[ver(G == G15)]
+-    pub(crate) __pad: Pad<0x3>,
+     #[ver(V < V13_2 || (G != G14 && G != G15))]
+     pub(crate) __pad: Pad<0x1b>,
+ }
+@@ -206,7 +225,21 @@ pub(crate) enum DeviceControlMsg {
+         __pad: Pad<{ DEVICECONTROL_SZ::ver - 0x4 }>,
+     },
+     Unk10(Array<DEVICECONTROL_SZ::ver, u8>),
++    #[ver(G != G15)]
+     Unk11(Array<DEVICECONTROL_SZ::ver, u8>),
++    // G15 native context/scheduler-resource retirement. Apple constructs this
++    // in AGXArmFirmware::submitReleaseResource() and firmware consumes opcode
++    // 0x11 with the unaligned context pointer at +0x0c.
++    #[ver(G == G15)]
++    ReleaseResource {
++        unk_4: u32,
++        ctx_27: u8,
++        ctx_0: u8,
++        ctx_1: u8,
++        ctx_4: u8,
++        gpu_context: Option<GpuWeakPointer<super::workqueue::GpuContextData>>,
++        __pad: Pad<{ DEVICECONTROL_SZ::ver - 0x10 }>,
++    },
+     Unk12(Array<DEVICECONTROL_SZ::ver, u8>),
+     Unk13(Array<DEVICECONTROL_SZ::ver, u8>),
+     Unk14(Array<DEVICECONTROL_SZ::ver, u8>), // Init?
+@@ -242,8 +275,14 @@ pub(crate) enum DeviceControlMsg {
+ #[versions(AGX)]
+ default_zeroed!(DeviceControlMsg::ver);
+ 
+-// Exact RTKit-2419.140.12 G15 ring-walker element sizes.
++// Exact RTKit-2419.140.12 G15 ring-walker element sizes/layouts.
+ const _: [(); 0x18] = [(); core::mem::size_of::<RunWorkQueueMsgG15V14_7>()];
++const _: [(); 0x00] = [(); core::mem::offset_of!(RunWorkQueueMsgG15V14_7, g15_timestamp)];
++const _: [(); 0x08] = [(); core::mem::offset_of!(RunWorkQueueMsgG15V14_7, work_queue)];
++const _: [(); 0x10] = [(); core::mem::offset_of!(RunWorkQueueMsgG15V14_7, g15_pipe_type)];
++const _: [(); 0x14] = [(); core::mem::offset_of!(RunWorkQueueMsgG15V14_7, g15_wptr)];
++const _: [(); 0x16] = [(); core::mem::offset_of!(RunWorkQueueMsgG15V14_7, g15_event_slot)];
++const _: [(); 0x17] = [(); core::mem::offset_of!(RunWorkQueueMsgG15V14_7, g15_is_new)];
+ const _: [(); 0x38] = [(); core::mem::size_of::<DeviceControlMsgG15V14_7>()];
+ 
+ #[derive(Copy, Clone, Default, Debug)]
+@@ -350,6 +389,13 @@ pub(crate) struct RawKTraceMsg {
+     pub(crate) unk_flag: U64,
+ }
+ 
++// Exact RTKit-2419 G15 producer strides. U64 is intentionally unaligned,
++// matching firmware's packed message accesses.
++static_assert!(core::mem::size_of::<RawEventMsg>() == 0x38);
++static_assert!(core::mem::size_of::<RawFwLogMsg>() == 0x38);
++static_assert!(core::mem::size_of::<RawFwLogPayloadMsg>() == 0xd8);
++static_assert!(core::mem::size_of::<RawKTraceMsg>() == 0x38);
++
+ #[versions(AGX)]
+ pub(crate) const STATS_SZ: usize = {
+     #[ver(V < V13_0B4)]
+@@ -450,6 +496,11 @@ pub(crate) enum StatsMsg {
+ #[versions(AGX)]
+ pub(crate) const STATS_MAX: u32 = 0xe;
+ 
++// RTKit-2419 G15 produces 0x40-byte statistics records. It also has a
++// valid tag 0x0f; keep that tag on the raw/unknown path until its semantic
++// variant is reconstructed instead of widening STATS_MAX unsafely.
++const _: [(); 0x40] = [(); core::mem::size_of::<RawStatsMsgG15V14_7>()];
++
+ #[versions(AGX)]
+ #[derive(Copy, Clone)]
+ #[repr(C)]
+diff --git a/drivers/gpu/drm/asahi/fw/initdata.rs b/drivers/gpu/drm/asahi/fw/initdata.rs
+index 7e7fb232c3e7f9439ee50249dee26091f6dbb9fd..abe6da084f3e3cb9fd679d8e07a3240b9ac6626f 100644
+--- a/drivers/gpu/drm/asahi/fw/initdata.rs
++++ b/drivers/gpu/drm/asahi/fw/initdata.rs
+@@ -120,7 +120,7 @@ pub(crate) struct G15Q4Config {
+         pub(crate) cswitch_timer_multiplier_05e: U32, // deliberately unaligned
+         pub(crate) cdm_cswitch_mode_change_062: U32, // deliberately unaligned
+         pub(crate) pad_066: Pad<0x0a>,
+-        pub(crate) command_submission_enabled_070: U32,
++        pub(crate) command_submission_enabled_070: AtomicU32,
+         pub(crate) zero_074: U32,                    // exact G15 bootstrap zero; firmware reads only
+         pub(crate) gpu_max_power_078: U32,
+         pub(crate) power_interface_1_target_07c: U32,
+@@ -150,7 +150,12 @@ pub(crate) struct G15Q4Config {
+         pub(crate) clvr_engagement_enabled_7d4: U32,
+         pub(crate) gpu_keepalive_perf_mode_threshold_7d8: U32,
+         pub(crate) gpu_keepalive_off_mode_threshold_7dc: U32,
+-        pub(crate) pad_7e0: Pad<0x18c>,
++        pub(crate) pad_7e0: Pad<0x184>,
++        // AGXArmFirmware::init() explicitly zeroes q4 +0x7e4..+0x96b.
++        // Firmware treats +0x964 as the count for 0x18-byte register patch
++        // records beginning at +0x7f4; exact J615 boot count is therefore 0.
++        pub(crate) boot_patch_record_count_964: U32,
++        pub(crate) boot_patch_count_zero_968: U32,
+         pub(crate) display_pm_timestamp_96c: U64,
+         pub(crate) display_pm_interval_974: U64,
+         pub(crate) progress_check_interval_3d_97c: U32,
+@@ -218,6 +223,8 @@ pub(crate) struct G15Q4Config {
+     const _: [(); 0x7d4] = [(); core::mem::offset_of!(G15Q4Config, clvr_engagement_enabled_7d4)];
+     const _: [(); 0x7d8] = [(); core::mem::offset_of!(G15Q4Config, gpu_keepalive_perf_mode_threshold_7d8)];
+     const _: [(); 0x7dc] = [(); core::mem::offset_of!(G15Q4Config, gpu_keepalive_off_mode_threshold_7dc)];
++    const _: [(); 0x964] = [(); core::mem::offset_of!(G15Q4Config, boot_patch_record_count_964)];
++    const _: [(); 0x968] = [(); core::mem::offset_of!(G15Q4Config, boot_patch_count_zero_968)];
+     const _: [(); 0x96c] = [(); core::mem::offset_of!(G15Q4Config, display_pm_timestamp_96c)];
+     const _: [(); 0x974] = [(); core::mem::offset_of!(G15Q4Config, display_pm_interval_974)];
+     const _: [(); 0x97c] = [(); core::mem::offset_of!(G15Q4Config, progress_check_interval_3d_97c)];
+@@ -291,6 +298,23 @@ pub(crate) struct G15CacheFlushEntry {
+     const _: [(); 0x10] = [(); core::mem::offset_of!(G15CacheFlushEntry, fw_page_count)];
+     const _: [(); 0x12] = [(); core::mem::offset_of!(G15CacheFlushEntry, mapping_flags)];
+     const _: [(); 0x14] = [(); core::mem::offset_of!(G15CacheFlushEntry, reserved_14)];
++    // SAFETY: every field has an all-zero valid representation.
++    unsafe impl Zeroable for G15CacheFlushEntry {}
++
++    /// Exact packed backing produced by AGXFirmware::allocateSharedData() for
++    /// the q22 mapping-control state/ring subdescriptor pair. Apple places the
++    /// 0x20 state at +0x00, aligns the second child to 0x40, then places the
++    /// 0x1800 ring at +0x40, for 0x1840 bytes before page rounding.
++    #[derive(Debug)]
++    #[repr(C)]
++    pub(crate) struct G15MappingRingBacking {
++        pub(crate) state: G15CacheFlushState,
++        pub(crate) pad_020: Pad<0x20>,
++        pub(crate) ring: Array<0x100, G15CacheFlushEntry>,
++    }
++    default_zeroed!(G15MappingRingBacking);
++    const _: [(); 0x1840] = [(); core::mem::size_of::<G15MappingRingBacking>()];
++    const _: [(); 0x40] = [(); core::mem::offset_of!(G15MappingRingBacking, ring)];
+ 
+     /// G15 root q22: exact 0xc3d0-byte host/FW shared object.
+     ///
+@@ -1112,6 +1136,13 @@ pub(crate) struct HwDataA {
+     no_debug!(HwDataA::ver);
+ 
+     const _: [(); 0x4360] = [(); core::mem::size_of::<HwDataAG15V14_7>()];
++    // J615 G15 MTR state lives inside the opaque +0x1640 block. Keep the
++    // absolute producer/consumer offsets mechanically tied to this layout.
++    const _: [(); 0x1a94] = [(); core::mem::offset_of!(HwDataAG15V14_7, unk_1640)];
++    const _: [(); 0x1a98] =
++        [(); core::mem::offset_of!(HwDataAG15V14_7, unk_1640) + 0x04];
++    const _: [(); 0x1aa4] =
++        [(); core::mem::offset_of!(HwDataAG15V14_7, unk_1640) + 0x10];
+     const _: [(); 0x3a94] = [(); core::mem::offset_of!(HwDataAG15V14_7, unk_3640)];
+     const _: [(); 0x3a9c] = [(); core::mem::offset_of!(HwDataAG15V14_7, g15_pretail_3a9c)];
+     const _: [(); 0x421c] = [(); core::mem::offset_of!(HwDataAG15V14_7, g15_tail_421c)];
+@@ -1165,19 +1196,42 @@ pub(crate) struct HwDataBAuxPStates {
+         pub(crate) afr_unkpad: u32,
+     }
+ 
+-    /// Final G15 HwDataB trailer, replacing the larger V13.5 legacy tail.
++    /// Exact final J615/G15 HwDataB startup block written by Apple's
++    /// `AGXArmFirmware::initFirmwareData()` immediately before `bootFirmware()`.
++    ///
++    /// This starts at +0x17ec because Apple performs an 8-byte zero store there,
++    /// spanning the first firmware-imported dword at +0x17f0. Keeping the whole
++    /// suffix typed prevents legacy V13.x defaults from leaking into G15.
+     #[derive(Debug)]
+     #[repr(C)]
+-    pub(crate) struct G15HwDataBTail {
+-        pub(crate) pad_1840: Pad<0x18>,
+-        // Apple host writes the inverse of accelerator-global flag bit 4 here;
+-        // firmware imports this exact dword during early init.
+-        pub(crate) flag_1858: u32,
+-        pub(crate) pad_185c: Pad<0x04>,
++    pub(crate) struct G15HwDataBStartup {
++        pub(crate) zero_17ec: Array<2, u32>, // +0x17ec/+0x17f0
++        pub(crate) flag_17f4: u32,           // +0x17f4 = feature bit 36
++        pub(crate) one_17f8: u32,            // +0x17f8 = 1
++        pub(crate) one_17fc: u32,            // +0x17fc = 1
++        pub(crate) flag_1800: u32,           // +0x1800 = feature bit 37
++        pub(crate) zero_1804: u32,           // +0x1804 = 0 on J615
++        pub(crate) one_1808: u32,            // +0x1808 = low dword of 0x1_00000001
++        pub(crate) one_180c: u32,            // +0x180c = high dword of 0x1_00000001
++        pub(crate) flag_1810: u32,           // +0x1810 = feature bit 7
++        pub(crate) zero_1814: u32,           // +0x1814 = 0 in final init pass
++        pub(crate) sentinels_1818: Array<12, u32>, // +0x1818..+0x1847 = 0xffffffff
++        pub(crate) zero_1848: u32,           // +0x1848 = 0
++        pub(crate) zero_184c: Array<2, u32>, // +0x184c..+0x1853 = 0
++        pub(crate) zero_1854: u32,           // +0x1854 = 0
++        pub(crate) flag_1858: u32,           // +0x1858 = 1 on exact G15G path
++        pub(crate) zero_185c: u32,           // +0x185c = allocation zero
+     }
+-    default_zeroed!(G15HwDataBTail);
+-    const _: [(); 0x20] = [(); core::mem::size_of::<G15HwDataBTail>()];
+-    const _: [(); 0x18] = [(); core::mem::offset_of!(G15HwDataBTail, flag_1858)];
++    default_zeroed!(G15HwDataBStartup);
++    const _: [(); 0x74] = [(); core::mem::size_of::<G15HwDataBStartup>()];
++    const _: [(); 0x00] = [(); core::mem::offset_of!(G15HwDataBStartup, zero_17ec)];
++    const _: [(); 0x08] = [(); core::mem::offset_of!(G15HwDataBStartup, flag_17f4)];
++    const _: [(); 0x14] = [(); core::mem::offset_of!(G15HwDataBStartup, flag_1800)];
++    const _: [(); 0x1c] = [(); core::mem::offset_of!(G15HwDataBStartup, one_1808)];
++    const _: [(); 0x24] = [(); core::mem::offset_of!(G15HwDataBStartup, flag_1810)];
++    const _: [(); 0x2c] = [(); core::mem::offset_of!(G15HwDataBStartup, sentinels_1818)];
++    const _: [(); 0x5c] = [(); core::mem::offset_of!(G15HwDataBStartup, zero_1848)];
++    const _: [(); 0x6c] = [(); core::mem::offset_of!(G15HwDataBStartup, flag_1858)];
+ 
+     #[versions(AGX)]
+     #[derive(Debug)]
+@@ -1283,6 +1337,19 @@ pub(crate) struct HwDataB {
+         pub(crate) unk_54c: u32,
+         pub(crate) unk_550: u32,
+         pub(crate) unk_554: u32,
++
++        // G15 inserts a 12-byte UAT/GPTBAT header ahead of the legacy
++        // uat_ttb_base/core tuple. Apple zeros +0xb38/+0xb3c, marks the
++        // non-legacy G15 UAT mode at +0xb40, then publishes the GPTBAT
++        // physical base at +0xb44. Keeping uat_ttb_base as the shared field
++        // name lets the builder use the same physical TTB/GPTBAT allocation.
++        #[ver(G == G15)]
++        pub(crate) g15_zero_b38: u32,
++        #[ver(G == G15)]
++        pub(crate) g15_zero_b3c: u32,
++        #[ver(G == G15)]
++        pub(crate) g15_uat_mode_b40: u32,
++
+         pub(crate) uat_ttb_base: U64,
+         pub(crate) gpu_core_id: u32,
+         pub(crate) gpu_rev_id: u32,
+@@ -1322,8 +1389,13 @@ pub(crate) struct HwDataB {
+         #[ver(V >= V13_0B4)]
+         pub(crate) aux_ps: HwDataBAuxPStates,
+ 
+-        #[ver(V >= V13_3)]
++        #[ver(V >= V13_3 && G != G15)]
+         pub(crate) pad_ac4_0: Array<0x44c, u8>,
++        // The G15 perf-state copy starts at exact +0x134c and is 0x448 bytes.
++        // The inherited opaque span therefore loses the same 0xc bytes that
++        // G15 inserted before the perf arrays, keeping the proven suffix fixed.
++        #[ver(V >= V13_3 && G == G15)]
++        pub(crate) pad_ac4_0: Array<0x440, u8>,
+ 
+         pub(crate) pad_ac4: Pad<0x8>,
+         pub(crate) unk_acc: u32,
+@@ -1344,22 +1416,29 @@ pub(crate) struct HwDataB {
+         pub(crate) timer_offset: U64,
+         pub(crate) unk_b1c: u32,
+         pub(crate) unk_b20: u32,
++        #[ver(G != G15)]
+         pub(crate) unk_b24: u32,
++        #[ver(G != G15)]
+         pub(crate) unk_b28: u32,
++        #[ver(G != G15)]
+         pub(crate) unk_b2c: u32,
++        #[ver(G != G15)]
+         pub(crate) unk_b30: u32,
++        #[ver(G != G15)]
+         pub(crate) unk_b34: u32,
+ 
+-        #[ver(V >= V13_0B4)]
++        #[ver(V >= V13_0B4 && G != G15)]
+         pub(crate) unk_b38_0: u32,
+ 
+-        #[ver(V >= V13_0B4)]
++        #[ver(V >= V13_0B4 && G != G15)]
+         pub(crate) unk_b38_4: u32,
+ 
+-        #[ver(V >= V13_3)]
++        #[ver(V >= V13_3 && G != G15)]
+         pub(crate) unk_b38_8: u32,
+ 
++        #[ver(G != G15)]
+         pub(crate) unk_b38: Array<0xc, u32>,
++        #[ver(G != G15)]
+         pub(crate) unk_b68: u32,
+ 
+         #[ver(V >= V13_0B4 && G != G15)]
+@@ -1377,12 +1456,10 @@ pub(crate) struct HwDataB {
+         #[ver(V >= V13_0B4 && G != G15)]
+         pub(crate) unk_c3c: u32,
+ 
+-        // G15 keeps the inherited layout byte-exact through +0x183f
+-        // (`unk_b68` at +0x183c), then replaces the old 0x104-byte V13.5
+-        // trailer with an exact 0x20-byte tail. Apple's allocation is 0x1860
+-        // and firmware directly reads the final active word at +0x1858.
++        // G15 replaces the legacy suffix beginning at exact +0x17ec with the
++        // final Apple startup image. The block runs to the exact 0x1860 end.
+         #[ver(G == G15)]
+-        pub(crate) g15_tail_1840: G15HwDataBTail,
++        pub(crate) g15_startup_17ec: G15HwDataBStartup,
+     }
+     #[versions(AGX)]
+     default_zeroed!(HwDataB::ver);
+@@ -1914,10 +1991,29 @@ pub(crate) struct RuntimePointers<'a> {
+     // from V13.5 +0x960 to the exact G15 host/firmware offset +0xa20.
+     const _: [(); 0x28] = [(); core::mem::offset_of!(HwDataBG15V14_7, timestamp_area_base)];
+     const _: [(); 0xa20] = [(); core::mem::offset_of!(HwDataBG15V14_7, sgx_sram_ptr)];
++    // J615/G15G firmware imports this four-word chip identity block during
++    // first init; keep the exact host/firmware offsets mechanically pinned.
++    const _: [(); 0xa28] = [(); core::mem::offset_of!(HwDataBG15V14_7, chip_id)];
++    const _: [(); 0xa2c] = [(); core::mem::offset_of!(HwDataBG15V14_7, unk_454)];
++    const _: [(); 0xa30] = [(); core::mem::offset_of!(HwDataBG15V14_7, unk_458)];
++    const _: [(); 0xa34] = [(); core::mem::offset_of!(HwDataBG15V14_7, unk_45c)];
+     const _: [(); 0xa6c] = [(); core::mem::offset_of!(HwDataBG15V14_7, power_sample_period)];
++    // Exact J615/G15G UAT + core-config header and perf-table boundary.
++    const _: [(); 0xad0] = [(); core::mem::offset_of!(HwDataBG15V14_7, unk_4f8)];
++    const _: [(); 0xb38] = [(); core::mem::offset_of!(HwDataBG15V14_7, g15_zero_b38)];
++    const _: [(); 0xb3c] = [(); core::mem::offset_of!(HwDataBG15V14_7, g15_zero_b3c)];
++    const _: [(); 0xb40] = [(); core::mem::offset_of!(HwDataBG15V14_7, g15_uat_mode_b40)];
++    const _: [(); 0xb44] = [(); core::mem::offset_of!(HwDataBG15V14_7, uat_ttb_base)];
++    const _: [(); 0xb4c] = [(); core::mem::offset_of!(HwDataBG15V14_7, gpu_core_id)];
++    const _: [(); 0xb50] = [(); core::mem::offset_of!(HwDataBG15V14_7, gpu_rev_id)];
++    const _: [(); 0xb54] = [(); core::mem::offset_of!(HwDataBG15V14_7, num_cores)];
++    const _: [(); 0xb58] = [(); core::mem::offset_of!(HwDataBG15V14_7, max_pstate)];
++    const _: [(); 0xb5c] = [(); core::mem::offset_of!(HwDataBG15V14_7, frequencies)];
++    const _: [(); 0x134c] = [(); core::mem::offset_of!(HwDataBG15V14_7, pad_ac4_0)];
++    const _: [(); 0x17e4] = [(); core::mem::offset_of!(HwDataBG15V14_7, unk_b1c)];
++    const _: [(); 0x17e8] = [(); core::mem::offset_of!(HwDataBG15V14_7, unk_b20)];
++    const _: [(); 0x17ec] = [(); core::mem::offset_of!(HwDataBG15V14_7, g15_startup_17ec)];
+     const _: [(); 0x1860] = [(); core::mem::size_of::<HwDataBG15V14_7>()];
+-    const _: [(); 0x183c] = [(); core::mem::offset_of!(HwDataBG15V14_7, unk_b68)];
+-    const _: [(); 0x1840] = [(); core::mem::offset_of!(HwDataBG15V14_7, g15_tail_1840)];
+ 
+     #[derive(Debug)]
+     #[repr(C)]
+@@ -2322,7 +2418,7 @@ pub(crate) fn to_raw_g15_tx(&self) -> raw::G15TxChannelRing {
+ trivial_gpustruct!(G15InitSequencePage);
+ trivial_gpustruct!(G15ControlState);
+ trivial_gpustruct!(G15Q4Config);
+-trivial_gpustruct!(G15CacheFlushState);
++trivial_gpustruct!(G15MappingRingBacking);
+ trivial_gpustruct!(G15Q22Shared);
+ trivial_gpustruct!(G15Q23Shared);
+ trivial_gpustruct!(G15StatsVtx);
+@@ -2416,9 +2512,7 @@ pub(crate) struct InitData {
+     #[ver(G == G15)]
+     pub(crate) g15_q21: GpuObject<G15SharedStatus>,
+     #[ver(G == G15)]
+-    pub(crate) g15_cache_flush_state: GpuObject<G15CacheFlushState>,
+-    #[ver(G == G15)]
+-    pub(crate) g15_cache_flush_ring: GpuArray<raw::G15CacheFlushEntry>,
++    pub(crate) g15_mapping_notifier: mmu::G15MappingNotifierHandle,
+     #[ver(G == G15)]
+     pub(crate) g15_q22: GpuObject<G15Q22Shared>,
+     #[ver(G == G15)]
+diff --git a/drivers/gpu/drm/asahi/fw/workqueue.rs b/drivers/gpu/drm/asahi/fw/workqueue.rs
+index ad444d20753d6233c536e51e01498d622c9d123c..9c0bcdad13921b406376515c431aaf8a526e7f19 100644
+--- a/drivers/gpu/drm/asahi/fw/workqueue.rs
++++ b/drivers/gpu/drm/asahi/fw/workqueue.rs
+@@ -97,6 +97,44 @@ fn default() -> Self {
+         }
+     }
+ 
++    impl GpuContextData {
++        /// Exact G15 scheduler/context resource bootstrap reconstructed from
++        /// AGXCommandQueue::init(). The G15 firmware-visible object is 0x38
++        /// bytes; this shared raw type retains the inherited 0x40 allocation
++        /// size for older generations, but the first 0x38 bytes match Apple.
++        pub(crate) fn g15() -> Self {
++            // Apple zeroes exactly 0x38 bytes, then writes:
++            //   +0x00/+0x01 = 0xff, +0x05 = 1, +0x22 = 0xff,
++            //   +0x23..+0x26 = 0, +0x27 = AGXShared+0x100 = 2.
++            let mut s = Self {
++                unk_0: 0xff,
++                unk_1: 0xff,
++                unk_2: Default::default(),
++                unk_4: 0,
++                unk_5: 1,
++                unk_6: Default::default(),
++                unk_1e: 0,
++                unk_1f: 0,
++                unk_20: Default::default(),
++                unk_23: 0,
++                unk_24: Default::default(),
++            };
++            s.unk_20[2] = 0xff; // +0x22
++            s.unk_24[3] = 2; // +0x27
++            s
++        }
++
++        /// Fields consumed by G15 DeviceControl opcode 0x11
++        /// (AGXArmFirmware::submitReleaseResource()).
++        pub(crate) fn g15_release_resource_fields(&self) -> (u8, u8, u8, u8) {
++            (self.unk_24[3], self.unk_0, self.unk_1, self.unk_4)
++        }
++    }
++
++    const _: [(); 0x40] = [(); core::mem::size_of::<GpuContextData>()];
++    const _: [(); 0x20] = [(); core::mem::offset_of!(GpuContextData, unk_20)];
++    const _: [(); 0x24] = [(); core::mem::offset_of!(GpuContextData, unk_24)];
++
+     #[derive(Debug)]
+     #[repr(C)]
+     pub(crate) struct RingState {
+diff --git a/drivers/gpu/drm/asahi/gpu.rs b/drivers/gpu/drm/asahi/gpu.rs
+index 68f04c7bf8cbf985cc1e38735da6764ec84da00e..16843521966fb10a4dd7d0b51b81a450d1bbbb3b 100644
+--- a/drivers/gpu/drm/asahi/gpu.rs
++++ b/drivers/gpu/drm/asahi/gpu.rs
+@@ -43,6 +43,7 @@
+         UniqueArc, //
+     },
+     time::{
++        delay::fsleep,
+         Delta,
+         Instant,
+         Monotonic, //
+@@ -241,6 +242,12 @@ pub(crate) struct GpuManager {
+     pub(crate) initdata: fw::types::GpuObject<fw::initdata::InitData::ver>,
+     uat: mmu::Uat,
+     crashed: AtomicBool,
++    #[ver(G == G15)]
++    g15_init_preflight: AtomicBool,
++    #[ver(G == G15)]
++    g15_preflight_rx_doorbells: AtomicU64,
++    #[ver(G == G15)]
++    g15_preflight_unknown_messages: AtomicU64,
+     #[pin]
+     alloc: Mutex<KernelAllocators>,
+     io_mappings: KVec<mmu::KernelMapping>,
+@@ -302,6 +309,8 @@ fn new_queue(
+     /// This should be useful to reduce latency on work submission, so we can ask the firmware to
+     /// wake up while we do some preparatory work for the work submission.
+     fn kick_firmware(&self) -> Result;
++    /// Send the native G15 q22 mapping-ring pressure async note on EP21.
++    fn g15_mapping_pressure_kick(&self) -> Result;
+     /// Flush the entire firmware cache.
+     ///
+     /// TODO: Does this actually work?
+@@ -327,7 +336,11 @@ fn handle_channel_error(
+     /// Get the dynamic GPU configuration for this SoC.
+     fn get_dyncfg(&self) -> &hw::DynConfig;
+     /// Register an unused context as garbage
+-    fn free_context(&self, data: KBox<fw::types::GpuObject<fw::workqueue::GpuContextData>>);
++    fn free_context(
++        &self,
++        data: KBox<fw::types::GpuObject<fw::workqueue::GpuContextData>>,
++        published_to_firmware: bool,
++    );
+     /// Check whether the GPU is crashed
+     fn is_crashed(&self) -> bool;
+     /// Map a BO as a timestamp buffer
+@@ -385,6 +398,35 @@ fn recv_message(data: <Self::Data as ForeignOwnable>::Borrowed<'_>, ep: u8, msg:
+         let dev = &data.dev;
+         //dev_info!(dev.as_ref(), "RtKit message: {:#x}:{:#x}\n", ep, msg);
+ 
++        #[ver(G == G15)]
++        if data.g15_init_preflight.load(Ordering::Relaxed) {
++            if ep == EP_FIRMWARE && msg == MSG_RX_DOORBELL {
++                data.g15_preflight_rx_doorbells
++                    .fetch_add(1, Ordering::Relaxed);
++            } else {
++                data.g15_preflight_unknown_messages
++                    .fetch_add(1, Ordering::Relaxed);
++                dev_err!(
++                    dev.as_ref(),
++                    "G15 first-init preflight unknown message: {:#x}:{:#x}\n",
++                    ep,
++                    msg
++                );
++            }
++            return;
++        }
++
++        #[ver(G == G15)]
++        {
++            if ep == EP_FIRMWARE && msg == MSG_RX_DOORBELL {
++                data.g15_preflight_rx_doorbells
++                    .fetch_add(1, Ordering::Relaxed);
++            } else {
++                data.g15_preflight_unknown_messages
++                    .fetch_add(1, Ordering::Relaxed);
++            }
++        }
++
+         if ep != EP_FIRMWARE || msg != MSG_RX_DOORBELL {
+             dev_err!(dev.as_ref(), "Unknown message: {:#x}:{:#x}\n", ep, msg);
+             return;
+@@ -497,6 +539,9 @@ pub(crate) fn new(
+         res: &regs::Resources,
+         cfg: &'static hw::HwConfig,
+     ) -> Result<Arc<GpuManager::ver>> {
++        #[ver(G == G15)]
++        let mgr = Self::build_validated_pre_rtkit(dev, res, cfg)?;
++        #[ver(G != G15)]
+         let mgr = Self::build_pre_rtkit(dev, res, cfg)?;
+         let mgr = Arc::from(mgr);
+ 
+@@ -583,7 +628,7 @@ fn build_pre_rtkit(
+         };
+ 
+         let event_manager = Self::make_event_manager(&mut alloc)?;
+-        let mut initdata = Self::make_initdata(dev, cfg, &dyncfg, &mut alloc)?;
++        let mut initdata = Self::make_initdata(dev, cfg, &dyncfg, &mut alloc, uat.g15_shared_bank1())?;
+ 
+         initdata.runtime_pointers.buffer_mgr_ctl_low_mapping =
+             Some(initdata.runtime_pointers.buffer_mgr_ctl.map_at(
+@@ -802,7 +847,7 @@ pub(crate) fn initdata_preflight(
+                 )?,
+             };
+ 
+-            let initdata = Self::make_initdata(dev, cfg, &dyncfg, &mut alloc)?;
++            let initdata = Self::make_initdata(dev, cfg, &dyncfg, &mut alloc, uat.g15_shared_bank1())?;
+             let hwdata_a_va = initdata.runtime_pointers.hwdata_a.gpu_va().get();
+             let initdata_va = initdata.gpu_va().get();
+ 
+@@ -869,11 +914,11 @@ pub(crate) fn initdata_preflight(
+     /// to the exact RTKit construction boundary, validate all startup-visible
+     /// channel/backing pointers, then drop it without constructing RTKit or
+     /// sending MSG_INIT.
+-    pub(crate) fn manager_preflight(
++    fn build_validated_pre_rtkit(
+         dev: &AsahiDevice,
+         res: &regs::Resources,
+         cfg: &'static hw::HwConfig,
+-    ) -> Result<()> {
++    ) -> Result<Pin<UniqueArc<GpuManager::ver>>> {
+         #[ver(G != G15)]
+         {
+             let _ = (dev, res, cfg);
+@@ -882,29 +927,203 @@ pub(crate) fn manager_preflight(
+ 
+         #[ver(G == G15)]
+         {
+-            // Preserve the already-proven HwDataA deterministic pre-tail gate
+-            // before advancing to the larger manager/channel object graph.
+-            Self::initdata_preflight(dev, res, cfg)?;
+-
++            // E031: the persistent manager must be the sole owner of the live
++            // accelerator-shared bank-1 mappings. The old initdata_preflight()
++            // constructed and discarded a second complete q22/range-7 graph;
++            // with the correct shared root that deliberately fail-closed graph
++            // cannot be followed by another UAT in the same boot. The full
++            // manager/root/q21/q22/q23 validation below remains intact.
+             let mgr = Self::build_pre_rtkit(dev, res, cfg)?;
+ 
+             let initdata_va = mgr.initdata.gpu_va().get();
++            let init_sequence_va = mgr.initdata.g15_init_sequence.gpu_va().get();
+             let wrapper_va = mgr.initdata.runtime_pointers.gpu_va().get();
++            let globals_va = mgr.initdata.g15_globals.gpu_va().get();
++            let q21_va = mgr.initdata.g15_q21.gpu_va().get();
+             let q22_va = mgr.initdata.g15_q22.gpu_va().get();
+-            let q22_state_va = mgr.initdata.g15_cache_flush_state.gpu_va().get();
+-            let q22_ring_va = mgr.initdata.g15_cache_flush_ring.gpu_va().get();
+-
++            let q23_va = mgr.initdata.g15_q23.gpu_va().get();
++            let (q22_state_va, q22_ring_va, q22_ring_empty) = {
++                let notifier = mgr.initdata.g15_mapping_notifier.lock();
++                (
++                    notifier.state_gpu_va(),
++                    notifier.ring_gpu_va(),
++                    notifier.is_empty(),
++                )
++            };
++            let hwdata_a_va = mgr.initdata.runtime_pointers.hwdata_a.gpu_va().get();
++            let hwdata_b_va = mgr.initdata.runtime_pointers.hwdata_b.gpu_va().get();
++            let persistent_time_va = mgr.initdata.runtime_pointers.g15_persistent_time.gpu_va().get();
++            let hwds_va = mgr.initdata.runtime_pointers.g15_hwds_counters.gpu_va().get();
++            let pb_desc_va = mgr.initdata.runtime_pointers.g15_pb_desc_table.gpu_va().get();
++            let uma_desc_va = mgr.initdata.runtime_pointers.g15_uma_page_pool_desc_table.gpu_va().get();
++
++            // Validate every populated qword in the exact 24-qword G15 root.
++            // q2 is allocation-zero; q19/q20 are the trailing zero pad of the
++            // compact UAT descriptor. The level geometry is exact for J615.
+             let root_ok = mgr.initdata.with(|raw, _inner| {
++                let uat = &raw.g15_q6_q20_uat;
++                let uat_bytes = unsafe {
++                    core::slice::from_raw_parts(
++                        uat as *const _ as *const u8,
++                        core::mem::size_of_val(uat),
++                    )
++                };
++                let mut expected_uat = [0u8; 0x78];
++                expected_uat[0..2].copy_from_slice(&0x4000u16.to_le_bytes());
++                expected_uat[2] = 14;
++                expected_uat[3] = 3;
++                let oas_mask = ((1u64 << cfg.uat_oas) - 1) & !(mmu::UAT_PGMSK as u64);
++                for (i, (shift, entries)) in [(36u8, 64u16), (25, 2048), (14, 2048)]
++                    .into_iter()
++                    .enumerate()
++                {
++                    let off = 4 + i * 0x20;
++                    expected_uat[off] = 8;
++                    expected_uat[off + 1] = 14;
++                    expected_uat[off + 2] = 14;
++                    expected_uat[off + 3] = shift;
++                    expected_uat[off + 4..off + 6]
++                        .copy_from_slice(&entries.to_le_bytes());
++                    expected_uat[off + 6..off + 8]
++                        .copy_from_slice(&0x4000u16.to_le_bytes());
++                    expected_uat[off + 8..off + 16]
++                        .copy_from_slice(&1u64.to_le_bytes());
++                    expected_uat[off + 16..off + 24]
++                        .copy_from_slice(&oas_mask.to_le_bytes());
++                    let index_mask = ((entries as u64 - 1) << shift) as u64;
++                    expected_uat[off + 24..off + 32]
++                        .copy_from_slice(&index_mask.to_le_bytes());
++                }
++
+                 raw.g15_q0_signature.0 == 0x0c08_e21e_8380_0490
++                    && raw.g15_q1_init_sequence.0 == init_sequence_va
++                    && raw.g15_q2.0 == 0
+                     && raw.g15_q3_runtime_pointers.0 == wrapper_va
++                    && raw.g15_q4_globals.0 == globals_va
+                     && raw.g15_q5_host_mapped.0 == 0x0000_0001_0000_0000
++                    && uat_bytes == expected_uat
++                    && raw.g15_q21.0 == q21_va
+                     && raw.g15_q22.0 == q22_va
++                    && raw.g15_q23.0 == q23_va
+             });
+ 
+             let q22_ok = mgr.initdata.g15_q22.with(|raw, _inner| {
+-                raw.shared_ptr_4568.0 == q22_state_va
++                // Root importer FUN_fffffc00000066dc snapshots q22 +0x008
++                // before firmware_ready. Apple clears both bootstrap words.
++                raw.host_zero_0000.0 == 0
++                    && raw.host_zero_0008.0 == 0
++                    && raw.shared_ptr_4568.0 == q22_state_va
+                     && raw.shared_ptr_4570.0 == q22_ring_va
++                    && mmu::G15_GART_RANGE7.contains(&q22_state_va)
++                    && mmu::G15_GART_RANGE7.contains(&q22_ring_va)
++                    && q22_ring_empty
+                     && raw.host_flag_45c4.0 == 1
++                    && raw.kick_channel_qos_valid_c3c8.0 == 0
++                    && raw.feature_c3cc.0 == 0
++            });
++
++            // Exact fields consumed while q21 +0x14 (firmware_ready) is still 0.
++            // G15/G15G's host init-sequence callback is a no-op, so q1 starts
++            // with the type-0 terminator. q4 +0x964 is an explicitly zeroed
++            // patch-record count, disabling the +0x7f4 register-patch loop.
++            // q23 +0x1e8 is likewise explicitly host-zero and gates its only
++            // direct pre-ready branch observed in the boot consumer sweep.
++            let pre_ready_ok = mgr.initdata.g15_init_sequence.with(|raw, _inner| {
++                raw.terminator.value.0 == 0
++                    && raw.terminator.register_offset.0 == 0
++                    && raw.terminator.shift.0 == 0
++                    && raw.terminator.kind.0 == 0
++                    && raw.terminator.reserved.0 == 0
++            }) && mgr.initdata.g15_globals.with(|raw, _inner| {
++                raw.flags_000.0 == 0
++                    && raw.zero_004.0 == 0
++                    && raw.zero_008.0 == 0
++                    && raw.zero_00c.0 == 0
++                    && raw.zero_010.0 == 0
++                    && raw.zero_014.0 == 0
++                    && raw.zero_018.0 == 0
++                    && raw.unk_01c.0 == 0
++                    && raw.relaxed_cl_kill_timeout_020.0 == 3000
++                    && raw.frg_task_timeout_024.0 == 0
++                    && raw.accelerator_config_660_028.0 == 0
++                    && raw.accelerator_config_bit0_02c.0 == 1
++                    && raw.smart_idle_off_enabled_030.0 == 1
++                    && raw.zero_034.0 == 0
++                    && raw.constant_038.0 == 0x78
++                    && raw.cpms_window_size_03c.0 == 0
++                    && raw.cpms_tfca_size_040.0 == 0
++                    && raw.zero_044.0 == 0
++                    && raw.kick_channel_qos_arg2_048.0 == 0
++                    && raw.kick_channel_qos_arg1_04c.0 == 0
++                    && raw.unk_050 == 0xffff
++                    && raw.unk_052 == 0x28
++                    && raw.unk_054 == 0xffff
++                    && raw.zero_056.0 == 0
++                    && raw.low2_clear_05a.0 == 1
++                    && raw.cswitch_timer_multiplier_05e.0 == 1
++                    && raw.cdm_cswitch_mode_change_062.0 == 0
++                    && raw.command_submission_enabled_070.load(Ordering::Acquire) == 0
++                    && raw.zero_074.0 == 0
++                    && raw.gpu_max_power_078.0 == 4070
++                    && raw.power_interface_1_target_07c.0 == 100
++                    && raw.power_interface_2_target_080.0 == 100
++                    && raw.perf_state_cap_x100_08c.0 == 100
++                    && raw.performance_target_090.0 == 0
++                    && raw.performance_transfer_output_094.0 == 0
++                    && raw.performance_boost_min_util_098.0 == 0
++                    && raw.performance_boost_ce_step_09c.0 == 0
++                    && raw.performance_reset_iters_0a0.0 == 0
++                    && raw.performance_boost_min_util_valid_0a4 == 0
++                    && raw.conflict_scan_enable_26f == 0
++                    && raw.smart_idle_standby_timer_us_7a8.0 == 700
++                    && raw.smart_idle_prob_init_val_7ac.to_bits() == 1.0f32.to_bits()
++                    && raw.smart_idle_fn_hit_7b0.to_bits() == 0.8f32.to_bits()
++                    && raw.smart_idle_fi_hit_7b4.to_bits() == 0.2f32.to_bits()
++                    && raw.smart_idle_fn_miss_7b8.to_bits() == 0.9f32.to_bits()
++                    && raw.smart_idle_fi_miss_7bc.to_bits() == 0.1f32.to_bits()
++                    && raw.smart_idle_nei_hit_7c0.to_bits() == 0.25f32.to_bits()
++                    && raw.smart_idle_min_confidence_7c4.to_bits() == 0.7f32.to_bits()
++                    && raw.smart_idle_high_confidence_7c8.to_bits() == 0.9f32.to_bits()
++                    && raw.smart_idle_reset_iterations_7cc.0 == 6
++                    && raw.ut_engagement_enabled_7d0.0 == 1
++                    && raw.clvr_engagement_enabled_7d4.0 == 1
++                    && raw.gpu_keepalive_perf_mode_threshold_7d8.0 == 100
++                    && raw.gpu_keepalive_off_mode_threshold_7dc.0 == 100
++                    && raw.boot_patch_record_count_964.0 == 0
++                    && raw.boot_patch_count_zero_968.0 == 0
++                    && raw.display_pm_timestamp_96c.0 == 0
++                    && raw.display_pm_interval_974.0 == 0
++                    && raw.progress_check_interval_3d_97c.0 == 40
++                    && raw.progress_check_interval_ta_980.0 == 10
++                    && raw.progress_check_interval_cl_984.0 == 250
++                    && raw.unk_988.0 == 1
++                    && raw.unk_98c.0 == 1
++                    && raw.unk_990.0 == 100
++                    && raw.unk_994.0 == 1
++                    && raw.gpu_idle_off_delay_ms_9a0.0 == 2
++                    && raw.fender_idle_off_delay_ms_9a4.0 == 40
++                    && raw.fw_early_wake_timeout_ms_9a8.0 == 5
++                    && raw.gvdm_timer_interval_9ac.0 == 0
++                    && raw.cl_context_switch_timeout_9b0.0 == 0x28
++                    && raw.cl_kill_timeout_9b4.0 == 0x32
++                    && raw.zero_9b8.0 == 0
++                    && raw.cdm_backoff_timeout_9bc == 4
++                    && raw.table_selector_9dd.0 == 0
++                    && raw.zero_de5.0 == 0
++                    && raw.gpu_keepalive_override_de9.0 == 0
++                    && raw.gfxc_keepalive_override_ded.0 == 0
++                    && raw.gpu_keepalive_perf_mode_threshold_override_df1.0 == 0
++                    && raw.gpu_keepalive_off_mode_threshold_override_df5.0 == 0
++                    && raw.soft_fault_settings_df9.0 == 1
++            }) && mgr.initdata.g15_q21.with(|raw, _inner| {
++                raw.host_flags == 0
++                    && raw.banner_guard.load(Ordering::Relaxed) == 1
++                    && raw.busy.load(Ordering::Relaxed) == 0
++                    && raw.firmware_ready.load(Ordering::Relaxed) == 0
++                    && raw.power_state.load(Ordering::Relaxed) == 0
++            }) && mgr.initdata.g15_q23.with(|raw, _inner| {
++                raw.tuning_update_1d0 == 0
++                    && raw.host_zero_1e8.0 == 0
+             });
+ 
+             let tx_ring_ok = |r: &fw::initdata::raw::G15TxChannelRing| {
+@@ -915,12 +1134,38 @@ pub(crate) fn manager_preflight(
+                     && r.ring.0 != 0
+             };
+ 
++            let persistent_time_ok = mgr
++                .initdata
++                .runtime_pointers
++                .g15_persistent_time
++                .with(|raw, _inner| {
++                    raw.initialized.load(Ordering::Relaxed) == 0
++                        && raw.values.iter().all(|v| v.0 == 0)
++                        && raw.tail_84.0 == 0
++                });
++
+             let wrapper_ok = mgr.initdata.runtime_pointers.with(|raw, _inner| {
+                 let pipes_ok = raw.pipes.iter().all(|p| {
+                     tx_ring_ok(&p.vtx) && tx_ring_ok(&p.frag) && tx_ring_ok(&p.comp)
+                 });
+ 
+-                pipes_ok
++                // Consumer-driven pre-ready wrapper invariants. The root importer
++                // binds q3 as this 0x490-byte object; nested boot helpers consume
++                // these fields before q21 +0x14 becomes firmware_ready=1.
++                // Read the packed GPU pointers exactly as firmware-visible qwords.
++                let wrapper_base = raw as *const _ as *const u8;
++                let ptr_000 = u64::from_le(unsafe {
++                    core::ptr::read_unaligned(wrapper_base.add(0x000) as *const u64)
++                });
++                let ptr_010 = u64::from_le(unsafe {
++                    core::ptr::read_unaligned(wrapper_base.add(0x010) as *const u64)
++                });
++
++                ptr_000 == hwdata_b_va
++                    && raw.g15_fwbrn_table.0 == 0
++                    && ptr_010 == persistent_time_va
++                    && persistent_time_ok
++                    && pipes_ok
+                     && tx_ring_ok(&raw.device_control)
+                     && raw.event.state.is_some()
+                     && raw.event.ring.is_some()
+@@ -931,6 +1176,25 @@ pub(crate) fn manager_preflight(
+                     && raw.stats.state.is_some()
+                     && raw.stats.ring.is_some()
+                     && raw.fwlog_buf.is_some()
++                    // FUN_fffffc000003da5c exits before touching FWLog backing
++                    // while this Apple-explicit bootstrap gate is zero.
++                    && raw.fwlog_enabled_230 == 0
++                    && raw.g15_hwds_counters.0 == hwds_va
++                    // FUN_fffffc000000f34c directly consumes +0x2b0 and +0x2c0.
++                    // The adjacent FW-VA aliases are exact host-image invariants;
++                    // convertGPUVAToFWVA() is identity on this G15 host.
++                    && raw.g15_pb_desc_addr.0 == pb_desc_va
++                    && raw.g15_pb_desc_fw_addr.0 == pb_desc_va
++                    && raw.g15_uma_page_pool_desc_addr.0 == uma_desc_va
++                    && raw.g15_uma_page_pool_desc_fw_addr.0 == uma_desc_va
++                    // FUN_fffffc000000f34c indexes wrapper[0x5a] == +0x2d0;
++                    // FUN_fffffc0000018864 directly reads +0x2d4.
++                    && raw.g15_usc_max_tgmem == 4
++                    && raw.g15_zero_2d4 == 0
++                    // FUN_fffffc0000006908 dereferences +0x441 as HwDataA.
++                    && raw.g15_ptr_441.0 == hwdata_a_va
++                    && raw.g15_zero_449.0 == 0
++                    && raw.g15_zero_451.0 == 0
+             });
+ 
+             let bufmgr_ok = mgr
+@@ -944,22 +1208,130 @@ pub(crate) fn manager_preflight(
+                     .buffer_mgr_ctl_high_mapping
+                     .is_some();
+ 
+-            // J615/T8122 currently has no static HwConfig MMIO or SRAM mapping
+-            // entries. Keep this explicit so a later table addition cannot
+-            // silently bypass the preflight's mapping validation.
+-            let mappings_ok = cfg.io_mappings.is_empty()
++            // Validate the complete first-read HwDataB image that is known
++            // mechanically for J615: chip identity, live ADT perf-state tables,
++            // all 31 firmware MMIO descriptors, and the exact G15 startup suffix.
++            let expected_io_mapping_count: usize = cfg
++                .io_mappings
++                .iter()
++                .filter_map(|map| map.as_ref())
++                .map(|map| {
++                    let dies = if map.per_die { cfg.num_dies as usize } else { 1 };
++                    map.count * dies
++                })
++                .sum();
++
++            let hwdatab_ok = mgr.initdata.runtime_pointers.hwdata_b.with(|raw, _inner| {
++                let pwr = &mgr.dyncfg.pwr;
++                let mut perf_ok = raw.max_pstate as usize + 1 == pwr.perf_states.len();
++
++                for i in 0..raw.frequencies.len() {
++                    if i < pwr.perf_states.len() {
++                        let ps = &pwr.perf_states[i];
++                        perf_ok &= raw.frequencies[i] == ps.freq_hz / 1_000_000;
++                        for j in 0..raw.voltages[i].len() {
++                            let mv = if j < ps.volt_mv.len() {
++                                ps.volt_mv[j]
++                            } else {
++                                ps.volt_mv[0]
++                            };
++                            let sram_mv = mv.max(pwr.min_sram_microvolt / 1000);
++                            perf_ok &= raw.voltages[i][j] == mv;
++                            perf_ok &= raw.voltages_sram[i][j] == sram_mv;
++                        }
++                    } else {
++                        perf_ok &= raw.frequencies[i] == 0;
++                        perf_ok &= raw.voltages[i].iter().all(|v| *v == 0);
++                        perf_ok &= raw.voltages_sram[i].iter().all(|v| *v == 0);
++                    }
++                }
++
++                let mut map_ok = raw.io_mappings.len() == cfg.io_mappings.len();
++                for (i, rec) in raw.io_mappings.iter().enumerate() {
++                    if let Some(map) = cfg.io_mappings[i].as_ref() {
++                        let dies = if map.per_die { cfg.num_dies as usize } else { 1 };
++                        let expected_total = map.size * map.count * dies;
++                        let off = map.base & mmu::UAT_PGMSK;
++                        map_ok &= rec.phys_addr.0 == map.base as u64;
++                        map_ok &= rec.virt_addr.0 != 0;
++                        map_ok &= (rec.virt_addr.0 & mmu::UAT_PGMSK as u64) == off as u64;
++                        map_ok &= rec.total_size as usize == expected_total;
++                        map_ok &= rec.element_size as usize == map.size;
++                        map_ok &= rec.readwrite.0 == map.writable as u64;
++                    } else {
++                        map_ok &= rec.phys_addr.0 == 0;
++                        map_ok &= rec.virt_addr.0 == 0;
++                        map_ok &= rec.total_size == 0;
++                        map_ok &= rec.element_size == 0;
++                        map_ok &= rec.readwrite.0 == 0;
++                    }
++                }
++
++                let tail = &raw.g15_startup_17ec;
++                let tail_bytes = unsafe {
++                    core::slice::from_raw_parts(
++                        tail as *const _ as *const u8,
++                        core::mem::size_of_val(tail),
++                    )
++                };
++                let expected_tail_words: [u32; 29] = [
++                    0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0,
++                    0xffff_ffff, 0xffff_ffff, 0xffff_ffff, 0xffff_ffff,
++                    0xffff_ffff, 0xffff_ffff, 0xffff_ffff, 0xffff_ffff,
++                    0xffff_ffff, 0xffff_ffff, 0xffff_ffff, 0xffff_ffff,
++                    0, 0, 0, 0, 1, 0,
++                ];
++                let mut expected_tail = [0u8; 0x74];
++                for (i, word) in expected_tail_words.into_iter().enumerate() {
++                    expected_tail[i * 4..i * 4 + 4].copy_from_slice(&word.to_le_bytes());
++                }
++                let tail_ok = tail_bytes == expected_tail;
++
++                raw.chip_id == 0x8122
++                    && raw.unk_454 == 2
++                    && raw.unk_458 == 0
++                    && raw.unk_45c == 4
++                    && raw.base_clock_khz == 24_000
++                    && raw.power_sample_period == 1
++                    // Exact G15 UAT/GPTBAT + core-config header consumed by
++                    // RTKit-2419 firmware. The GPTBAT base is dynamic but must
++                    // be the physical base of Linux's ttbs region and 16 KiB aligned.
++                    && raw.g15_zero_b38 == 0
++                    && raw.g15_zero_b3c == 0
++                    && raw.g15_uat_mode_b40 == 1
++                    && raw.uat_ttb_base.0 == mgr.dyncfg.uat_ttb_base
++                    && raw.uat_ttb_base.0 != 0
++                    && (raw.uat_ttb_base.0 & mmu::UAT_PGMSK as u64) == 0
++                    && raw.gpu_core_id == cfg.gpu_core as u32
++                    && raw.gpu_rev_id == hw::GpuRevisionID::C0 as u32
++                    && raw.num_cores == mgr.dyncfg.id.num_cores * mgr.dyncfg.id.num_clusters
++                    // Physical HwDataB +0xad0 is source field unk_4f8 on G15.
++                    && raw.unk_4f8 == 1
++                    // Firmware pre-ready qword at +0x17e4 remains allocation-zero.
++                    && raw.unk_b1c == 0
++                    && raw.unk_b20 == 0
++                    && raw.num_frags == mgr.dyncfg.id.num_frags * mgr.dyncfg.id.num_clusters
++                    && perf_ok
++                    && map_ok
++                    && tail_ok
++            });
++
++            let mappings_ok = cfg.io_mappings.len() == 0x1f
+                 && cfg.sram_base.is_none()
+                 && cfg.sram_size.is_none()
+-                && mgr.io_mappings.is_empty();
++                && expected_io_mapping_count == 13
++                && mgr.io_mappings.len() == expected_io_mapping_count;
+ 
+-            if !(root_ok && q22_ok && wrapper_ok && bufmgr_ok && mappings_ok) {
++            if !(root_ok && q22_ok && pre_ready_ok && wrapper_ok && bufmgr_ok && hwdatab_ok && mappings_ok) {
+                 dev_err!(
+                     dev.as_ref(),
+-                    "T8122 G15 pre-RTKit manager validation failed: root={} q22={} wrapper={} bufmgr={} mappings={}\n",
++                    "T8122 G15 pre-RTKit manager validation failed: root={} q22={} pre_ready={} wrapper={} bufmgr={} hwdatab={} mappings={}\n",
+                     root_ok,
+                     q22_ok,
++                    pre_ready_ok,
+                     wrapper_ok,
+                     bufmgr_ok,
++                    hwdatab_ok,
+                     mappings_ok
+                 );
+                 return Err(EIO);
+@@ -967,7 +1339,7 @@ pub(crate) fn manager_preflight(
+ 
+             dev_info!(
+                 dev.as_ref(),
+-                "T8122 G15 pre-RTKit manager PASS (InitData {:#x}, wrapper {:#x}, q22 {:#x}, q22 ctl {:#x}/{:#x}; 12 pipe TX + device-control + RX/log/stats wired); dropping before RtKit::new/MSG_INIT\n",
++                "T8122 G15 pre-RTKit manager PASS (InitData {:#x}, wrapper {:#x}, q22 {:#x}, q22 ctl {:#x}/{:#x}; root + pre-ready q1/q4/q21/q23 gates + HwDataB GPTBAT/core/scalars/perf + 31 MMIO records/13 maps + G15 startup exact; dropping before RtKit::new/MSG_INIT\n",
+                 initdata_va,
+                 wrapper_va,
+                 q22_va,
+@@ -975,11 +1347,32 @@ pub(crate) fn manager_preflight(
+                 q22_ring_va
+             );
+ 
+-            core::mem::drop(mgr);
+-            Ok(())
++            Ok(mgr)
+         }
+     }
+ 
++    /// G15 bring-up checkpoint: validate and discard the exact pre-RTKit manager.
++    pub(crate) fn manager_preflight(
++        dev: &AsahiDevice,
++        res: &regs::Resources,
++        cfg: &'static hw::HwConfig,
++    ) -> Result<()> {
++        let mgr = Self::build_validated_pre_rtkit(dev, res, cfg)?;
++        #[ver(G == G15)]
++        {
++            mgr.initdata
++                .g15_mapping_notifier
++                .lock()
++                .preflight_roundtrip()?;
++            dev_info!(
++                dev.as_ref(),
++                "T8122 G15 q22 native mapping encoder PASS (map/unmap bytes + DMB-before-write-index publication; ring restored empty)\n"
++            );
++        }
++        core::mem::drop(mgr);
++        Ok(())
++    }
++
+     /// G15 bring-up checkpoint: complete RTKit management, then start the
+     /// firmware and doorbell application endpoints without sending InitData,
+     /// device-control traffic, a doorbell, or MSG_INIT. RTKit is destroyed
+@@ -997,10 +1390,8 @@ pub(crate) fn rtkit_endpoint_preflight(
+ 
+         #[ver(G == G15)]
+         {
+-            // Keep every previous host-side validation as a prerequisite.
+-            Self::manager_preflight(dev, res, cfg)?;
+-
+-            let mgr = Arc::from(Self::build_pre_rtkit(dev, res, cfg)?);
++            // Validate the exact manager object that is about to enter RTKit.
++            let mgr = Arc::from(Self::build_validated_pre_rtkit(dev, res, cfg)?);
+             let rtkit = rtkit::RtKit::<GpuManager::ver>::new(
+                 dev.as_ref(),
+                 None,
+@@ -1062,6 +1453,317 @@ pub(crate) fn rtkit_endpoint_preflight(
+         }
+     }
+ 
++    /// G15 first-handoff checkpoint: send only the InitData MSG_INIT on EP20,
++    /// observe the firmware-owned q21 ready transition, then destroy RTKit.
++    /// No EP21 application payload, device-control doorbell, firmware kick, DRM
++    /// registration, or GPU work submission is permitted in this probe.
++    pub(crate) fn first_msg_init_preflight(
++        dev: &AsahiDevice,
++        res: &regs::Resources,
++        cfg: &'static hw::HwConfig,
++    ) -> Result<()> {
++        #[ver(G != G15)]
++        {
++            let _ = (dev, res, cfg);
++            return Err(EINVAL);
++        }
++
++        #[ver(G == G15)]
++        {
++            // The exact manager object that will be published to firmware must
++            // itself pass the complete byte-exact pre-ready validator.
++            let mgr = Arc::from(Self::build_validated_pre_rtkit(dev, res, cfg)?);
++            mgr.g15_init_preflight.store(true, Ordering::Relaxed);
++            mgr.g15_preflight_rx_doorbells.store(0, Ordering::Relaxed);
++            mgr.g15_preflight_unknown_messages.store(0, Ordering::Relaxed);
++
++            let rtkit = rtkit::RtKit::<GpuManager::ver>::new(
++                dev.as_ref(),
++                None,
++                0,
++                mgr.clone(),
++            )?;
++            *mgr.rtkit.lock() = Some(rtkit);
++
++            let probe_result = (|| -> Result<(u64, u64, u32, u32, u32)> {
++                let initdata_va = mgr.initdata.gpu_va().get();
++
++                {
++                    let mut guard = mgr.rtkit.lock();
++                    let mut rtk = guard.as_mut().as_pin_mut().ok_or(EIO)?;
++
++                    rtk.as_mut().boot()?;
++                    if !rtk.as_mut().has_endpoint(EP_FIRMWARE)
++                        || !rtk.as_mut().has_endpoint(EP_DOORBELL)
++                    {
++                        return Err(EIO);
++                    }
++                    rtk.as_mut().start_endpoint(EP_FIRMWARE)?;
++                    rtk.as_mut().start_endpoint(EP_DOORBELL)?;
++                }
++
++                let bootstrap_ok = mgr.initdata.g15_q21.with(|raw, _inner| {
++                    raw.banner_guard.load(Ordering::Relaxed) == 1
++                        && raw.busy.load(Ordering::Relaxed) == 0
++                        && raw.firmware_ready.load(Ordering::Relaxed) == 0
++                        && raw.power_state.load(Ordering::Relaxed) == 0
++                });
++                if !bootstrap_ok || mgr.crashed.load(Ordering::Relaxed) {
++                    return Err(EIO);
++                }
++
++                // This is the sole application TX in E012. In particular, do
++                // not ring EP21 device-control or KICKFW after publication.
++                {
++                    let mut guard = mgr.rtkit.lock();
++                    let mut rtk = guard.as_mut().as_pin_mut().ok_or(EIO)?;
++                    rtk.as_mut().send_message(
++                        EP_FIRMWARE,
++                        MSG_INIT | (initdata_va & INIT_DATA_MASK),
++                    )?;
++                }
++
++                let start = Instant::<Monotonic>::now();
++                const READY_TIMEOUT: Delta = Delta::from_millis(1000);
++                loop {
++                    if mgr.crashed.load(Ordering::Relaxed) {
++                        return Err(EIO);
++                    }
++                    let ready = mgr.initdata.g15_q21.with(|raw, _inner| {
++                        raw.firmware_ready.load(Ordering::Relaxed)
++                    });
++                    if ready == 1 {
++                        break;
++                    }
++                    if start.elapsed() >= READY_TIMEOUT {
++                        return Err(ETIMEDOUT);
++                    }
++                    fsleep(Delta::from_millis(1));
++                }
++
++                // Give the post-ready thread/EP21-registration tail a bounded
++                // window to surface an immediate crash or unexpected RTKit app
++                // message without sending any host follow-on traffic.
++                fsleep(Delta::from_millis(20));
++
++                let (busy, ready, power_state) = mgr.initdata.g15_q21.with(|raw, _inner| {
++                    (
++                        raw.busy.load(Ordering::Relaxed),
++                        raw.firmware_ready.load(Ordering::Relaxed),
++                        raw.power_state.load(Ordering::Relaxed),
++                    )
++                });
++                let rx_doorbells = mgr
++                    .g15_preflight_rx_doorbells
++                    .load(Ordering::Relaxed);
++                let unknown = mgr
++                    .g15_preflight_unknown_messages
++                    .load(Ordering::Relaxed);
++
++                if ready != 1 || mgr.crashed.load(Ordering::Relaxed) || unknown != 0 {
++                    return Err(EIO);
++                }
++
++                Ok((initdata_va, rx_doorbells, busy, ready, power_state))
++            })();
++
++            // Always stop mailbox RX/release RTKit buffers before dropping the
++            // manager. The caller stops ASC immediately after this function.
++            let rtkit = mgr.rtkit.lock().take();
++            core::mem::drop(rtkit);
++            mgr.g15_init_preflight.store(false, Ordering::Relaxed);
++
++            match probe_result {
++                Ok((initdata_va, rx_doorbells, busy, ready, power_state)) => {
++                    dev_info!(
++                        dev.as_ref(),
++                        "T8122 G15 first MSG_INIT PASS (InitData {:#x}; q21 busy={} ready={} power={}; EP20 RX doorbells={}; no EP21 TX/device-control/kick); RTKit destroyed\n",
++                        initdata_va,
++                        busy,
++                        ready,
++                        power_state,
++                        rx_doorbells
++                    );
++                    core::mem::drop(mgr);
++                    Ok(())
++                }
++                Err(e) => {
++                    let (busy, ready, power_state) = mgr.initdata.g15_q21.with(|raw, _inner| {
++                        (
++                            raw.busy.load(Ordering::Relaxed),
++                            raw.firmware_ready.load(Ordering::Relaxed),
++                            raw.power_state.load(Ordering::Relaxed),
++                        )
++                    });
++                    let rx_doorbells = mgr
++                        .g15_preflight_rx_doorbells
++                        .load(Ordering::Relaxed);
++                    let unknown = mgr
++                        .g15_preflight_unknown_messages
++                        .load(Ordering::Relaxed);
++                    let crashed = mgr.crashed.load(Ordering::Relaxed);
++                    dev_err!(
++                        dev.as_ref(),
++                        "T8122 G15 first MSG_INIT preflight failed: {:?} (q21 busy={} ready={} power={}; EP20 RX doorbells={}; unknown={}; crashed={})\n",
++                        e,
++                        busy,
++                        ready,
++                        power_state,
++                        rx_doorbells,
++                        unknown,
++                        crashed
++                    );
++                    core::mem::drop(mgr);
++                    Err(e)
++                }
++            }
++        }
++    }
++
++    /// G15 production-bootstrap/RX checkpoint: exercise the normal GpuManager
++    /// new() -> init() pair, then enable the real Event/FWLog/KTrace/Stats RX
++    /// callback path for a bounded idle window. Destroy the manager before DRM
++    /// registration or any GPU work is possible.
++    pub(crate) fn production_init_preflight(
++        dev: &AsahiDevice,
++        res: &regs::Resources,
++        cfg: &'static hw::HwConfig,
++    ) -> Result<()> {
++        #[ver(G != G15)]
++        {
++            let _ = (dev, res, cfg);
++            return Err(EINVAL);
++        }
++
++        #[ver(G == G15)]
++        {
++            let mgr = Self::new(dev, res, cfg)?;
++            mgr.g15_init_preflight.store(true, Ordering::Relaxed);
++            mgr.g15_preflight_rx_doorbells.store(0, Ordering::Relaxed);
++            mgr.g15_preflight_unknown_messages.store(0, Ordering::Relaxed);
++
++            let probe_result = (|| -> Result<(u64, u64, u32, u32, u32)> {
++                let initdata_va = mgr.initdata.gpu_va().get();
++                let bootstrap_ok = mgr.initdata.g15_q21.with(|raw, _inner| {
++                    raw.banner_guard.load(Ordering::Relaxed) == 1
++                        && raw.busy.load(Ordering::Relaxed) == 0
++                        && raw.firmware_ready.load(Ordering::Relaxed) == 0
++                        && raw.power_state.load(Ordering::Relaxed) == 0
++                });
++                if !bootstrap_ok || mgr.crashed.load(Ordering::Relaxed) {
++                    return Err(EIO);
++                }
++
++                // Exercise the actual production initializer. Its G15 branch
++                // sends only EP20 MSG_INIT and waits for q21 firmware_ready.
++                GpuManager::init(mgr.as_ref())?;
++
++                // Drain any bootstrap RX records once while asynchronous RTKit
++                // callbacks are still telemetry-only. This exercises the exact
++                // G15 Event/FWLog/KTrace/Stats parsers without racing a callback.
++                {
++                    let mut ch = mgr.rx_channels.lock();
++                    ch.fw_log.poll();
++                    ch.ktrace.poll();
++                    ch.stats.poll();
++                    ch.event.poll();
++                }
++
++                mgr.g15_preflight_rx_doorbells.store(0, Ordering::Relaxed);
++                mgr.g15_preflight_unknown_messages.store(0, Ordering::Relaxed);
++
++                // E014 bounded normal-RX window. Firmware is idle and this
++                // checkpoint submits no EP21 traffic or GPU work; only the real
++                // production EP20 receive callback is enabled for 500 ms.
++                mgr.g15_init_preflight.store(false, Ordering::Release);
++                fsleep(Delta::from_millis(500));
++
++                // Quiesce new callbacks before the final snapshot/drain, then
++                // leave telemetry-only mode set until RTKit is destroyed.
++                mgr.g15_init_preflight.store(true, Ordering::Release);
++                fsleep(Delta::from_millis(5));
++                {
++                    let mut ch = mgr.rx_channels.lock();
++                    ch.fw_log.poll();
++                    ch.ktrace.poll();
++                    ch.stats.poll();
++                    ch.event.poll();
++                }
++
++                let (busy, ready, power_state) = mgr.initdata.g15_q21.with(|raw, _inner| {
++                    (
++                        raw.busy.load(Ordering::Relaxed),
++                        raw.firmware_ready.load(Ordering::Relaxed),
++                        raw.power_state.load(Ordering::Relaxed),
++                    )
++                });
++                let rx_doorbells = mgr
++                    .g15_preflight_rx_doorbells
++                    .load(Ordering::Relaxed);
++                let unknown = mgr
++                    .g15_preflight_unknown_messages
++                    .load(Ordering::Relaxed);
++
++                if ready != 1 || mgr.crashed.load(Ordering::Relaxed) || unknown != 0 {
++                    return Err(EIO);
++                }
++
++                Ok((initdata_va, rx_doorbells, busy, ready, power_state))
++            })();
++
++            // Always stop mailbox RX/release RTKit buffers before the manager
++            // and its UAT allocations disappear. The caller stops ASC next.
++            let rtkit = mgr.rtkit.lock().take();
++            core::mem::drop(rtkit);
++            mgr.g15_init_preflight.store(false, Ordering::Relaxed);
++
++            match probe_result {
++                Ok((initdata_va, rx_doorbells, busy, ready, power_state)) => {
++                    dev_info!(
++                        dev.as_ref(),
++                        "T8122 G15 production init + normal RX PASS (InitData {:#x}; q21 busy={} ready={} power={}; normal EP20 RX doorbells={}; no unknown messages/EP21 TX/device-control/kick); RTKit destroyed\n",
++                        initdata_va,
++                        busy,
++                        ready,
++                        power_state,
++                        rx_doorbells
++                    );
++                    core::mem::drop(mgr);
++                    Ok(())
++                }
++                Err(e) => {
++                    let (busy, ready, power_state) = mgr.initdata.g15_q21.with(|raw, _inner| {
++                        (
++                            raw.busy.load(Ordering::Relaxed),
++                            raw.firmware_ready.load(Ordering::Relaxed),
++                            raw.power_state.load(Ordering::Relaxed),
++                        )
++                    });
++                    let rx_doorbells = mgr
++                        .g15_preflight_rx_doorbells
++                        .load(Ordering::Relaxed);
++                    let unknown = mgr
++                        .g15_preflight_unknown_messages
++                        .load(Ordering::Relaxed);
++                    let crashed = mgr.crashed.load(Ordering::Relaxed);
++                    dev_err!(
++                        dev.as_ref(),
++                        "T8122 G15 production init preflight failed: {:?} (q21 busy={} ready={} power={}; EP20 RX doorbells={}; unknown={}; crashed={})\n",
++                        e,
++                        busy,
++                        ready,
++                        power_state,
++                        rx_doorbells,
++                        unknown,
++                        crashed
++                    );
++                    core::mem::drop(mgr);
++                    Err(e)
++                }
++            }
++        }
++    }
++
+     /// Return a mutable reference to the initdata member
+     fn initdata_mut(
+         self: Pin<&mut Self>,
+@@ -1097,8 +1799,15 @@ fn make_initdata(
+         cfg: &'static hw::HwConfig,
+         dyncfg: &hw::DynConfig,
+         alloc: &mut KernelAllocators,
++        g15_shared_bank1: Option<mmu::G15SharedBank1>,
+     ) -> Result<KBox<fw::types::GpuObject<fw::initdata::InitData::ver>>> {
+-        let mut builder = initdata::InitDataBuilder::ver::new(dev, alloc, cfg, dyncfg);
++        let mut builder = initdata::InitDataBuilder::ver::new(
++            dev,
++            alloc,
++            cfg,
++            dyncfg,
++            g15_shared_bank1,
++        );
+         builder.build()
+     }
+ 
+@@ -1210,6 +1919,12 @@ fn make_mgr(
+                 next_mmio_iova: IOVA_KERN_MMIO_RANGE.start,
+                 rtkit <- new_mutex!(None, "rtkit"),
+                 crashed: AtomicBool::new(false),
++                #[ver(G == G15)]
++                g15_init_preflight: AtomicBool::new(false),
++                #[ver(G == G15)]
++                g15_preflight_rx_doorbells: AtomicU64::new(0),
++                #[ver(G == G15)]
++                g15_preflight_unknown_messages: AtomicU64::new(0),
+                 event_manager,
+                 alloc <- new_mutex!(alloc, "alloc"),
+                 #[ver(G != G15)]
+@@ -1562,6 +2277,180 @@ pub(crate) fn core_masks_packed(&self) -> &[u32] {
+         self.dyncfg.id.core_masks_packed.as_slice()
+     }
+ 
++    /// Mirror Apple's runtime command-submission gate. The exact Apple G15
++    /// lifecycle boots q4 +0x070 as zero, then AGXAccelerator::
++    /// setCommandSubmissionEnabled(true) updates this firmware-visible word
++    /// before submitCL/TA/3D are allowed to ring EP21. E033 keeps this mutable
++    /// state lab-only and restores it after a fully acknowledged empty-queue
++    /// publication/release.
++    pub(crate) fn g15_set_command_submission_enabled(&self, enabled: bool) -> Result {
++        #[ver(G != G15)]
++        {
++            let _ = enabled;
++            return Err(EINVAL);
++        }
++
++        #[ver(G == G15)]
++        {
++            let value = u32::from(enabled);
++            let before = self.initdata.g15_globals.with(|raw, _inner| {
++                raw.command_submission_enabled_070.load(Ordering::Acquire)
++            });
++            if before > 1 {
++                dev_err!(
++                    self.dev.as_ref(),
++                    "T8122 G15 invalid q4 command-submission state {}\n",
++                    before
++                );
++                return Err(EIO);
++            }
++            self.initdata.g15_globals.with(|raw, _inner| {
++                raw.command_submission_enabled_070
++                    .store(value, Ordering::Release);
++            });
++            mem::sync();
++            let after = self.initdata.g15_globals.with(|raw, _inner| {
++                raw.command_submission_enabled_070.load(Ordering::Acquire)
++            });
++            dev_info!(
++                self.dev.as_ref(),
++                "T8122 G15 E033 q4 command-submission gate {} -> {}\n",
++                before,
++                after
++            );
++            if after != value {
++                return Err(EIO);
++            }
++            Ok(())
++        }
++    }
++
++    pub(crate) fn g15_command_submission_enabled(&self) -> bool {
++        #[ver(G != G15)]
++        {
++            false
++        }
++        #[ver(G == G15)]
++        {
++            self.initdata.g15_globals.with(|raw, _inner| {
++                raw.command_submission_enabled_070.load(Ordering::Acquire) != 0
++            })
++        }
++    }
++
++    /// Publish a fresh G15 QueueInfo without publishing any command-ring
++    /// entry. RTKit-2419 copies wptr=0 into QueueInfo +0x28 and returns from the
++    /// scheduler walker immediately because QueueInfo +0x20 is also zero.
++    pub(crate) fn g15_publish_empty_queue(
++        &self,
++        pipe_type: PipeType,
++        priority: u32,
++        work_queue: fw::types::GpuWeakPointer<fw::workqueue::QueueInfo::ver>,
++    ) -> Result {
++        #[ver(G != G15)]
++        {
++            let _ = (pipe_type, priority, work_queue);
++            return Err(EINVAL);
++        }
++
++        #[ver(G == G15)]
++        {
++            if self.is_crashed() {
++                return Err(ENODEV);
++            }
++
++            let pipes = match pipe_type {
++                PipeType::Vertex => &self.pipes.vtx,
++                PipeType::Fragment => &self.pipes.frag,
++                PipeType::Compute => &self.pipes.comp,
++            };
++            let index: usize = priority.try_into()?;
++            let mut pipe = pipes.get(index).ok_or(EINVAL)?.lock();
++
++            // Verify EP21 is present before committing a TX-ring entry. This
++            // cannot eliminate every transport failure, but avoids creating an
++            // unreachable stale pipe entry when the endpoint is absent.
++            {
++                let mut guard = self.rtkit.lock();
++                let mut rtk = guard.as_mut().as_pin_mut().ok_or(ENODEV)?;
++                if !rtk.as_mut().has_endpoint(EP_DOORBELL) {
++                    return Err(ENODEV);
++                }
++            }
++
++            if !self.g15_command_submission_enabled() {
++                dev_err!(
++                    self.dev.as_ref(),
++                    "T8122 G15 E033 refusing EP21 pipe doorbell while q4 command submission is disabled\n"
++                );
++                return Err(EACCES);
++            }
++
++            let msg = fw::channels::RunWorkQueueMsg::ver {
++                g15_timestamp: U64(workqueue::g15_submission_timestamp()),
++                work_queue: Some(work_queue),
++                g15_pipe_type: pipe_type,
++                g15_wptr: 0,
++                // Exact untouched IOGPUChannel::stampIndex sentinel. Firmware
++                // has an explicit 0x80 path and no event object is allocated.
++                g15_event_slot: 0x80,
++                g15_is_new: true,
++            };
++
++            let state_before = pipe.g15_state();
++            let token = pipe.send(&msg);
++            let state_after_put = pipe.g15_state();
++            let doorbell = MSG_TX_DOORBELL | pipe_type as u64 | ((index as u64) << 2);
++            dev_info!(
++                self.dev.as_ref(),
++                "T8122 G15 E033 pipe {:?}/{} state before={:?} after-put={:?} token={} doorbell={:#018x}\n",
++                pipe_type,
++                index,
++                state_before,
++                state_after_put,
++                token,
++                doorbell
++            );
++            {
++                let mut guard = self.rtkit.lock();
++                let rtk = guard.as_mut().as_pin_mut().ok_or(ENODEV)?;
++                if let Err(e) = rtk.send_message(
++                    EP_DOORBELL,
++                    doorbell,
++                ) {
++                    // A TX entry exists but its delivery state is uncertain.
++                    // Fail-stop so no later host doorbell can accidentally
++                    // consume it after backing storage is retired.
++                    self.crashed.store(true, Ordering::Release);
++                    return Err(e);
++                }
++            }
++
++            let wait_result = pipe.wait_for(token);
++            let state_after_wait = pipe.g15_state();
++            dev_info!(
++                self.dev.as_ref(),
++                "T8122 G15 E033 pipe {:?}/{} wait={:?} final-state={:?}\n",
++                pipe_type,
++                index,
++                wait_result,
++                state_after_wait
++            );
++            if let Err(e) = wait_result {
++                self.crashed.store(true, Ordering::Release);
++                return Err(e);
++            }
++            Ok(())
++        }
++    }
++
++    pub(crate) fn release_context_now(
++        &self,
++        context: &fw::types::GpuObject<fw::workqueue::GpuContextData>,
++    ) -> Result {
++        self.invalidate_context(context)
++    }
++
+     /// Kick a submission pipe for a submitted job to tell the firmware to start processing it.
+     pub(crate) fn run_job(&self, job: workqueue::JobSubmission::ver<'_>) -> Result {
+         mod_dev_dbg!(self.dev, "GPU: run_job\n");
+@@ -1636,25 +2525,41 @@ fn invalidate_context(
+         let (garbage_count, _) = guard.private.garbage();
+         let (garbage_count_gpuro, _) = guard.gpu_ro.garbage();
+ 
+-        let dc = context.with(
+-            |raw, _inner| fw::channels::DeviceControlMsg::ver::DestroyContext {
+-                unk_4: 0,
+-                ctx_23: raw.unk_23,
+-                #[ver(V < V13_3)]
+-                __pad0: Default::default(),
+-                unk_c: U32(0),
+-                unk_10: U32(0),
+-                ctx_0: raw.unk_0,
+-                ctx_1: raw.unk_1,
+-                ctx_4: raw.unk_4,
+-                #[ver(V < V13_3)]
+-                __pad1: Default::default(),
+-                #[ver(V < V13_3)]
+-                unk_18: 0,
+-                gpu_context: Some(context.weak_pointer()),
+-                __pad2: Default::default(),
+-            },
+-        );
++        let dc = context.with(|raw, _inner| {
++            #[ver(G == G15)]
++            {
++                let (ctx_27, ctx_0, ctx_1, ctx_4) = raw.g15_release_resource_fields();
++                fw::channels::DeviceControlMsg::ver::ReleaseResource {
++                    unk_4: 0,
++                    ctx_27,
++                    ctx_0,
++                    ctx_1,
++                    ctx_4,
++                    gpu_context: Some(context.weak_pointer()),
++                    __pad: Default::default(),
++                }
++            }
++            #[ver(G != G15)]
++            {
++                fw::channels::DeviceControlMsg::ver::DestroyContext {
++                    unk_4: 0,
++                    ctx_23: raw.unk_23,
++                    #[ver(V < V13_3)]
++                    __pad0: Default::default(),
++                    unk_c: U32(0),
++                    unk_10: U32(0),
++                    ctx_0: raw.unk_0,
++                    ctx_1: raw.unk_1,
++                    ctx_4: raw.unk_4,
++                    #[ver(V < V13_3)]
++                    __pad1: Default::default(),
++                    #[ver(V < V13_3)]
++                    unk_18: 0,
++                    gpu_context: Some(context.weak_pointer()),
++                    __pad2: Default::default(),
++                }
++            }
++        });
+ 
+         mod_dev_dbg!(self.dev, "Context invalidation command: {:?}\n", &dc);
+ 
+@@ -1721,6 +2626,13 @@ fn arc_as_any(self: Arc<Self>) -> Arc<dyn Any + Sync + Send> {
+     }
+ 
+     fn init(&self) -> Result {
++        // Pre-G15 firmware expects a legacy device-control Initialize record as
++        // part of startup. Exact RTKit-2419 G15 host/firmware evidence proves
++        // there is no corresponding boot-time device-control producer: the G15
++        // 0x38-byte ring is used only for real runtime commands, and opcode 0x1a
++        // carries a non-null object pointer. Never enqueue the inherited zeroed
++        // Initialize record on G15.
++        #[ver(G != G15)]
+         self.tx_channels.lock().device_control.send(
+             &fw::channels::DeviceControlMsg::ver::Initialize(Default::default()),
+         );
+@@ -1734,11 +2646,39 @@ fn init(&self) -> Result {
+         rtk.as_mut().start_endpoint(EP_DOORBELL)?;
+         rtk.as_mut()
+             .send_message(EP_FIRMWARE, MSG_INIT | (initdata & INIT_DATA_MASK))?;
++        #[ver(G != G15)]
+         rtk.as_mut()
+             .send_message(EP_DOORBELL, MSG_TX_DOORBELL | DOORBELL_DEVCTRL)?;
+         core::mem::drop(guard);
+ 
++        #[ver(G != G15)]
+         self.kick_firmware()?;
++
++        #[ver(G == G15)]
++        {
++            // J615/RTKit-2419 reaches its first stable bootstrap boundary by
++            // consuming MSG_INIT and publishing q21.firmware_ready. EP21 is
++            // registered by firmware only after this transition, so neither a
++            // DEVCTRL doorbell nor an unconditional KICKFW is part of G15 boot.
++            let start = Instant::<Monotonic>::now();
++            const READY_TIMEOUT: Delta = Delta::from_millis(1000);
++            loop {
++                if self.crashed.load(Ordering::Relaxed) {
++                    return Err(EIO);
++                }
++                let ready = self.initdata.g15_q21.with(|raw, _inner| {
++                    raw.firmware_ready.load(Ordering::Relaxed)
++                });
++                if ready == 1 {
++                    break;
++                }
++                if start.elapsed() >= READY_TIMEOUT {
++                    return Err(ETIMEDOUT);
++                }
++                fsleep(Delta::from_millis(1));
++            }
++        }
++
+         Ok(())
+     }
+ 
+@@ -1823,6 +2763,10 @@ fn new_queue(
+     ) -> Result<KBox<dyn queue::Queue>> {
+         let mut kalloc = self.alloc();
+         let id = self.ids.queue.next();
++        #[ver(G == G15)]
++        let g15_mapping_notifier = Some(self.initdata.g15_mapping_notifier.arc());
++        #[ver(G != G15)]
++        let g15_mapping_notifier = None;
+         Ok(KBox::new(
+             queue::Queue::ver::new(
+                 &self.dev,
+@@ -1833,6 +2777,7 @@ fn new_queue(
+                 g15_ualloc_range5_uncached,
+                 g15_ualloc_range5_cached,
+                 self.uat.g15_shared_bank1(),
++                g15_mapping_notifier,
+                 self.event_manager.clone(),
+                 &self.buffer_mgr,
+                 id,
+@@ -1855,6 +2800,30 @@ fn kick_firmware(&self) -> Result {
+         Ok(())
+     }
+ 
++    fn g15_mapping_pressure_kick(&self) -> Result {
++        #[ver(G != G15)]
++        {
++            return Err(EINVAL);
++        }
++        #[ver(G == G15)]
++        {
++            if self.is_crashed() {
++                return Err(ENODEV);
++            }
++
++            let mut guard = self.rtkit.lock();
++            let mut rtk = guard.as_mut().as_pin_mut().ok_or(ENODEV)?;
++            if !rtk.as_mut().has_endpoint(EP_DOORBELL) {
++                return Err(ENODEV);
++            }
++            // Exact AGXFirmwareKextRTBuddy::sendAsyncNoteToFirmware()
++            // message used by insertNewMappingEntry() once q22 occupancy has
++            // both the 0x80 and 0x40 bits set. On G15 this is the same EP21
++            // 0x84 message class represented by MSG_FWCTL.
++            rtk.send_message(EP_DOORBELL, MSG_FWCTL)
++        }
++    }
++
+     fn flush_fw_cache(&self) -> Result {
+         mod_dev_dbg!(self.dev, "Flushing coprocessor data cache\n");
+ 
+@@ -1862,40 +2831,52 @@ fn flush_fw_cache(&self) -> Result {
+             return Err(ENODEV);
+         }
+ 
+-        // ctx_0 == 0xff or ctx_1 == 0xff cause no effect on context,
+-        // but this command does a full cache flush too, so abuse it
+-        // for that.
+-
+-        let dc = fw::channels::DeviceControlMsg::ver::DestroyContext {
+-            unk_4: 0,
+-
+-            ctx_23: 0,
+-            #[ver(V < V13_3)]
+-            __pad0: Default::default(),
+-            unk_c: U32(0),
+-            unk_10: U32(0),
+-            ctx_0: 0xff,
+-            ctx_1: 0xff,
+-            ctx_4: 0,
+-            #[ver(V < V13_3)]
+-            __pad1: Default::default(),
+-            #[ver(V < V13_3)]
+-            unk_18: 0,
+-            gpu_context: None,
+-            __pad2: Default::default(),
+-        };
+-
+-        let mut txch = self.tx_channels.lock();
+-
+-        let token = txch.device_control.send(&dc);
++        #[ver(G == G15)]
+         {
+-            let mut guard = self.rtkit.lock();
+-            let rtk = guard.as_mut().as_pin_mut().unwrap();
+-            rtk.send_message(EP_DOORBELL, MSG_TX_DOORBELL | DOORBELL_DEVCTRL)?;
++            // The inherited cache-flush trick used DeviceControl opcode 0x17
++            // with invalid context IDs. RTKit-2419 G15 has a different 0x38-byte
++            // device-control ABI and native context retirement is opcode 0x11
++            // ReleaseResource. Do not emit 0x17 on G15 until an exact standalone
++            // cache-flush producer is mechanically identified.
++            return Err(ENODEV);
+         }
+ 
+-        txch.device_control.wait_for(token)?;
+-        Ok(())
++        #[ver(G != G15)]
++        {
++            // ctx_0 == 0xff or ctx_1 == 0xff cause no effect on context,
++            // but this command does a full cache flush too, so abuse it
++            // for that.
++            let dc = fw::channels::DeviceControlMsg::ver::DestroyContext {
++                unk_4: 0,
++
++                ctx_23: 0,
++                #[ver(V < V13_3)]
++                __pad0: Default::default(),
++                unk_c: U32(0),
++                unk_10: U32(0),
++                ctx_0: 0xff,
++                ctx_1: 0xff,
++                ctx_4: 0,
++                #[ver(V < V13_3)]
++                __pad1: Default::default(),
++                #[ver(V < V13_3)]
++                unk_18: 0,
++                gpu_context: None,
++                __pad2: Default::default(),
++            };
++
++            let mut txch = self.tx_channels.lock();
++
++            let token = txch.device_control.send(&dc);
++            {
++                let mut guard = self.rtkit.lock();
++                let rtk = guard.as_mut().as_pin_mut().unwrap();
++                rtk.send_message(EP_DOORBELL, MSG_TX_DOORBELL | DOORBELL_DEVCTRL)?;
++            }
++
++            txch.device_control.wait_for(token)?;
++            Ok(())
++        }
+     }
+ 
+     fn ids(&self) -> &SequenceIDs {
+@@ -2106,7 +3087,26 @@ fn get_dyncfg(&self) -> &hw::DynConfig {
+         &self.dyncfg
+     }
+ 
+-    fn free_context(&self, ctx: KBox<fw::types::GpuObject<fw::workqueue::GpuContextData>>) {
++    fn free_context(
++        &self,
++        ctx: KBox<fw::types::GpuObject<fw::workqueue::GpuContextData>>,
++        published_to_firmware: bool,
++    ) {
++        #[ver(G != G15)]
++        let _ = published_to_firmware;
++
++        #[ver(G == G15)]
++        {
++            if !published_to_firmware {
++                core::mem::drop(ctx);
++                return;
++            }
++        }
++
++        // Older generations always need the legacy deferred invalidation. G15
++        // reaches this path only if a publication attempt was not followed by a
++        // confirmed native ReleaseResource completion; retaining the object is
++        // safer than freeing a firmware-visible pointer.
+         let mut garbage = self.garbage_contexts.lock();
+ 
+         if garbage.push(ctx, GFP_KERNEL).is_err() {
+diff --git a/drivers/gpu/drm/asahi/hw/t8122.rs b/drivers/gpu/drm/asahi/hw/t8122.rs
+index 3f66a27ca1aa5015040039088a0af6ac51db7526..ffafda922842a12de4771693246056a2c62fc486 100644
+--- a/drivers/gpu/drm/asahi/hw/t8122.rs
++++ b/drivers/gpu/drm/asahi/hw/t8122.rs
+@@ -2,15 +2,71 @@
+ 
+ //! Preflight-only hardware identity for T8122 (M3 / G15G).
+ //!
+-//! This is deliberately *not* a runtime HwConfig. The platform driver consumes
+-//! only the identity/topology fields before returning ENODEV, prior to DMA/UAT,
+-//! ASC firmware start, initdata construction, or DRM registration. Every field
+-//! that belongs to those later lifecycles remains zero/empty rather than being
+-//! inherited from an older SoC by analogy.
++//! This remains a staged bring-up HwConfig, not a production runtime enablement.
++//! Identity, power data, InitData, RTKit boot, endpoint start, and the J615 G15
++//! firmware MMIO descriptor set are independently reconstructed.  The driver
++//! still fails closed before InitData MSG_INIT and DRM registration.
+ 
+ use crate::f32;
+ use super::*;
+ 
++// Exact J615 / G15G firmware MMIO descriptor set reconstructed from
++// AGXAccelerator::configureDevice(), AGXAcceleratorG15::configureDevice(),
++// AGXAcceleratorG15G::configureDevice(), and the J615 ADT resource layout.
++//
++// G15 HwDataB has 31 I/O mapping records.  Apple gives names/RW defaults to
++// additional placeholder records, but only the entries below have a nonzero
++// physical source and element size on J615 and therefore reach
++// createFWPIOMapping().  Keep all other slots None so the raw array stays zero.
++const J615_G15_IO_MAPPINGS: [Option<IOMapping>; 0x1f] = [
++    //  0 FenderRegs.  G15 overrides the legacy 0x5000 window to 0x104000.
++    Some(IOMapping::new(0x290d00000, false, 1, 0x104000, 0, true)),
++    //  1 AICTimerRegs.  Apple aligns hard-coded 0x20e101000 to 16 KiB.
++    Some(IOMapping::new(0x20e100000, false, 1, 0x4000, 0, false)),
++    //  2 AICSWIntRegs.  J615 meta-sw-interrupt q0=0x2d1014048 -> 16 KiB base.
++    Some(IOMapping::new(0x2d1014000, false, 1, 0x4000, 0, true)),
++    //  3 RGXRegs: exact J615 GPU physical base.
++    Some(IOMapping::new(0x290000000, false, 1, 0x20000, 0, true)),
++    //  4 UVDRegs/UVWarn is disabled: the third resource selector remains 0xff.
++    None,
++    None, //  5 Unused
++    None, //  6 DisplayUnderrunWA
++    None, //  7 TempSensorRegs
++    None, //  8 PMPDoorbell
++    //  9 MetrologySensorRegs
++    Some(IOMapping::new(0x290e08000, false, 1, 0x8000, 0, true)),
++    // 10 GMGIFAFRegs
++    Some(IOMapping::new(0x290d0d000, false, 1, 0x1000, 0, true)),
++    // 11 MCache registers.  Apple supplies two physical bases,
++    //    0x220000000 and 0x222000000; each window is 0x58000 after 16 KiB
++    //    alignment, giving a 0x02000000 stride and 0xb0000 total payload.
++    Some(IOMapping::new(0x220000000, false, 2, 0x58000, 0x02000000, true)),
++    None, // 12 AICBankedRegisters
++    None, // 13 PMGRScratch
++    None, // 14 NIA special-agent idle die 0
++    None, // 15 NIA special-agent idle die 1
++    None, // 16 CRE registers
++    None, // 17 Streaming codec registers
++    // 18 PushTelemetryDashboardRegs
++    Some(IOMapping::new(0x2d03d0000, false, 1, 0x1000, 0, true)),
++    // 19 PushTelemetryDashboardReadRegs
++    Some(IOMapping::new(0x2d03c0000, false, 1, 0x2000, 0, false)),
++    None, // 20
++    None, // 21
++    None, // 22
++    None, // 23
++    None, // 24
++    // 25 ANE0Doorbell
++    Some(IOMapping::new(0x31145c000, false, 1, 0x4000, 0, true)),
++    // 26 PMSMetrologySensorRegs
++    Some(IOMapping::new(0x2d0280000, false, 1, 0x8000, 0, false)),
++    None, // 27
++    None, // 28
++    // 29 GFXCLKGEN_MGPU
++    Some(IOMapping::new(0x290e1c000, false, 1, 0x4000, 0, false)),
++    None, // 30
++];
++
+ pub(crate) const HWCONFIG_PREFLIGHT: super::HwConfig = HwConfig {
+     chip_id: 0x8122,
+     gpu_gen: GpuGen::G15,
+@@ -89,7 +145,7 @@
+     fast_sensor_mask: [0x4248, 0],
+     fast_sensor_mask_alt: [0, 0],
+     fast_die0_sensor_present: 0,
+-    io_mappings: &[],
++    io_mappings: &J615_G15_IO_MAPPINGS,
+     sram_base: None,
+     sram_size: None,
+ };
+diff --git a/drivers/gpu/drm/asahi/initdata.rs b/drivers/gpu/drm/asahi/initdata.rs
+index 59dda2cb5a1b73567aaad157b546e23735bab309..b6bee94baa97d1c1b1c37ecfe0e40dfcd56b709e 100644
+--- a/drivers/gpu/drm/asahi/initdata.rs
++++ b/drivers/gpu/drm/asahi/initdata.rs
+@@ -16,6 +16,7 @@
+ use crate::fw::types::*;
+ use crate::module_parameters;
+ use crate::{
++    alloc,
+     driver::AsahiDevice,
+     gem,
+     gpu,
+@@ -29,6 +30,7 @@
+ use kernel::macros::versions;
+ use kernel::prelude::*;
+ use kernel::try_init;
++use kernel::{new_mutex, sync::Arc};
+ 
+ use ::pin_init;
+ use ::pin_init::Init;
+@@ -40,6 +42,7 @@ pub(crate) struct InitDataBuilder<'a> {
+     alloc: &'a mut gpu::KernelAllocators,
+     cfg: &'static hw::HwConfig,
+     dyncfg: &'a hw::DynConfig,
++    g15_shared_bank1: Option<mmu::G15SharedBank1>,
+ }
+ 
+ #[versions(AGX)]
+@@ -50,12 +53,14 @@ pub(crate) fn new(
+         alloc: &'a mut gpu::KernelAllocators,
+         cfg: &'static hw::HwConfig,
+         dyncfg: &'a hw::DynConfig,
++        g15_shared_bank1: Option<mmu::G15SharedBank1>,
+     ) -> InitDataBuilder::ver<'a> {
+         InitDataBuilder::ver {
+             dev,
+             alloc,
+             cfg,
+             dyncfg,
++            g15_shared_bank1,
+         }
+     }
+ 
+@@ -493,6 +498,48 @@ fn hwdata_a(&mut self) -> Result<GpuObject<HwDataA::ver>> {
+                     ..Zeroable::init_zeroed()
+                 })
+                 .chain(|raw| {
++                    #[ver(G == G15)]
++                    {
++                        // J615/T8122 MTR sensor topology imported by
++                        // AGXArmFirmware::initPowerAndPerformanceData(). Apple's
++                        // MtrPolynomGFX records select sensors 3, 6, 8, 9, 11,
++                        // and 14, so accelerator +0x1a08 and HwDataA +0x1a98
++                        // contain the exact bitmap 0x4b48. Firmware's MTR alarm
++                        // handler treats a zero bitmap as fatal before it can
++                        // match/acknowledge the hardware alarm.
++                        const G15_MTR_SENSOR_MASK: u64 = 0x4b48;
++                        const G15_MTR_POLYNOMS: [(usize, [u32; 4]); 6] = [
++                            (3, [0x0000_860c, 0x0000_eed1, 0x01ff_f024, 0x01ff_fc00]),
++                            (6, [0x0000_850a, 0x0000_ef64, 0x01ff_f00e, 0x01ff_fbf8]),
++                            (8, [0x0000_862f, 0x0000_efe1, 0x01ff_effe, 0x01ff_fbf2]),
++                            (9, [0x0000_85c2, 0x0000_f00d, 0x01ff_eff8, 0x01ff_fbf0]),
++                            (11, [0x0000_8448, 0x0000_f00d, 0x01ff_eff8, 0x01ff_fbf0]),
++                            (14, [0x0000_84ee, 0x0000_efbc, 0x01ff_f008, 0x01ff_fbf4]),
++                        ];
++
++                        // In the generated G15 layout `unk_1640` begins at
++                        // HwDataA +0x1a94. Apple lays out the MTR bitmap at
++                        // +0x1a98, a second bitmap word at +0x1aa0
++                        // (zero on J615), then one 0x78-byte sensor record from
++                        // +0x1aa4. Each J615 property carries four u32 values;
++                        // the optional word at record +0x58 stays allocation-zero.
++                        for (i, byte) in G15_MTR_SENSOR_MASK.to_le_bytes().iter().enumerate() {
++                            raw.unk_1640[0x04 + i] = *byte;
++                        }
++                        for (sensor, coeffs) in G15_MTR_POLYNOMS {
++                            let base = 0x10 + sensor * 0x78;
++                            for (i, byte) in 4u32.to_le_bytes().iter().enumerate() {
++                                raw.unk_1640[base + i] = *byte;
++                            }
++                            for (word_index, word) in coeffs.iter().enumerate() {
++                                let off = base + 4 + word_index * 4;
++                                for (i, byte) in word.to_le_bytes().iter().enumerate() {
++                                    raw.unk_1640[off + i] = *byte;
++                                }
++                            }
++                        }
++                    }
++
+                     for i in 0..self.dyncfg.pwr.perf_states.len() {
+                         raw.sram_k[i] = self.cfg.sram_k;
+                     }
+@@ -613,7 +660,14 @@ fn hwdata_b(&mut self) -> Result<GpuObject<HwDataB::ver>> {
+                     // TODO: yuv matrices
+                     chip_id: cfg.chip_id,
+                     unk_454: cfg.db.unk_454,
++                    #[ver(G != G15)]
+                     unk_458: 0x1,
++                    #[ver(G == G15)]
++                    // Exact J615/G15G chip-info revision-low word at HwDataB +0xa30.
++                    unk_458: 0x0,
++                    #[ver(G == G15)]
++                    // Exact J615/G15G process-node word at HwDataB +0xa34.
++                    unk_45c: 0x4,
+                     unk_460: 0x1,
+                     unk_464: 0x1,
+                     unk_468: 0x1,
+@@ -639,6 +693,8 @@ fn hwdata_b(&mut self) -> Result<GpuObject<HwDataB::ver>> {
+                     unk_534: cfg.db.unk_534,
+                     num_frags: dyncfg.id.num_frags * dyncfg.id.num_clusters,
+                     unk_554: 0x1,
++                    #[ver(G == G15)]
++                    g15_uat_mode_b40: 1,
+                     uat_ttb_base: U64(dyncfg.uat_ttb_base),
+                     gpu_core_id: cfg.gpu_core as u32,
+                     gpu_rev_id: dyncfg.id.gpu_rev_id as u32,
+@@ -655,21 +711,49 @@ fn hwdata_b(&mut self) -> Result<GpuObject<HwDataB::ver>> {
+                     #[ver(V < V13_0B4)]
+                     unk_ac0: 0x1020,
+ 
++                    #[ver(G == G15)]
++                    unk_4f8: 1,
+                     #[ver(V >= V13_0B4)]
+                     unk_ae4: Array::new([0x0, 0x3, 0x7, 0x7]),
+                     #[ver(V < V13_0B4)]
+                     unk_ae4: Array::new([0x0, 0xf, 0x3f, 0x3f]),
+                     unk_b10: 0x1,
+                     timer_offset: U64(0),
++                    #[ver(G != G15)]
+                     unk_b24: 0x1,
++                    #[ver(G != G15)]
+                     unk_b28: 0x1,
++                    #[ver(G != G15)]
+                     unk_b2c: 0x1,
++                    #[ver(G != G15)]
+                     unk_b30: cfg.db.unk_b30,
+-                    #[ver(V >= V13_0B4)]
++                    #[ver(V >= V13_0B4 && G != G15)]
+                     unk_b38_0: 1,
+-                    #[ver(V >= V13_0B4)]
++                    #[ver(V >= V13_0B4 && G != G15)]
+                     unk_b38_4: 1,
++                    #[ver(G != G15)]
+                     unk_b38: Array::new([0xffffffff; 12]),
++                    #[ver(G == G15)]
++                    // Exact final J615/G15G image produced by Apple's
++                    // initFirmwareData() immediately before bootFirmware().
++                    g15_startup_17ec: raw::G15HwDataBStartup {
++                        zero_17ec: Array::new([0; 2]),
++                        flag_17f4: 1,
++                        one_17f8: 1,
++                        one_17fc: 1,
++                        flag_1800: 1,
++                        zero_1804: 0,
++                        one_1808: 1,
++                        one_180c: 1,
++                        flag_1810: 1,
++                        zero_1814: 0,
++                        sentinels_1818: Array::new([0xffff_ffff; 12]),
++                        zero_1848: 0,
++                        zero_184c: Array::new([0; 2]),
++                        zero_1854: 0,
++                        flag_1858: 1,
++                        zero_185c: 0,
++                    },
+                     #[ver(V >= V13_0B4 && V < V13_3 && G != G15)]
+                     unk_c3c: 0x19,
+                     #[ver(V >= V13_3 && G != G15)]
+@@ -1310,7 +1394,7 @@ pub(crate) fn build(&mut self) -> Result<KBox<GpuObject<InitData::ver>>> {
+                 // exact G15 bootstrap path never invokes their setters. The
+                 // zero-filled q4 allocation therefore reaches firmware as 0.
+                 cdm_cswitch_mode_change_062: U32(0),
+-                command_submission_enabled_070: U32(0),
++                command_submission_enabled_070: AtomicU32::new(0),
+                 // AGXAccelerator::start() builds the GPU PerfStateInfo from
+                 // exact J615 `gpu-num-perf-states = 2`. G15 constructor byte
+                 // +0x4e1 is zero, so Apple takes the direct 0x448-byte copy
+@@ -1359,6 +1443,12 @@ pub(crate) fn build(&mut self) -> Result<KBox<GpuObject<InitData::ver>>> {
+                 clvr_engagement_enabled_7d4: U32(1),
+                 gpu_keepalive_perf_mode_threshold_7d8: U32(100),
+                 gpu_keepalive_off_mode_threshold_7dc: U32(100),
++                // AGXArmFirmware::init() explicitly clears the entire q4
++                // register-patch staging span through +0x96b. Firmware later
++                // reads +0x964 as the record count for entries at +0x7f4;
++                // exact J615 bootstrap therefore takes the zero-count path.
++                boot_patch_record_count_964: U32(0),
++                boot_patch_count_zero_968: U32(0),
+                 // These are runtime inputs from the IOGPU
+                 // set_display_params_for_gpu user-client method. Apple starts
+                 // the zeroed q4 block with no display override; firmware falls
+@@ -1433,20 +1523,45 @@ pub(crate) fn build(&mut self) -> Result<KBox<GpuObject<InitData::ver>>> {
+             },
+         )?;
+         #[ver(G == G15)]
+-        let g15_cache_flush_state = self.alloc.shared.new_default::<G15CacheFlushState>()?;
++        let mut g15_q22_alloc = alloc::G15SharedBank1Allocator::new(
++            self.dev,
++            self.g15_shared_bank1.clone().ok_or(EINVAL)?,
++            mmu::UAT_PGSZ,
++            mmu::PROT_G15_RANGE7_FW,
++            true,
++            None,
++        );
+         #[ver(G == G15)]
+-        let g15_cache_flush_ring = self
+-            .alloc
+-            .shared
+-            .array_empty::<raw::G15CacheFlushEntry>(0x100)?;
++        let g15_mapping_ring_backing =
++            g15_q22_alloc.new_default::<G15MappingRingBacking>()?;
++        #[ver(G == G15)]
++        let g15_mapping_notifier = mmu::G15MappingNotifierHandle::new(Arc::pin_init(
++            new_mutex!(
++                mmu::G15MappingNotifier::new(
++                    self.dev,
++                    g15_mapping_ring_backing,
++                ),
++                "g15_mapping_notifier"
++            ),
++            GFP_KERNEL,
++        )?);
++        #[ver(G == G15)]
++        let (g15_cache_flush_state_va, g15_cache_flush_ring_va) = {
++            let notifier = g15_mapping_notifier.lock();
++            (notifier.state_gpu_va(), notifier.ring_gpu_va())
++        };
+         #[ver(G == G15)]
+         let g15_q22 = self.alloc.shared.new_object(
+             Default::default(),
+             |_inner| raw::G15Q22Shared {
+-                // Apple maps the exact 0x20 control block and 0x1800 ring at
+-                // q22 +0x4568/+0x4570. Firmware consumes 0x18-byte entries.
+-                shared_ptr_4568: U64(g15_cache_flush_state.gpu_va().get()),
+-                shared_ptr_4570: U64(g15_cache_flush_ring.gpu_va().get()),
++                // Apple allocFirmwareData() calls allocateSharedData(..., true,
++                // false) with eGartRange=7, zero extra options, and exact 0x20 /
++                // 0x1800 suballocations. That is option word 0x700000007, so
++                // these bootstrap objects use the same shared bank-1 PTE class
++                // as later range-7 PM resources. The q22 producer is not yet
++                // attached while these two self-hosting mappings are created.
++                shared_ptr_4568: U64(g15_cache_flush_state_va),
++                shared_ptr_4570: U64(g15_cache_flush_ring_va),
+                 // Apple sets +0x45c4 to one before firmware starts. G15's
+                 // accelerator configure path clears feature bit 28 before the
+                 // const smart-idle query, so +0xc3cc is exactly zero on J615.
+@@ -1503,9 +1618,7 @@ pub(crate) fn build(&mut self) -> Result<KBox<GpuObject<InitData::ver>>> {
+                 #[ver(G == G15)]
+                 g15_q21,
+                 #[ver(G == G15)]
+-                g15_cache_flush_state,
+-                #[ver(G == G15)]
+-                g15_cache_flush_ring,
++                g15_mapping_notifier,
+                 #[ver(G == G15)]
+                 g15_q22,
+                 #[ver(G == G15)]
+diff --git a/drivers/gpu/drm/asahi/mmu.rs b/drivers/gpu/drm/asahi/mmu.rs
+index f3e34a1776d9ca245e4bd0e9b8cb3d3e9f2586a5..f0cc69fee974c80bb19d4ae3d64b6a7dc431c227 100644
+--- a/drivers/gpu/drm/asahi/mmu.rs
++++ b/drivers/gpu/drm/asahi/mmu.rs
+@@ -37,7 +37,9 @@
+     error::Result,
+     io,
+     new_mutex,
++    page::Page,
+     prelude::*,
++    types::Owned,
+     static_lock_class,
+     sync::{
+         aref::ARef,
+@@ -60,6 +62,7 @@
+ use crate::module_parameters;
+ use crate::no_debug;
+ use crate::{
++    alloc,
+     driver,
+     fw,
+     gem,
+@@ -1010,17 +1013,511 @@ fn drop(&mut self) {
+ 
+ 
+ /// Address-space bookkeeping for the accelerator-shared G15 UAT bank 1.
+-/// Canonical G15 range-7 VAs are retained in the allocator; UatPageTable masks
+-/// them to the low 42 bank-local bits when walking the actual page tables.
++/// Canonical G15 range-7 VAs are retained in the allocator and reduced to the
++/// bank-local low-42-bit indices by this generation-specific page-table view.
++///
++/// The bank-1 root and range-7 L2 table are Apple/firmware carveout pages. Linux
++/// owns only the six L3 pages installed beneath the live-proven empty L2 slots.
++/// Keeping that ownership split explicit avoids treating reserved firmware DRAM
++/// as `struct page` memory while still giving normal map/unmap callers a stable
++/// page-table backend for the complete 192-MiB range-7 aperture.
++struct G15SharedBank1PageTable {
++    ttb: PhysicalAddr,
++    shared_l2_phys: PhysicalAddr,
++    oas_mask: u64,
++    _root: io::mem::Mem,
++    _shared_l2: io::mem::Mem,
++    l3: Option<KVec<Owned<Page>>>,
++    l3_desc: [u64; Self::RANGE7_L2_ENTRIES],
++}
++
++impl G15SharedBank1PageTable {
++    const RANGE7_TOP_INDEX: usize = 2;
++    const RANGE7_L2_ENTRIES: usize = 6;
++    const L3_ENTRIES: usize = UAT_PGSZ / core::mem::size_of::<u64>();
++    const L2_SPAN: u64 = (UAT_PGSZ as u64) * (Self::L3_ENTRIES as u64);
++    const TABLE_TYPE_BITS: u64 = 0x3;
++    const RANGE7_LEAF_BITS: u64 = 0x00c0_0000_0000_0447;
++
++    fn new(dev: &driver::AsahiDevice, cfg: &'static hw::HwConfig, ttb: PhysicalAddr) -> Result<Self> {
++        if cfg.uat_ias < G15_HW_UAT_IAS || ttb & UAT_PGMSK as u64 != 0 {
++            return Err(EINVAL);
++        }
++
++        let root = unsafe {
++            io::mem::Mem::try_new_phys(ttb, UAT_PGSZ, (io::mem::MemFlag::WB).into())?
++        };
++        let root_pte = unsafe {
++            core::ptr::read_volatile(
++                root.ptr()
++                    .add(Self::RANGE7_TOP_INDEX * core::mem::size_of::<u64>())
++                    .cast::<u64>(),
++            )
++        };
++        let oas_mask = if cfg.uat_oas >= 64 {
++            return Err(EINVAL);
++        } else {
++            (1u64 << cfg.uat_oas) - 1
++        };
++        let shared_l2_phys = root_pte & oas_mask & !(UAT_PGMSK as u64);
++        let expected_l2_phys = ttb.checked_sub(UAT_PGSZ as u64).ok_or(EINVAL)?;
++
++        if root_pte & Self::TABLE_TYPE_BITS != Self::TABLE_TYPE_BITS
++            || shared_l2_phys != expected_l2_phys
++        {
++            dev_err!(
++                dev.as_ref(),
++                "MMU: G15 bank-1 root[2] mismatch: pte={:#x} child={:#x} expected={:#x}\n",
++                root_pte,
++                shared_l2_phys,
++                expected_l2_phys
++            );
++            return Err(EIO);
++        }
++
++        let shared_l2 = unsafe {
++            io::mem::Mem::try_new_phys(
++                shared_l2_phys,
++                UAT_PGSZ,
++                (io::mem::MemFlag::WB).into(),
++            )?
++        };
++        for idx in 0..Self::RANGE7_L2_ENTRIES {
++            let pte = unsafe {
++                core::ptr::read_volatile(
++                    shared_l2
++                        .ptr()
++                        .add(idx * core::mem::size_of::<u64>())
++                        .cast::<u64>(),
++                )
++            };
++            if pte != 0 {
++                dev_err!(
++                    dev.as_ref(),
++                    "MMU: G15 shared range-7 L2[{}] unexpectedly populated: {:#x}\n",
++                    idx,
++                    pte
++                );
++                return Err(EIO);
++            }
++        }
++
++        // Allocate every Linux-owned child before the first firmware-carveout
++        // mutation. This means allocation failure can never leave a dangling
++        // parent descriptor in the Apple-owned shared L2.
++        let mut l3 = KVec::with_capacity(Self::RANGE7_L2_ENTRIES, GFP_KERNEL)?;
++        let mut l3_desc = [0u64; Self::RANGE7_L2_ENTRIES];
++        for idx in 0..Self::RANGE7_L2_ENTRIES {
++            let page = Page::alloc_page(GFP_KERNEL | __GFP_ZERO)?;
++            let phys = page.phys();
++            if phys & UAT_PGMSK as u64 != 0 || phys & !oas_mask != 0 {
++                dev_err!(dev.as_ref(), "MMU: G15 invalid range-7 L3 page {} at {:#x}\n", idx, phys);
++                return Err(EIO);
++            }
++            let zero = page.with_page_mapped(|ptr| {
++                for q in 0..Self::L3_ENTRIES {
++                    let v = unsafe {
++                        core::ptr::read_volatile(
++                            ptr.add(q * core::mem::size_of::<u64>()).cast::<u64>(),
++                        )
++                    };
++                    if v != 0 {
++                        return false;
++                    }
++                }
++                true
++            });
++            if !zero {
++                dev_err!(dev.as_ref(), "MMU: G15 range-7 L3 page {} is not zeroed\n", idx);
++                return Err(EIO);
++            }
++            l3_desc[idx] = phys | Self::TABLE_TYPE_BITS;
++            l3.push(page, GFP_KERNEL)?;
++        }
++
++        // Recheck the live ownership boundary immediately before publication.
++        for idx in 0..Self::RANGE7_L2_ENTRIES {
++            let slot = unsafe {
++                shared_l2
++                    .ptr()
++                    .add(idx * core::mem::size_of::<u64>())
++                    .cast::<u64>()
++            };
++            if unsafe { core::ptr::read_volatile(slot) } != 0 {
++                return Err(EBUSY);
++            }
++        }
++        for idx in 0..Self::RANGE7_L2_ENTRIES {
++            let slot = unsafe {
++                shared_l2
++                    .ptr()
++                    .add(idx * core::mem::size_of::<u64>())
++                    .cast::<u64>()
++            };
++            unsafe { core::ptr::write_volatile(slot, l3_desc[idx]) };
++        }
++        fence(Ordering::SeqCst);
++        mem::tlbi_all();
++        mem::sync();
++
++        let mut publish_ok = true;
++        for idx in 0..Self::RANGE7_L2_ENTRIES {
++            let slot = unsafe {
++                shared_l2
++                    .ptr()
++                    .add(idx * core::mem::size_of::<u64>())
++                    .cast::<u64>()
++            };
++            let got = unsafe { core::ptr::read_volatile(slot) };
++            if got != l3_desc[idx] {
++                publish_ok = false;
++                dev_err!(
++                    dev.as_ref(),
++                    "MMU: G15 shared range-7 L2[{}] publish mismatch got={:#x} expected={:#x}\n",
++                    idx,
++                    got,
++                    l3_desc[idx]
++                );
++            }
++        }
++        if !publish_ok {
++            for idx in 0..Self::RANGE7_L2_ENTRIES {
++                let slot = unsafe {
++                    shared_l2
++                        .ptr()
++                        .add(idx * core::mem::size_of::<u64>())
++                        .cast::<u64>()
++                };
++                if unsafe { core::ptr::read_volatile(slot) } == l3_desc[idx] {
++                    unsafe { core::ptr::write_volatile(slot, 0) };
++                }
++            }
++            fence(Ordering::SeqCst);
++            mem::tlbi_all();
++            mem::sync();
++            let detached = (0..Self::RANGE7_L2_ENTRIES).all(|idx| {
++                let slot = unsafe {
++                    shared_l2
++                        .ptr()
++                        .add(idx * core::mem::size_of::<u64>())
++                        .cast::<u64>()
++                };
++                let got = unsafe { core::ptr::read_volatile(slot) };
++                got == 0
++            });
++            if !detached {
++                core::mem::forget(l3);
++            }
++            return Err(EIO);
++        }
++
++        dev_info!(
++            dev.as_ref(),
++            "MMU: G15 shared bank-1 backend online root={:#x} shared-l2={:#x}, 6 Linux L3 tables published\n",
++            ttb,
++            shared_l2_phys
++        );
++
++        Ok(Self {
++            ttb,
++            shared_l2_phys,
++            oas_mask,
++            _root: root,
++            _shared_l2: shared_l2,
++            l3: Some(l3),
++            l3_desc,
++        })
++    }
++
++    fn ttb(&self) -> PhysicalAddr {
++        self.ttb
++    }
++
++    fn validate_range(&self, iova_range: &Range<u64>) -> Result<usize> {
++        if iova_range.start > iova_range.end
++            || (iova_range.start | iova_range.end) & UAT_PGMSK as u64 != 0
++            || iova_range.start < G15_GART_RANGE7.start
++            || iova_range.end > G15_GART_RANGE7.end
++        {
++            return Err(EINVAL);
++        }
++        Ok(((iova_range.end - iova_range.start) >> UAT_PGBIT) as usize)
++    }
++
++    fn leaf_location(iova: u64) -> Result<(usize, usize)> {
++        if iova < G15_GART_RANGE7.start || iova >= G15_GART_RANGE7.end {
++            return Err(EINVAL);
++        }
++        let off = iova - G15_GART_RANGE7.start;
++        let l2 = (off / Self::L2_SPAN) as usize;
++        let l3 = ((off >> UAT_PGBIT) & (Self::L3_ENTRIES as u64 - 1)) as usize;
++        if l2 >= Self::RANGE7_L2_ENTRIES {
++            return Err(EINVAL);
++        }
++        Ok((l2, l3))
++    }
++
++    fn read_leaf(&self, iova: u64) -> Result<u64> {
++        let (l2, l3_idx) = Self::leaf_location(iova)?;
++        let leaves = self.l3.as_ref().ok_or(EIO)?;
++        Ok(leaves[l2].with_page_mapped(|ptr| unsafe {
++            core::ptr::read_volatile(
++                ptr.add(l3_idx * core::mem::size_of::<u64>()).cast::<u64>(),
++            )
++        }))
++    }
++
++    fn write_leaf(&self, iova: u64, value: u64) -> Result {
++        let (l2, l3_idx) = Self::leaf_location(iova)?;
++        let leaves = self.l3.as_ref().ok_or(EIO)?;
++        leaves[l2].with_page_mapped(|ptr| unsafe {
++            core::ptr::write_volatile(
++                ptr.add(l3_idx * core::mem::size_of::<u64>()).cast::<u64>(),
++                value,
++            )
++        });
++        Ok(())
++    }
++
++    fn validate_parents(&self) -> Result {
++        for idx in 0..Self::RANGE7_L2_ENTRIES {
++            let slot = unsafe {
++                self._shared_l2
++                    .ptr()
++                    .add(idx * core::mem::size_of::<u64>())
++                    .cast::<u64>()
++            };
++            let got = unsafe { core::ptr::read_volatile(slot) };
++            if got != self.l3_desc[idx] {
++                pr_err!(
++                    "MMU: G15 shared range-7 parent {} changed got={:#x} expected={:#x}\n",
++                    idx,
++                    got,
++                    self.l3_desc[idx]
++                );
++                return Err(EIO);
++            }
++        }
++        Ok(())
++    }
++
++    fn alloc_pages(&mut self, iova_range: Range<u64>) -> Result {
++        self.validate_range(&iova_range)?;
++        self.validate_parents()
++    }
++
++    fn map_pages(
++        &mut self,
++        iova_range: Range<u64>,
++        phys: PhysicalAddr,
++        prot: Prot,
++        one_page: bool,
++    ) -> Result {
++        let count = self.validate_range(&iova_range)?;
++        self.validate_parents()?;
++        if count == 0 {
++            return Ok(());
++        }
++        if phys & UAT_PGMSK as u64 != 0 || phys & !self.oas_mask != 0 {
++            return Err(EINVAL);
++        }
++        let leaf_bits = prot.as_pte() | Self::TABLE_TYPE_BITS;
++        if leaf_bits != Self::RANGE7_LEAF_BITS {
++            pr_err!(
++                "MMU: G15 range-7 rejected unexpected PTE protection bits {:#x}\n",
++                leaf_bits
++            );
++            return Err(EINVAL);
++        }
++
++        // First validate the full operation so a collision or bad physical page
++        // cannot leave a partially mapped range.
++        for page in 0..count {
++            let iova = iova_range.start + (page * UAT_PGSZ) as u64;
++            let paddr = if one_page {
++                phys
++            } else {
++                phys.checked_add((page * UAT_PGSZ) as u64).ok_or(EINVAL)?
++            };
++            if paddr & UAT_PGMSK as u64 != 0 || paddr & !self.oas_mask != 0 {
++                return Err(EINVAL);
++            }
++            if self.read_leaf(iova)? != 0 {
++                pr_err!("MMU: G15 range-7 IOVA {:#x} already mapped\n", iova);
++                return Err(EBUSY);
++            }
++        }
++
++        for page in 0..count {
++            let iova = iova_range.start + (page * UAT_PGSZ) as u64;
++            let paddr = if one_page {
++                phys
++            } else {
++                phys + (page * UAT_PGSZ) as u64
++            };
++            self.write_leaf(iova, paddr | leaf_bits)?;
++        }
++        Ok(())
++    }
++
++    fn unmap_pages(&mut self, iova_range: Range<u64>) -> Result {
++        let count = self.validate_range(&iova_range)?;
++        self.validate_parents()?;
++        for page in 0..count {
++            let iova = iova_range.start + (page * UAT_PGSZ) as u64;
++            let pte = self.read_leaf(iova)?;
++            if pte != 0 && pte & Self::TABLE_TYPE_BITS != Self::TABLE_TYPE_BITS {
++                pr_err!("MMU: G15 range-7 invalid leaf at {:#x}: {:#x}\n", iova, pte);
++                return Err(EIO);
++            }
++        }
++        for page in 0..count {
++            let iova = iova_range.start + (page * UAT_PGSZ) as u64;
++            self.write_leaf(iova, 0)?;
++        }
++        Ok(())
++    }
++
++    /// E029 exercises the exact persistent backend entry points while still
++    /// below InitData/RTKit. Parent L3 descriptors remain installed until UAT
++    /// teardown, unlike E028's test-local tables.
++    fn e029_preflight_backend(&mut self, dev: &driver::AsahiDevice) -> Result {
++        let data = Page::alloc_page(GFP_KERNEL | __GFP_ZERO)?;
++        let phys = data.phys();
++        if phys & UAT_PGMSK as u64 != 0 || phys & !self.oas_mask != 0 {
++            return Err(EIO);
++        }
++        let range = G15_GART_RANGE7.start..(G15_GART_RANGE7.start + UAT_PGSZ as u64);
++        self.alloc_pages(range.clone())?;
++        self.map_pages(range.clone(), phys, PROT_G15_RANGE7_FW, false)?;
++        fence(Ordering::SeqCst);
++        mem::tlbi_all();
++        mem::sync();
++
++        let published = self.read_leaf(range.start)?;
++        let expected = phys | Self::RANGE7_LEAF_BITS;
++        let unmap_result = self.unmap_pages(range.clone());
++        fence(Ordering::SeqCst);
++        mem::tlbi_all();
++        mem::sync();
++        let cleared = self.read_leaf(range.start)? == 0;
++
++        if unmap_result.is_err() || !cleared {
++            // Never release data backing while a possibly-live leaf can still
++            // reference it. This branch is terminal for the one-shot test.
++            core::mem::forget(data);
++            return Err(EIO);
++        }
++        if published != expected {
++            dev_err!(
++                dev.as_ref(),
++                "MMU: E029 backend leaf mismatch got={:#x} expected={:#x}\n",
++                published,
++                expected
++            );
++            return Err(EIO);
++        }
++
++        dev_info!(
++            dev.as_ref(),
++            "MMU: G15 E029 shared bank-1 backend PASS (real alloc/map/unmap, clean leaf)\n"
++        );
++        Ok(())
++    }
++}
++
++impl Drop for G15SharedBank1PageTable {
++    fn drop(&mut self) {
++        let leaves = match self.l3.as_ref() {
++            Some(leaves) => leaves,
++            None => return,
++        };
++
++        // An occupied leaf means external lifetime ordering failed. Keep every
++        // L3 page alive rather than letting Apple/firmware retain a pointer into
++        // freed Linux memory.
++        let all_leaves_zero = (0..Self::RANGE7_L2_ENTRIES).all(|l2| {
++            leaves[l2].with_page_mapped(|ptr| {
++                for idx in 0..Self::L3_ENTRIES {
++                    let pte = unsafe {
++                        core::ptr::read_volatile(
++                            ptr.add(idx * core::mem::size_of::<u64>()).cast::<u64>(),
++                        )
++                    };
++                    if pte != 0 {
++                        return false;
++                    }
++                }
++                true
++            })
++        });
++        if !all_leaves_zero || self.validate_parents().is_err() {
++            pr_err!(
++                "MMU: G15 shared bank-1 teardown unsafe; retaining Linux L3 backing until reboot\n"
++            );
++            if let Some(leaves) = self.l3.take() {
++                core::mem::forget(leaves);
++            }
++            return;
++        }
++
++        for idx in 0..Self::RANGE7_L2_ENTRIES {
++            let slot = unsafe {
++                self._shared_l2
++                    .ptr()
++                    .add(idx * core::mem::size_of::<u64>())
++                    .cast::<u64>()
++            };
++            if unsafe { core::ptr::read_volatile(slot) } == self.l3_desc[idx] {
++                unsafe { core::ptr::write_volatile(slot, 0) };
++            }
++        }
++        fence(Ordering::SeqCst);
++        mem::tlbi_all();
++        mem::sync();
++
++        let detached = (0..Self::RANGE7_L2_ENTRIES).all(|idx| {
++            let slot = unsafe {
++                self._shared_l2
++                    .ptr()
++                    .add(idx * core::mem::size_of::<u64>())
++                    .cast::<u64>()
++            };
++            let got = unsafe { core::ptr::read_volatile(slot) };
++            got == 0
++        });
++        if !detached {
++            pr_err!(
++                "MMU: G15 shared bank-1 parent detach failed; retaining Linux L3 backing until reboot\n"
++            );
++            if let Some(leaves) = self.l3.take() {
++                core::mem::forget(leaves);
++            }
++            return;
++        }
++
++        // Taking and dropping only after exact parent-zero proof releases the
++        // six Linux pages with no remaining firmware-carveout references.
++        core::mem::drop(self.l3.take());
++        pr_info!(
++            "MMU: G15 shared bank-1 backend teardown PASS (6 parents detached, leaves clean)\n"
++        );
++    }
++}
++
+ struct G15SharedBank1State {
+-    page_table: UatPageTable,
++    page_table: G15SharedBank1PageTable,
+     mm: mm::Allocator<(), G15SharedBank1MappingInner>,
+ }
+ 
+ impl G15SharedBank1State {
+-    fn new(cfg: &'static hw::HwConfig) -> Result<Self> {
++    fn new(
++        dev: &driver::AsahiDevice,
++        cfg: &'static hw::HwConfig,
++        ttb: PhysicalAddr,
++    ) -> Result<Self> {
+         Ok(Self {
+-            page_table: UatPageTable::new_global(G15_HW_UAT_IAS, cfg.uat_oas)?,
++            page_table: G15SharedBank1PageTable::new(dev, cfg, ttb)?,
+             mm: mm::Allocator::new(G15_GART_RANGE7.start, G15_GART_RANGE7.range(), ())?,
+         })
+     }
+@@ -1030,6 +1527,228 @@ fn ttb(&self) -> PhysicalAddr {
+     }
+ }
+ 
++/// Host producer for the native G15 q22 mapping-notification ring.
++///
++/// The state and ring themselves are bootstrap range-7 mappings created before
++/// this producer is handed to any later range-7 allocation. Holding this object
++/// strongly therefore keeps both q22 backings alive for every mapping that may
++/// need to publish its eventual unmap record.
++pub(crate) struct G15MappingNotifier {
++    dev: driver::AsahiDevRef,
++    backing: alloc::G15SharedGpuObject<fw::initdata::G15MappingRingBacking>,
++}
++
++/// Cloneable, debug-safe strong owner for the q22 producer. Kernel Mutex does
++/// not implement Debug, while InitData does; keep formatting intentionally
++/// opaque rather than exposing synchronization internals or raw pointers.
++pub(crate) struct G15MappingNotifierHandle(Arc<Mutex<G15MappingNotifier>>);
++
++impl G15MappingNotifierHandle {
++    pub(crate) fn new(inner: Arc<Mutex<G15MappingNotifier>>) -> Self {
++        Self(inner)
++    }
++
++    pub(crate) fn arc(&self) -> Arc<Mutex<G15MappingNotifier>> {
++        self.0.clone()
++    }
++}
++
++impl Clone for G15MappingNotifierHandle {
++    fn clone(&self) -> Self {
++        Self(self.0.clone())
++    }
++}
++
++impl core::ops::Deref for G15MappingNotifierHandle {
++    type Target = Arc<Mutex<G15MappingNotifier>>;
++
++    fn deref(&self) -> &Self::Target {
++        &self.0
++    }
++}
++
++impl core::fmt::Debug for G15MappingNotifierHandle {
++    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
++        f.write_str("G15MappingNotifierHandle")
++    }
++}
++
++impl G15MappingNotifier {
++    const RING_LEN: u32 = 0x100;
++    const PRESSURE_MASK: u32 = 0xc0;
++
++    pub(crate) fn new(
++        dev: &driver::AsahiDevice,
++        backing: alloc::G15SharedGpuObject<fw::initdata::G15MappingRingBacking>,
++    ) -> Self {
++        Self { dev: dev.into(), backing }
++    }
++
++    pub(crate) fn state_gpu_va(&self) -> u64 {
++        self.backing.gpu_va().get()
++    }
++
++    pub(crate) fn ring_gpu_va(&self) -> u64 {
++        self.backing.gpu_va().get() + 0x40
++    }
++
++    pub(crate) fn is_empty(&self) -> bool {
++        self.backing.with(|raw, _inner| {
++            raw.state.read_idx.load(Ordering::Relaxed) == 0
++                && raw.state.write_idx.load(Ordering::Relaxed) == 0
++        })
++    }
++
++    fn publish_pages(&mut self, base: u64, phys_pages: &[u64], mapping: bool) -> Result {
++        // The DRM device reference pins the same device/manager lifetime as every
++        // queue-owned range-7 mapping. No manager backlink is stored in q22, so
++        // this does not introduce another ownership edge into InitData.
++        let dev = self.dev.clone();
++        self.backing.with_mut(|raw, _inner| -> Result {
++            let mut write = raw.state.write_idx.load(Ordering::Relaxed);
++            if write >= Self::RING_LEN {
++                dev_err!(
++                    dev.as_ref(),
++                    "MMU: invalid G15 q22 write cursor {}\n",
++                    write
++                );
++                return Err(EIO);
++            }
++
++            for (i, phys) in phys_pages.iter().enumerate() {
++                let mut read = raw.state.read_idx.load(Ordering::Relaxed);
++                if read >= Self::RING_LEN {
++                    dev_err!(
++                        dev.as_ref(),
++                        "MMU: invalid G15 q22 read cursor {}\n",
++                        read
++                    );
++                    return Err(EIO);
++                }
++
++                // Exact AGXArmFirmware::insertNewMappingEntry() threshold:
++                // `bics wzr, 0xc0, write-read` falls through to the RTBuddy
++                // async note only when both occupancy bits 0x80 and 0x40 are
++                // set. Apple sends the note before attempting this insertion
++                // and may therefore send it repeatedly while occupancy stays
++                // in the 0xc0..0xff modulo-256 range.
++                let occupancy = write.wrapping_sub(read) & 0xff;
++                if occupancy & Self::PRESSURE_MASK == Self::PRESSURE_MASK {
++                    dev.gpu.g15_mapping_pressure_kick()?;
++                }
++
++                let next = (write + 1) & 0xff;
++                while next == read {
++                    // Apple calls its 10-ms sleep wrapper and reloads read_idx
++                    // until firmware consumes at least one q22 entry. Preserve
++                    // that blocking producer behavior, but fail closed if the
++                    // firmware has crashed instead of sleeping forever.
++                    if dev.gpu.is_crashed() {
++                        return Err(ENODEV);
++                    }
++                    fsleep(Delta::from_millis(10));
++                    read = raw.state.read_idx.load(Ordering::Relaxed);
++                    if read >= Self::RING_LEN {
++                        dev_err!(
++                            dev.as_ref(),
++                            "MMU: invalid G15 q22 read cursor {} while waiting for ring space\n",
++                            read
++                        );
++                        return Err(EIO);
++                    }
++                }
++
++                raw.ring[write as usize] = fw::initdata::raw::G15CacheFlushEntry {
++                    addr: fw::types::U64(base + (i * UAT_PGSZ) as u64),
++                    phys_page_4k: fw::types::U32((phys >> 12).try_into()?),
++                    secure_context_id: fw::types::U32(if mapping { 0 } else { u32::MAX }),
++                    fw_page_count: 1,
++                    mapping_flags: if mapping { fw::initdata::raw::G15_MAP_FLAG_MAP } else { 0 },
++                    reserved_14: fw::types::U32(0),
++                };
++                // Exact Apple publication order: copy the complete 0x18-byte entry,
++                // DMB ISH, then publish state+0x10. SeqCst fence is the kernel-Rust
++                // ARM64 DMB class used elsewhere in this driver and is at least as strong.
++                fence(Ordering::SeqCst);
++                raw.state.write_idx.store(next, Ordering::Relaxed);
++                write = next;
++            }
++            Ok(())
++        })
++    }
++
++    /// CPU-only reversible check of the exact q22 encoder and publication
++    /// cursors. This is called only by the manager preflight before RTKit or
++    /// firmware construction, and restores both touched slots and cursors to
++    /// their allocation-zero bootstrap state before returning.
++    pub(crate) fn preflight_roundtrip(&mut self) -> Result {
++        if !self.is_empty() {
++            return Err(EBUSY);
++        }
++
++        let base = G15_GART_RANGE7.start + 0x0040_0000;
++        let phys = 0x0000_0008_1234_0000u64;
++        let pages = [phys];
++
++        let result = (|| -> Result {
++            self.publish_mapping(base, &pages)?;
++            let map_ok = self.backing.with(|raw, _inner| {
++                let e = raw.ring[0];
++                raw.state.read_idx.load(Ordering::Relaxed) == 0
++                    && raw.state.write_idx.load(Ordering::Relaxed) == 1
++                    && e.addr.0 == base
++                    && e.phys_page_4k.0 == (phys >> 12) as u32
++                    && e.secure_context_id.0 == 0
++                    && e.fw_page_count == 1
++                    && e.mapping_flags == fw::initdata::raw::G15_MAP_FLAG_MAP
++                    && e.reserved_14.0 == 0
++            });
++            if !map_ok {
++                return Err(EIO);
++            }
++
++            self.publish_unmapping(base, &pages)?;
++            let unmap_ok = self.backing.with(|raw, _inner| {
++                let e = raw.ring[1];
++                raw.state.read_idx.load(Ordering::Relaxed) == 0
++                    && raw.state.write_idx.load(Ordering::Relaxed) == 2
++                    && e.addr.0 == base
++                    && e.phys_page_4k.0 == (phys >> 12) as u32
++                    && e.secure_context_id.0 == u32::MAX
++                    && e.fw_page_count == 1
++                    && e.mapping_flags == 0
++                    && e.reserved_14.0 == 0
++            });
++            if !unmap_ok {
++                return Err(EIO);
++            }
++            Ok(())
++        })();
++
++        self.backing.with_mut(|raw, _inner| {
++            raw.ring[0] = Default::default();
++            raw.ring[1] = Default::default();
++            raw.state.read_idx.store(0, Ordering::Relaxed);
++            raw.state.write_idx.store(0, Ordering::Relaxed);
++        });
++        fence(Ordering::SeqCst);
++
++        result?;
++        if !self.is_empty() {
++            return Err(EIO);
++        }
++        Ok(())
++    }
++
++    fn publish_mapping(&mut self, base: u64, phys_pages: &[u64]) -> Result {
++        self.publish_pages(base, phys_pages, true)
++    }
++
++    fn publish_unmapping(&mut self, base: u64, phys_pages: &[u64]) -> Result {
++        self.publish_pages(base, phys_pages, false)
++    }
++}
++
+ struct G15SharedBank1MappingInner {
+     _gem: ARef<gem::Object>,
+     mapped_size: usize,
+@@ -1039,6 +1758,8 @@ struct G15SharedBank1MappingInner {
+ pub(crate) struct G15SharedBank1Mapping {
+     node: Option<mm::Node<(), G15SharedBank1MappingInner>>,
+     inner: Arc<UatInner>,
++    notifier: Option<Arc<Mutex<G15MappingNotifier>>>,
++    phys_pages: KVec<u64>,
+ }
+ 
+ impl G15SharedBank1Mapping {
+@@ -1053,6 +1774,22 @@ fn drop(&mut self) {
+         let node = self.node.take().unwrap();
+         let iova = node.start();
+         let size = node.mapped_size;
++        if let Some(notifier) = self.notifier.as_ref() {
++            if notifier.lock().publish_unmapping(iova, &self.phys_pages).is_err() {
++                pr_err!(
++                    "MMU: failed to publish G15 shared bank-1 unmapping {:#x}:{:#x}; preserving PTE and VA reservation\n",
++                    iova,
++                    size
++                );
++                // Apple publishes the q22 unmap record before AGXSecureGart::unmap().
++                // If that publication cannot be completed, removing the PTE would
++                // leave firmware with stale mapping state. Leak the reservation and
++                // its GEM reference instead of making the VA reusable underneath
++                // firmware. This is a terminal fail-closed path (RTKit loss/crash).
++                core::mem::forget(node);
++                return;
++            }
++        }
+         {
+             let mut shared = self.inner.lock();
+             if let Some(bank1) = shared.g15_shared_bank1.as_mut() {
+@@ -1095,9 +1832,14 @@ pub(crate) fn map(
+         alignment: u64,
+         prot: Prot,
+         guard: bool,
++        notifier: Option<Arc<Mutex<G15MappingNotifier>>>,
+     ) -> Result<G15SharedBank1Mapping> {
+         let sgt = gem.owned_sg_table()?;
++        if size & UAT_PGMSK != 0 {
++            return Err(EINVAL);
++        }
+         let reserve_size = size + if guard { UAT_PGSZ } else { 0 };
++        let mut phys_pages = KVec::with_capacity(size / UAT_PGSZ, GFP_KERNEL)?;
+         let mut shared = self.inner.lock();
+         let bank1 = shared.g15_shared_bank1.as_mut().ok_or(EINVAL)?;
+         let node = bank1.mm.insert_node_in_range(
+@@ -1133,6 +1875,11 @@ pub(crate) fn map(
+                 );
+                 return Err(EINVAL);
+             }
++            for page_off in (0..len).step_by(UAT_PGSZ) {
++                phys_pages
++                    .push((addr + page_off) as u64, GFP_KERNEL)
++                    .expect("G15 phys_pages push failed after reserve");
++            }
+             bank1.page_table.map_pages(
+                 iova..(iova + len as u64),
+                 addr as PhysicalAddr,
+@@ -1155,9 +1902,41 @@ pub(crate) fn map(
+         mem::tlbi_all();
+         mem::sync();
+ 
++        if let Some(q22) = notifier.as_ref() {
++            if let Err(err) = q22.lock().publish_mapping(base, &phys_pages) {
++                // Native G15 ordering is secure-GART map first, q22 publication
++                // second. If publication fails, undo the just-created PTEs before
++                // allowing the VA reservation to be released/reused.
++                let rollback = {
++                    let mut shared = self.inner.lock();
++                    match shared.g15_shared_bank1.as_mut() {
++                        Some(bank1) => bank1
++                            .page_table
++                            .unmap_pages(base..(base + size as u64)),
++                        None => Err(EINVAL),
++                    }
++                };
++                fence(Ordering::SeqCst);
++                mem::tlbi_all();
++                mem::sync();
++                if rollback.is_err() {
++                    dev_err!(
++                        self.dev.as_ref(),
++                        "MMU: failed to roll back unpublished G15 shared bank-1 mapping {:#x}:{:#x}; leaking VA reservation\n",
++                        base,
++                        size
++                    );
++                    core::mem::forget(node);
++                }
++                return Err(err);
++            }
++        }
++
+         Ok(G15SharedBank1Mapping {
+             node: Some(node),
+             inner: self.inner.clone(),
++            notifier,
++            phys_pages,
+         })
+     }
+ }
+@@ -1964,10 +2743,7 @@ pub(crate) fn new_vm(&self, id: u64, kernel_range: Range<u64>) -> Result<Vm> {
+ 
+     /// Creates the reference-counted inner data for a new `Uat` instance.
+     #[inline(never)]
+-    fn make_inner(
+-        dev: &driver::AsahiDevice,
+-        g15_shared_bank1: Option<G15SharedBank1State>,
+-    ) -> Result<Arc<UatInner>> {
++    fn make_inner(dev: &driver::AsahiDevice) -> Result<Arc<UatInner>> {
+         let handoff_rgn = Self::map_region(dev.as_ref(), c_str!("handoff"), HANDOFF_SIZE, true)?;
+         let ttbs_rgn = Self::map_region(dev.as_ref(), c_str!("ttbs"), SLOTS_SIZE, true)?;
+ 
+@@ -1986,7 +2762,7 @@ fn make_inner(
+                     UatShared {
+                         kernel_ttb1: 0,
+                         map_kernel_to_user: false,
+-                        g15_shared_bank1,
++                        g15_shared_bank1: None,
+                         handoff_rgn,
+                         ttbs_rgn,
+                     },
+@@ -2006,15 +2782,11 @@ pub(crate) fn new(
+     ) -> Result<Self> {
+         dev_info!(dev.as_ref(), "MMU: Initializing...\n");
+ 
+-        // G15 has two 42-bit bank-local roots. Normal clients allocate bank 0
+-        // privately and import accelerator-shared bank 1. Current G13/G14
+-        // configs are all 39-bit, so this allocation is unreachable there.
+-        let g15_shared_bank1 = if cfg.uat_ias >= G15_HW_UAT_IAS {
+-            Some(G15SharedBank1State::new(cfg)?)
+-        } else {
+-            None
+-        };
+-        let inner = Self::make_inner(dev, g15_shared_bank1)?;
++        // G15 has two 42-bit bank-local roots.  The accelerator/kernel UAT
++        // owns both roots; normal clients import its bank 1.  Construct the
++        // shared range-7 view only after the existing kernel TTB1 root is
++        // known, so slot 0 and every client use one physical bank-1 root.
++        let inner = Self::make_inner(dev)?;
+ 
+         let of_node = dev.as_ref().of_node().ok_or(EINVAL)?;
+         let res = of_node.reserved_mem_region_to_resource_byname(c_str!("pagetables"))?;
+@@ -2064,6 +2836,21 @@ pub(crate) fn new(
+ 
+         inner.handoff().init(cfg.gpu_gen == hw::GpuGen::G15)?;
+ 
++        // G15 firmware initializes root[2] of the accelerator-owned bank-1
++        // spine during the handoff.  Only after that handshake is complete can
++        // Linux safely discover the firmware-carveout shared-L2 page.  E026
++        // validates this spine read-only; range-7 leaf mutation remains gated.
++        if cfg.uat_ias >= G15_HW_UAT_IAS {
++            core::mem::drop(inner);
++            let mut bank1 = G15SharedBank1State::new(dev, cfg, ttb1)?;
++            // E029 exercises the persistent shared-bank1 backend itself. The
++            // six Linux L3 parents remain installed until UAT teardown; the
++            // test leaf is mapped/unmapped through the real runtime methods.
++            bank1.page_table.e029_preflight_backend(dev)?;
++            inner = uat.inner.lock();
++            inner.g15_shared_bank1 = Some(bank1);
++        }
++
+         dev_info!(dev.as_ref(), "MMU: Initializing TTBs\n");
+ 
+         inner.handoff().lock();
+diff --git a/drivers/gpu/drm/asahi/pgtable.rs b/drivers/gpu/drm/asahi/pgtable.rs
+index d65c62eefc1e46470f8f6e67c939793256445cde..576d91e91c8b5d2d5e95cc782c7d372ae6b08528 100644
+--- a/drivers/gpu/drm/asahi/pgtable.rs
++++ b/drivers/gpu/drm/asahi/pgtable.rs
+@@ -164,12 +164,12 @@ pub(crate) mod prot {
+     /// `PROT_GPU_FW_PRIV_RW`, which would add PXN/UXN bits not present here.
+     pub(crate) const PROT_G15_RANGE5_CACHED: Prot =
+         PROT_FW_GPU_NA.memattr(MEMATTR_CACHED);
+-    /// Exact non-legacy G15 eGartRange-7 protection shape used by both the
+-    /// firmware-owned PMPageMetricsBuffer stack and the independent 0x80
+-    /// Parameter Scene statistics resource. Apple maps both with option word
+-    /// 0x700000007; SecureGart produces compact 0x007 and the UAT encoder emits
+-    /// AP=1, device memattr, UXN=1, GPU-access=1, PXN=0.
+-    pub(crate) const PROT_G15_RANGE7_PM: Prot =
++    /// Exact non-legacy G15 eGartRange-7 firmware-shared protection shape.
++    /// Apple uses option word 0x700000007 for the q22 mapping-control state/ring,
++    /// PMPageMetricsBuffer, and Parameter Scene statistics resources. SecureGart
++    /// produces compact 0x007 and the UAT encoder emits AP=1, device memattr,
++    /// UXN=1, GPU-access=1, PXN=0.
++    pub(crate) const PROT_G15_RANGE7_FW: Prot =
+         PROT_FW_RW.memattr(MEMATTR_DEV);
+     /// Firmware/GPU shared (private) RW
+     pub(crate) const PROT_GPU_FW_PRIV_RW: Prot = PROT_FW_GPU_RW.memattr(MEMATTR_CACHED);
+@@ -191,9 +191,9 @@ pub(crate) mod prot {
+ // with no PXN/UXN bits.
+ const _: [(); 1] = [(); ((prot::PROT_G15_RANGE5_CACHED.as_pte() & UAT_PROT_BITS)
+     == 0x0080_0000_0000_0000) as usize];
+-// Range-7 PM resources: compact 0x007 -> AP=1, device memattr,
++// Range-7 FW-shared resources: compact 0x007 -> AP=1, device memattr,
+ // UXN + GPU-access high bits.
+-const _: [(); 1] = [(); ((prot::PROT_G15_RANGE7_PM.as_pte() & UAT_PROT_BITS)
++const _: [(); 1] = [(); ((prot::PROT_G15_RANGE7_FW.as_pte() & UAT_PROT_BITS)
+     == 0x00c0_0000_0000_0044) as usize];
+ 
+ impl Prot {
+@@ -251,7 +251,7 @@ const fn memattr(&self, memattr: u8) -> Self {
+         Self { memattr, ..*self }
+     }
+ 
+-    const fn as_pte(&self) -> u64 {
++    pub(crate) const fn as_pte(&self) -> u64 {
+         (self.ap as u64) << UAT_AP_SHIFT
+             | (self.high_bits as u64) << UAT_HIGH_BITS_SHIFT
+             | (self.memattr as u64) << UAT_MEMATTR_SHIFT
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index 6f782206af6b8be36e7bc48cc237d4d9d4e19026..4ffe17148b66d0e225023df083e99fee4066d0c4 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -61,6 +61,11 @@
+ 
+ /// Trait implemented by all versioned queues.
+ pub(crate) trait Queue: Send + Sync {
++    /// Publish this queue's VM in a UAT user slot without constructing or
++    /// submitting any GPU work. This is used only by the bounded G15 bring-up
++    /// gate immediately before the real submission path.
++    fn preflight_vm_bind(&mut self) -> Result<u32>;
++
+     fn submit(
+         &mut self,
+         id: u64,
+@@ -472,6 +477,7 @@ pub(crate) fn new(
+         _g15_ualloc_range5_uncached: Option<Arc<Mutex<alloc::DefaultAllocator>>>,
+         _g15_ualloc_range5_cached: Option<Arc<Mutex<alloc::DefaultAllocator>>>,
+         _g15_shared_bank1: Option<mmu::G15SharedBank1>,
++        _g15_mapping_notifier: Option<Arc<Mutex<mmu::G15MappingNotifier>>>,
+         event_manager: Arc<event::EventManager>,
+         mgr: &buffer::BufferManager::ver,
+         id: u64,
+@@ -532,8 +538,9 @@ pub(crate) fn new(
+             dev,
+             _g15_shared_bank1.ok_or(EINVAL)?,
+             buffer::PAGE_SIZE,
+-            mmu::PROT_G15_RANGE7_PM,
++            mmu::PROT_G15_RANGE7_FW,
+             true,
++            _g15_mapping_notifier,
+         );
+         #[ver(G == G15)]
+         let g15_pm_page_metrics = g15_bank1_alloc.array_empty_tagged(
+@@ -708,6 +715,46 @@ fn build_attachments(reader: &mut Reader<'_>, size: usize) -> Result<microseq::A
+ 
+ #[versions(AGX)]
+ impl Queue for Queue::ver {
++    fn preflight_vm_bind(&mut self) -> Result<u32> {
++        let bind = (*self.dev).gpu.bind_vm(&self.vm)?;
++        let slot = bind.slot();
++
++        #[ver(G == G15)]
++        {
++            let gpu = match (*self.dev)
++                .gpu
++                .clone()
++                .arc_as_any()
++                .downcast::<gpu::GpuManager::ver>()
++            {
++                Ok(gpu) => gpu,
++                Err(_) => return Err(EIO),
++            };
++
++            // Use the compute subqueue for the bounded publication probe. With
++            // wptr=0 the common scheduler path returns before any command entry
++            // is dereferenced, and this avoids render/TVB-specific work.
++            gpu.g15_set_command_submission_enabled(true)?;
++            let publish_result = self
++                .q_comp
++                .as_ref()
++                .ok_or(EIO)?
++                .wq
++                .g15_publish_empty(&gpu);
++
++            // Restore the host runtime gate only after both the accelerator TX
++            // entry and native ReleaseResource completed successfully. On any
++            // ambiguous failure leave it enabled and fail-stop until reboot.
++            if publish_result.is_ok() {
++                gpu.g15_set_command_submission_enabled(false)?;
++            }
++            publish_result?;
++        }
++
++        core::mem::drop(bind);
++        Ok(slot)
++    }
++
+     fn submit(
+         &mut self,
+         id: u64,
+@@ -1033,5 +1080,19 @@ fn submit(
+ impl Drop for Queue::ver {
+     fn drop(&mut self) {
+         mod_dev_dbg!(self.dev, "[Queue {}] Dropping queue\n", self.inner.id);
++
++        #[ver(G == G15)]
++        if self.inner.gpu_context.is_published_to_firmware() {
++            // Publication/release did not complete with a known-good outcome.
++            // The compute WorkQueue owns the exact QueueInfo/ring/state backing
++            // firmware may still reference. Retain it until reboot rather than
++            // risking a firmware use-after-free from later scheduler activity.
++            dev_err!(
++                self.dev.as_ref(),
++                "G15 queue {} has uncertain firmware publication; retaining QueueInfo backing\n",
++                self.inner.id
++            );
++            core::mem::forget(self.q_comp.take());
++        }
+     }
+ }
+diff --git a/drivers/gpu/drm/asahi/workqueue.rs b/drivers/gpu/drm/asahi/workqueue.rs
+index 4edf83b794e1bf38759e481e0f22e499d511c6b5..9f8fc67b3bbc09ebbb57ab3a2886835f6542eb5c 100644
+--- a/drivers/gpu/drm/asahi/workqueue.rs
++++ b/drivers/gpu/drm/asahi/workqueue.rs
+@@ -28,11 +28,12 @@
+     event,
+     fw,
+     gpu,
++    hw,
+     regs, //
+ };
+ use core::any::Any;
+ use core::num::NonZeroU64;
+-use core::sync::atomic::Ordering;
++use core::sync::atomic::{AtomicBool, Ordering};
+ use kernel::{
+     dma_fence,
+     error::code::*,
+@@ -63,6 +64,25 @@ impl<T: GpuStruct + Sync + Send> OpaqueCommandObject for GpuObject<T> where T: C
+ 
+ const MAX_JOB_SLOTS: u32 = 127;
+ 
++/// Apple writes mach_absolute_time() into G15 accelerator-ring entries. On
++/// Apple Silicon that is the architectural counter clock domain; the physical
++/// counter used by the existing DRM_ASAHI_GET_TIME path has the same frequency
++/// and differs only by a constant offset from CNTVCT on bare metal.
++#[inline(always)]
++pub(crate) fn g15_submission_timestamp() -> u64 {
++    let raw: u64;
++
++    // SAFETY: this only reads the architectural counter.
++    unsafe {
++        core::arch::asm!(
++            "mrs {x}, CNTPCT_EL0",
++            x = out(reg) raw
++        );
++    }
++
++    raw
++}
++
+ /// An enum of possible errors that might cause a piece of work to fail execution.
+ #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+ pub(crate) enum WorkError {
+@@ -98,6 +118,11 @@ fn from(err: WorkError) -> Self {
+ pub(crate) struct GpuContext {
+     dev: driver::AsahiDevRef,
+     data: Option<KBox<GpuObject<fw::workqueue::GpuContextData>>>,
++    /// True from the first possible QueueInfo publication until the native
++    /// firmware ReleaseResource handshake completes. This is intentionally
++    /// conservative: an uncertain pipe-send outcome must never turn into a
++    /// host-only free of a context firmware may have observed.
++    published_to_firmware: AtomicBool,
+ }
+ no_debug!(GpuContext);
+ 
+@@ -108,12 +133,20 @@ pub(crate) fn new(
+         alloc: &mut gpu::KernelAllocators,
+         buffer: Arc<dyn core::any::Any + Send + Sync>,
+     ) -> Result<GpuContext> {
++        let is_g15 = dev.gpu.get_cfg().gpu_gen == hw::GpuGen::G15;
+         Ok(GpuContext {
+             dev: dev.into(),
++            published_to_firmware: AtomicBool::new(false),
+             data: Some(KBox::new(
+                 alloc.shared.new_object(
+                     fw::workqueue::GpuContextData { _buffer: buffer },
+-                    |_inner| Default::default(),
++                    move |_inner| {
++                        if is_g15 {
++                            fw::workqueue::raw::GpuContextData::g15()
++                        } else {
++                            Default::default()
++                        }
++                    },
+                 )?,
+                 GFP_KERNEL,
+             )?),
+@@ -124,13 +157,31 @@ pub(crate) fn new(
+     pub(crate) fn gpu_pointer(&self) -> GpuPointer<'_, fw::workqueue::GpuContextData> {
+         self.data.as_ref().unwrap().gpu_pointer()
+     }
++
++    pub(crate) fn data(&self) -> &GpuObject<fw::workqueue::GpuContextData> {
++        self.data.as_ref().unwrap()
++    }
++
++    pub(crate) fn mark_published_to_firmware(&self) {
++        self.published_to_firmware.store(true, Ordering::Release);
++    }
++
++    pub(crate) fn mark_released_from_firmware(&self) {
++        self.published_to_firmware.store(false, Ordering::Release);
++    }
++
++    pub(crate) fn is_published_to_firmware(&self) -> bool {
++        self.published_to_firmware.load(Ordering::Acquire)
++    }
+ }
+ 
+ impl Drop for GpuContext {
+     fn drop(&mut self) {
+         mod_dev_dbg!(self.dev, "GpuContext: Freeing GPU context\n");
+         let data = self.data.take().unwrap();
+-        (*self.dev).gpu.free_context(data);
++        (*self.dev)
++            .gpu
++            .free_context(data, self.is_published_to_firmware());
+     }
+ }
+ 
+@@ -516,11 +567,26 @@ pub(crate) fn run(mut self, channel: &mut channel::PipeChannel::ver) {
+         let event_slot = event.0.slot();
+ 
+         let msg = fw::channels::RunWorkQueueMsg::ver {
++            #[ver(G == G15)]
++            g15_timestamp: U64(g15_submission_timestamp()),
++            #[ver(G != G15)]
+             pipe_type: inner.pipe_type,
+             work_queue: Some(inner.info.weak_pointer()),
++            #[ver(G != G15)]
+             wptr: inner.wptr,
++            #[ver(G != G15)]
+             event_slot,
++            #[ver(G != G15)]
+             is_new: inner.new,
++            #[ver(G == G15)]
++            g15_pipe_type: inner.pipe_type,
++            #[ver(G == G15)]
++            g15_wptr: inner.wptr as u16,
++            #[ver(G == G15)]
++            g15_event_slot: event_slot as u8,
++            #[ver(G == G15)]
++            g15_is_new: inner.new,
++            #[ver(G != G15)]
+             __pad: Default::default(),
+         };
+         channel.send(&msg);
+@@ -832,6 +898,79 @@ pub(crate) fn dump_info(&self) {
+     pub(crate) fn info_pointer(&self) -> GpuWeakPointer<QueueInfo::ver> {
+         self.info_pointer
+     }
++
++    /// Bounded G15 publication probe: publish a freshly-created QueueInfo with
++    /// wptr=0 and Apple's untouched stamp-index sentinel (0x80), wait until
++    /// RTKit consumes the accelerator-ring entry, then retire the shared
++    /// scheduler/context resource synchronously before any queue backing can be
++    /// dropped. No command-ring entry is ever made visible.
++    pub(crate) fn g15_publish_empty(&self, gpu: &gpu::GpuManager::ver) -> Result {
++        #[ver(G != G15)]
++        {
++            let _ = gpu;
++            return Err(EINVAL);
++        }
++
++        #[ver(G == G15)]
++        {
++            let (context, pipe_type, priority, info_pointer) = {
++                let mut inner = self.inner.lock();
++
++                if !inner.new
++                    || inner.wptr != 0
++                    || !inner.pending.is_empty()
++                    || inner.event.is_some()
++                    || inner.pending_jobs != 0
++                {
++                    return Err(EBUSY);
++                }
++
++                // The probe is deliberately one-shot even if transport fails.
++                // A second new-queue registration against a context whose first
++                // outcome is uncertain would be a strictly weaker safety model.
++                inner.new = false;
++                let context = inner
++                    .info
++                    .with(|_raw, info_inner| info_inner.gpu_context.clone());
++                (context, inner.pipe_type, inner.priority, self.info_pointer)
++            };
++
++            // Mark before the first possible transport side effect. A failed or
++            // timed-out send must be treated as potentially firmware-visible.
++            context.mark_published_to_firmware();
++
++            let publish_result =
++                gpu.g15_publish_empty_queue(pipe_type, priority, info_pointer);
++
++            let fields = context
++                .data()
++                .with(|raw, _inner| raw.g15_release_resource_fields());
++            dev_info!(
++                context.dev.as_ref(),
++                "T8122 G15 E033 empty QueueInfo publish result={:?}, context fields={:02x?}\n",
++                publish_result,
++                fields
++            );
++
++            // Opcode 0x11 is also a proven no-op when ctx0/ctx1 are still 0xff,
++            // so it is safe to issue after an uncertain publication attempt.
++            let release_result = gpu.release_context_now(context.data());
++            if release_result.is_ok() {
++                context.mark_released_from_firmware();
++            }
++            dev_info!(
++                context.dev.as_ref(),
++                "T8122 G15 E033 ReleaseResource result={:?}\n",
++                release_result
++            );
++
++            match (publish_result, release_result) {
++                (Ok(()), Ok(())) => Ok(()),
++                (Err(e), Ok(())) => Err(e),
++                (_, Err(e)) => Err(e),
++            }
++        }
++    }
+ }
+ 
+ /// Trait used to erase the version-specific type of WorkQueues, to avoid leaking

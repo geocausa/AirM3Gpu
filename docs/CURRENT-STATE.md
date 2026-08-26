@@ -1,8 +1,8 @@
 # Current G15 Bring-up State
 
-Research state: 2026-08-25
+Research state: 2026-08-26
 
-Last live checkpoint: 2026-08-24
+Last live checkpoint: 2026-08-26
 
 ## Hardware identity
 
@@ -18,83 +18,100 @@ Runtime identity registers:
 
 ## Closed runtime gates
 
-The following were independently exercised on real hardware and then torn down cleanly:
+The following stages have been independently exercised on real hardware with fail-closed recovery:
 
 1. Device discovery and G15G C0 identity validation.
-2. GFX power-domain activation and ASC start.
-3. 42-bit G15 UAT handoff, shared bank-1 root setup, TTB bootstrap, and cleanup.
-4. J615 `PwrConfig` parsing and exact validation.
-5. Complete G15 InitData construction and CPU-side validation, followed by destruction.
-6. Complete pre-RTKit GpuManager/channel/backing graph validation.
-7. RTKit management protocol v12 handshake and endpoint-map discovery.
-8. EP1 firmware-preallocated crashlog physical backing and successful RTKit acceptance.
-9. RTKit application endpoint EP20/EP21 startup with no InitData or application traffic.
+2. GFX ASC start/stop and 42-bit G15 UAT handoff.
+3. Exact J615 14-state `PwrConfig` validation.
+4. Byte-validated G15 startup InitData/HwData images.
+5. RTKit management protocol v12, EP1 crashlog backing, and EP20/EP21 application endpoint startup.
+6. Native G15 `MSG_INIT` handoff and post-init bootstrap.
+7. Persistent GpuManager/RTKit lifetime and DRM registration.
+8. `/dev/dri/renderD128` exposure with submission paths still explicitly lab-gated.
+9. Safe GET_PARAMS, VM creation/destruction, GEM host lifecycle, and unbound VM mappings.
+10. Passive queue/context lifecycle with host-only fail-closed cleanup.
+11. Native q22 mapping notification/pressure handling.
+12. G15 shared-bank1 and range-7 page-table spine/L3/leaf handling.
+13. J615 MTR sensor initialization sufficient to remove the earlier MTR alarm boundary.
+14. A signed, one-shot empty Compute QueueInfo publication used only to test accelerator transport.
 
-After each preflight, ASC is stopped and the driver deliberately fails closed rather than registering DRM.
+No normal render workload is enabled at this checkpoint.
 
-## Power model closure
+## Current pipe transport boundary
 
-J615 has 14 performance-state records: one zero/default state followed by 13 active states.
+The bounded empty QueueInfo probe publishes no GPU command-ring entry. For Compute priority 2 it advances the G15 TX `WriteIndex` from 0 to 1 and rings EP21.
 
-Machine-exact/derived values currently used:
+The exact G15 TX descriptor is:
 
-- core leakage coefficient: `1644`
-- SRAM leakage coefficient: `60`
-- minimum SRAM voltage: `790000 uV`
-- `sram_k = 1.02`
-- base clock: `24000000 Hz`
-- maximum reconstructed power: `21405 mW`
-- Smart Idle standby timer: `700 us`
-- maximum fragment units: `10`
-- maximum GPs: `4`
+1. ReadIndex
+2. CFIIndex
+3. WriteIndex
+4. ring GPU pointer
 
-See `research/g15/J615-POWER-CONFIG.md` for the active OPP table.
+The Linux PipeChannel descriptor and the RuntimePointers-exported descriptor were proven to reference the same exact objects. The host-side publication barrier/order and the Compute priority-2 work doorbell (`0x008300000000000a`) also match the reconstructed Apple contract.
 
-## G15 InitData closure
+The live result remains:
 
-The G15 HwDataA legacy Shared1/2/3 region is replaced by a generation-specific deterministic pre-tail spanning `0x3a9c..0x421b`.
+- before publication: `Read=0, CFI=0, Write=0`
+- after host publication: `Read=0, CFI=0, Write=1`
+- after bounded wait: `Read=0, CFI=0, Write=1`
+- firmware statistics tag `0x0f` is emitted during the wait
+- publication times out and backing is retained fail-closed
 
-Important proven boundaries:
+The tag proves that the EP21 activity is reaching firmware far enough to generate firmware-side telemetry, but the real pipe consumer does not retire the entry.
 
-- pre-tail begins: `HwDataA + 0x3a9c`
-- float `5.0`: `+0x3aa4`
-- C0 DPE/PPT image begins: `+0x3aa8`
-- DPE/PPT image length: `0x5dc`
-- SoCHot block begins: `+0x4188`
-- SoCHot sensor mask at `+0x4198`: `0x4248`
-- SoCHot scalar at `+0x41a0`: `125`
-- existing typed G15 tail begins: `+0x421c`
-- complete HwDataA size remains `0x4360`
+## Submission-time wake/power closure
 
-The clean-room DPE/PPT encoder is included at `research/g15/build-g15g-c0-dpe-ppt.py`.
+Apple G15 has a priority wake note separate from the work doorbell. For priority 2 the exact note is `0x0083000000000008`. Sending that note before the bounded Compute publication does not advance Read/CFI.
 
-## RTKit boundary
+`AGXAccelerator::notifyFirmware(priority, false)` also calls `ensurePoweredHardware(false)`, but exact J615 reconstruction proves that this function performs no submission-time power transition on the target:
 
-Management negotiation succeeds with protocol version 12. System endpoints are allowed to negotiate; application endpoints remain blocked.
+- `isPowerManagedInAGX()` is `+0x650` bit 10 and J615 leaves it clear;
+- base `configureDevice()` writes `strh 5` at accelerator `+0x6c0`;
+- little-endian layout therefore initializes feature byte `+0x6c1 = 0`;
+- the associated `+0x5d1` static-power gate is consequently false;
+- `ensurePoweredHardware(false)` bypasses `changePowerStateTo(1)` and returns.
 
-EP20 (firmware) and EP21 (doorbell) are discovered and can now be started independently. q21 remains untouched. No InitData address is sent to firmware and no `MSG_INIT` occurs.
+The missing boundary is therefore not a normal submission-time PMGR or GFX wake operation.
 
-### EP1 crashlog backing — closed
+## Ruled out at this checkpoint
 
-System endpoint EP1 sends:
+Current evidence rules out:
 
-- raw request `0x1041000192c000`
-- buffer size `0x4000`
-- supplied address `0x1000192c000`
+- incorrect G15 TX qword ordering;
+- CFI being a host WriteIndex shadow;
+- a stale RuntimePointers pipe descriptor;
+- an obvious missing CPU/DMA ordering barrier before EP21;
+- wrong Compute/priority-2 work-doorbell encoding;
+- missing G15 priority wake note;
+- missing normal J615 `ensurePoweredHardware(false)` transition;
+- the earlier MTR sensor initialization failure;
+- absence of the shared-bank1/range-7 mapping backend.
 
-The iBoot-populated live ADT places the address inside firmware carveout `region-id-25` (`0x10001888000..0x10001f73fff`). Read-only AGX UAT walks show that neither the full address nor the low-40 `0x192c000` form has a TTBR0 mapping, including after RTKit management boot. A bounded `memremap(WB)` succeeds and reads the firmware fill pattern `0xefefefefefefefef`.
+## Current boundary
 
-The G15 RTKit implementation now models this as firmware-preallocated physical ordinary memory, distinct from host-allocated GEM/UAT buffers. Live validation completes with zero GPU `failed buffer request` messages. See `research/g15/G15-RTKIT-CRASHLOG.md`.
+The next target is **pre-submission RTBuddy/RTKit runtime-state initialization** or an equivalent firmware state-machine gate.
 
-### Current boundary
+RTKit-2419's pipe work callback can be scheduled by a doorbell yet skip the real pipe consumer under firmware runtime/power-state conditions. That is consistent with the observed `stats tag 0x0f` plus unchanged Read/CFI indexes.
 
-EP20 (firmware) and EP21 (doorbell) are now started in the tested preflight using RTKit `STARTEP` management messages only. No unknown app message, crash, q21 mutation, or buffer failure is observed. The next stage is **not yet** a live `MSG_INIT`. A pre-handoff startup-read audit found mandatory HwDataB fields that are still incomplete: `+0x6a8` (`io_mappings[3].virt_addr`, the firmware RGX register base) would be zero in the promoted source, the J615 chip-info tuple has two mismatched words, and the G15 startup tail still needs exact reconstruction. See `research/g15/G15-PRE-MSG-INIT-AUDIT.md`.
+No direct PMGR register poke and no real command-buffer submission is justified yet. The next live experiment must wait until the relevant RTBuddy/firmware state transition is mechanically identified offline.
+
+See `research/g15/G15-PIPE-SUBMISSION-BOUNDARY.md` for the exact transport closure.
+
+## Source checkpoint
+
+The current clean Linux checkpoint head is:
+
+`2f08f68bb2efdadf2d337441553c1f682152a748`
+
+`patches/linux/0004-drm-asahi-checkpoint-G15-through-empty-queue-boundary.patch` is a squashed delta from the previous public checkpoint head `1b57b289af96973badfbb8489ef379a1b3a96f07`. It has been validated in a temporary Git index to reconstruct the exact `2f08f68` tree.
 
 ## Explicitly not enabled
 
-- no `MSG_INIT`
-- no DRM registration/render node
-- no queue submission
-- no general G15 render support claim
+- no production G15 render path claim
+- no general command-buffer submission
+- no user workload execution through the experimental empty-publication gate
+- no direct experimental PMGR writes
+- no upstream AsahiLinux push implied by this public checkpoint
 
-The next live stage must remain behind a separately proven mapping and first-read HwDataB boundary. `MSG_INIT` is explicitly blocked until the byte-level startup image validates.
+The project remains a staged clean-room bring-up with one-shot live gates and Golden-kernel recovery.

@@ -1,21 +1,25 @@
-AirM3Gpu research state: 2026-08-25
-Last live checkpoint: 2026-08-24
+AirM3Gpu research state: 2026-08-26
+Last live checkpoint: 2026-08-26
 
 SOURCE REVISIONS
-linux base  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux head  1b57b289af96973badfbb8489ef379a1b3a96f07
-mesa base   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
-mesa head   d36216e783a3714eca0b734afb0df2301ece8739
+linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
+linux previous public head  1b57b289af96973badfbb8489ef379a1b3a96f07
+linux current checkpoint    2f08f68bb2efdadf2d337441553c1f682152a748
+linux current tree          e985490062efc4baf5847b6e73cd7cf799a5ffaa
+mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
+mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
+
+PUBLIC LINUX DELTA
+0004 sha256  ab5edbdd7854dd46a2e191fc039d8fda657598d8a9db642faf8d269992831aca
+0004 applies from 1b57b289af96973badfbb8489ef379a1b3a96f07
+0004 reconstructs tree e985490062efc4baf5847b6e73cd7cf799a5ffaa
 
 GOLDEN LOCAL BOOT CONTRACT
-golden kernel release  7.1.6-ubuntu-m3-usbpd-gc5037a961e4d
-golden vmlinuz sha256  24cc320029c67b8996bd0c12fdffe46e51d823dbda24c753e4dc634cc0d54315
-golden boot.bin sha256 8c538fc2c161d47cb2b275b650afd0c6b5dfd74fe1bd0c9343cf1c40d8602c9a
+golden kernel release   7.1.6-ubuntu-m3-usbpd-gc5037a961e4d
+golden vmlinuz sha256   24cc320029c67b8996bd0c12fdffe46e51d823dbda24c753e4dc634cc0d54315
+golden boot.bin sha256  8c538fc2c161d47cb2b275b650afd0c6b5dfd74fe1bd0c9343cf1c40d8602c9a
 
-CURRENT TESTED LIVE ARTIFACTS
-experimental kernel release 7.1.6-m3-g15-eot-gb3d38d16c076-dirty
-experimental boot.bin sha256 a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d
-experimental vmlinuz sha256 9f40eba872327e595577b7b74a12b3e2593620e3999967f6bff2ff28be1e2ed2
-experimental asahi.ko sha256 2441b74274ecc0a401bc503a142d16f838fecad942d8a0863202e05dcef62b79
-
-The current tested source contains no temporary built-in RTKit endpoint logger.
+LIVE TRANSPORT BOUNDARY
+latest isolated candidate release  7.1.6-gc6fa9b794ba9
+E035 diagnostic asahi.ko sha256  47f13bb98ffa6b40fb793e2ababdb9ba0d3b8068be91282cf550d68dafb03c41
+E035 is a diagnostic-only negative experiment; its extra wake telemetry is not part of the clean 2f08 checkpoint.
