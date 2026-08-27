@@ -104,9 +104,19 @@ E045 enabled q21 trace bits 1+2 (`host_flags=0x6`) and repeated one signed empty
 
 The callback argument is a dispatch/wake class, not PipeType: `FUN_6a0c` subsequently scans all four priorities and all V/F/C channels. Thus arg 1 does not imply a Fragment doorbell.
 
-The current boundary is now **inside `FUN_6a0c` or below**. The outer RTBuddy runtime-power gate is exonerated for this failure because callback entry is observed and the `0x207` blocked path is not taken. The next passive experiment should expose firmware's existing bit-1 scheduler traces `0x112`, `0x111`, and `0x128` to see whether Compute/priority-2's producer index is visible and whether its RunWorkQueue record is accepted.
+The outer RTBuddy runtime-power gate is exonerated for this failure because callback entry is observed and the `0x207` blocked path is not taken.
 
-No direct PMGR register poke and no real command-buffer submission is justified yet.
+## E046/E047 scheduler-entry control
+
+E046 exposed the existing bit-1 scheduler markers (`0x111`, `0x112`, `0x128`) but retained trace bit 2, whose high-rate `0x213` stream could pressure the 512-entry KTrace ring. E047 therefore repeated the same experiment with **bit 1 only** (`host_flags=0x2`). This removed the class-2 pressure confounder without changing queue, power, PMGR, doorbell, MMU, or submission semantics.
+
+The E047 signed empty Compute/priority-2 publication produced exactly one callback-entry `0x100` record (`args[0]=1`) and then no callback exit `0x101`, no scheduler snapshot `0x112`, no accepted-entry `0x111`, and no bounded scan `0x128`. These counts remained unchanged more than a minute later. The TX pipe remained `Read=0, CFI=0, Write=1` and timed out fail-closed.
+
+Exact callback control flow is: entry trace -> runtime-power gate -> `FUN_fffffc000003d330()` -> `FUN_fffffc0000006a0c(param_1)` -> exit trace. Because entry is observed but neither the first `FUN_6a0c` trace nor callback exit ever appears, the active firmware thread does not return from **`FUN_3d330()`**, the cold power/setup transaction.
+
+The callback argument is a dispatch/wake class, not PipeType; `FUN_6a0c` itself scans all priorities and V/F/C rings. The earlier assumption that Compute must imply callback arg 2 is therefore rejected.
+
+The next experiment should remain passive: correlate q21/q4 host-visible shared power/runtime fields with the `FUN_3d330` transaction at EP20 receive times. No direct PMGR register poke and no real command-buffer submission is justified yet.
 
 See `research/g15/G15-PIPE-SUBMISSION-BOUNDARY.md` and `research/g15/G15-PIPE-CALLBACK-GATE.md`.
 

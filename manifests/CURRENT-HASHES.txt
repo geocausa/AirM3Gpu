@@ -40,3 +40,10 @@ E045 asahi.ko sha256  e4a119856859dc00edef086d4dfc82e6f62ede7dd2ae0f33d7df32d750
 private evidence checkpoint E045  d67adda
 E045 selected KTrace  0x100=1(args0=1) 0x207=0 0x213=121
 Boundary: callback reached; outer gate passed; investigate FUN_6a0c scheduler internals.
+
+E046/E047 SCHEDULER-ENTRY CONTROL
+E046 asahi.ko sha256  167d24ebf241cc4facba1102be6e86152e623cef7f60a1ffd5a3d180e75a9806
+E047 bit1-only asahi.ko sha256  a46184ba4274770ff0e51b05619ecbcab15611294121b3a4a0ca436ee9c9d9a2
+private evidence checkpoint E047  9b37cad
+E047 selected KTrace  0x100=1(args0=1) 0x101=0 0x111=0 0x112=0 0x128=0 0x12e=0
+Boundary: callback enters, outer gate passed, FUN_3d330 cold-power transaction does not return before FUN_6a0c.

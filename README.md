@@ -14,7 +14,7 @@ The current hard boundary is a deliberately bounded **empty Compute QueueInfo pu
 
 Offline reconstruction has ruled out the obvious TX-layout, RuntimePointers aliasing, barrier, doorbell, G15 wake-note, MTR, shared-bank1, and normal J615 submission-time power hypotheses. In particular, J615 initializes accelerator feature gate `+0x6c1` to zero, so Apple's `ensurePoweredHardware(false)` performs no `state 2 -> 1` transition on normal submission.
 
-E045 now proves the failed first Compute publication reaches `g15_pipe_work_callback` and passes its outer runtime-power gate: callback entry `0x100` is present and blocked-path `0x207` is absent. The remaining stall is inside the firmware scheduler `FUN_6a0c` or below. Direct PMGR pokes remain unjustified.
+E045 proves the failed first Compute publication reaches `g15_pipe_work_callback` and passes its outer runtime-power gate. E047 then removes KTrace class-2 pressure and shows one `0x100` callback entry but no `0x101` exit and no first scheduler `0x112` record, even after more than a minute. Exact RTKit-2419 control flow places the non-returning boundary in the synchronous `FUN_3d330()` cold-power/setup transaction immediately before `FUN_6a0c`. Direct PMGR pokes remain unjustified; the next step is passive shared-state correlation inside that transaction.
 
 See [Current State](docs/CURRENT-STATE.md), [G15 Pipe Submission Boundary](research/g15/G15-PIPE-SUBMISSION-BOUNDARY.md), [G15 Pipe Callback Gate](research/g15/G15-PIPE-CALLBACK-GATE.md), [Workflow](docs/WORKFLOW.md), [Patch Bases](docs/PATCHES.md), and [Recovery](docs/RECOVERY.md).
 

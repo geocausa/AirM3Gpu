@@ -29,7 +29,7 @@ The relevant pipe callback is `g15_pipe_work_callback` at `0xfffffc0000042ca8`. 
 4. if the mask is set, arguments 1 or 2 may continue only when `FUN_fffffc000000cf58()` reports existing non-idle work;
 5. otherwise skip the scheduler and optionally emit KTrace `0x207`.
 
-The callback dispatch table binds arguments 0, 1 and 2. Compute maps to argument `2`.
+The callback dispatch table binds arguments 0, 1 and 2 to firmware wake/dispatch classes. These arguments are **not PipeType**; `FUN_6a0c` subsequently scans all priorities and all V/F/C rings.
 
 The bootstrap value `4` is scheduler-admissible because `4 & 0x78 == 0`; values carrying bits from `0x78` represent transition/busy forms rather than a simple zero/nonzero gate.
 
@@ -37,7 +37,7 @@ The bootstrap value `4` is scheduler-admissible because `4 & 0x78 == 0`; values 
 
 `FUN_fffffc000000cf58()` scans sixteen firmware work-state slots. It returns zero only when every slot is state 0 or 5, and nonzero when at least one slot is in another state.
 
-For the first empty Compute queue, the slots are expected to be idle. Thus the Compute arg-2 exception is not a generic wake bypass: if the internal power byte is in a blocked transition form, an otherwise-idle first submission can be prevented from entering `FUN_6a0c` entirely.
+For the first empty Compute queue, the slots are expected to be idle. Thus the arg-1/arg-2 exception is not a generic wake bypass: if the internal power byte is in a blocked transition form, an otherwise-idle first submission can be prevented from entering `FUN_6a0c` entirely.
 
 ## KTrace provenance
 
@@ -89,8 +89,8 @@ E044 proves that q21 bit 2 reaches firmware, the KTrace ring is live, and the pa
 
 The correct next discriminator is E045: enable only q21 trace bits **1 and 2** (`host_flags=0x6`) after the existing pre-RTKit exact validators, keep `0x100`, `0x207`, and `0x213` selected at info level, and run one signed empty Compute publication. Then:
 
-- `0x100 arg=2` + `0x207 arg=2`: callback arrives and internal power gate blocks scheduler entry;
-- `0x100 arg=2` without `0x207`: callback arrives and passes the outer gate; remaining stall is in `FUN_6a0c` or below;
+- `0x100` + matching `0x207`: callback arrives and the internal power gate blocks scheduler entry;
+- `0x100` without `0x207`: callback arrives and passes the outer gate; the next boundary is after the gate;
 - calibrated `0x213` with no `0x100`: first-work path stalls before `g15_pipe_work_callback`.
 
 No PMGR or internal power-state poke is justified before this corrected trace experiment.
@@ -112,7 +112,7 @@ The one-shot boot remained healthy and one signed empty Compute/priority-2 publi
 
 The missing `0x207` is decisive in combination with callback entry: the callback is invoked and does not take its outer `DAT_fffffc000010e528 & 0x78` / `FUN_cf58()` blocked path. It proceeds through the power-kick helper to `FUN_fffffc0000006a0c`.
 
-The immediate failure boundary is now **inside `FUN_6a0c` or below**, not RTBuddy's outer callback power gate. Firmware already provides passive bit-1 scheduler traces suitable for the next discriminator: `0x112` channel-index snapshots, `0x111` accepted RunWorkQueue records, and `0x128` bounded scan/exhaustion markers.
+E045 moves the failure past RTBuddy's outer callback power gate. Firmware already provides passive bit-1 scheduler traces suitable for the next discriminator: `0x112` channel-index snapshots, `0x111` accepted RunWorkQueue records, and `0x128` bounded scan/exhaustion markers.
 
 No queue ABI, PMGR, power-state, or work-doorbell semantic change is justified before those existing traces are observed.
 
@@ -121,6 +121,27 @@ No queue ABI, PMGR, power-state, or work-doorbell semantic change is justified b
 Two attractive but incorrect interpretations were explicitly rejected during this pass:
 
 - `FUN_fffffc00000231bc` is a power-side helper, not the QueueInfo consumer.
-- a decompiler-implied relation from `FUN_3d330` to `FUN_18864` does not survive assembly/xref checking; `FUN_18864` is a startup power-data initializer.
+- the earlier assumption that callback argument 2 denotes Compute is false; callback arguments are wake/dispatch classes.
 
-The remaining live question is no longer a broad "GPU power" hypothesis. It is the exact control-flow location of the first Compute doorbell relative to `g15_pipe_work_callback` and `FUN_6a0c`.
+A later exact assembly pass also corrects an earlier xref note: `FUN_3d330` **does** directly call `FUN_18864` at `0xfffffc000003d458`. `FUN_18864` remains a startup power-data initializer, but the call is part of the cold-power transaction and must not be discarded from the path.
+
+## E046/E047 control — boundary moves into `FUN_3d330`
+
+E046 surfaced `0x100/0x101/0x111/0x112/0x128` while trace bits 1+2 were enabled. It observed one `0x100` and none of the later selected records, but class-2 `0x213` traffic could pressure the 512-entry KTrace ring.
+
+E047 repeated the experiment with q21 `host_flags=0x2`, enabling bit 1 only. Diagnostic module SHA-256:
+
+`a46184ba4274770ff0e51b05619ecbcab15611294121b3a4a0ca436ee9c9d9a2`
+
+The one-shot candidate remained healthy. One signed empty Compute/priority-2 publication again advanced host WriteIndex to 1 and timed out with Read/CFI at zero. With class-2 traffic removed, the trace counts were:
+
+- `0x100` callback entry: 1 (`args[0]=1`)
+- `0x101` callback exit: 0
+- `0x111` accepted RunWorkQueue: 0
+- `0x112` scheduler/index snapshot: 0
+- `0x128` bounded scan: 0
+- `0x12e` reset marker: 0
+
+The same counts remained unchanged more than one minute later. Exact callback control flow calls `FUN_3d330()` immediately after the gate and before `FUN_6a0c()`. Therefore the current non-returning boundary is the synchronous **`FUN_3d330()` cold power/setup transaction**, before scheduler entry.
+
+Stats tag `0x0f/state=1` is generated by a separate pstate/statistics helper and proves a software power transition occurs during the wedge, but it is not enough to identify the blocking sub-call. The next discriminator is passive host-visible q21/q4 state correlation at EP20 receive times.
