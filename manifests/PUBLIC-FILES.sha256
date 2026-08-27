@@ -1,10 +1,10 @@
 a94f4741e619a496034a1cfd0c0149d93cb3f74c33e024d5d7c2023f4494c605  ./.gitignore
-35792ffbd9b911cdbd40e0b9fc57c197a55ed6ae88463e268b7cd54a0933ef07  ./README.md
-2f613571de2a5610827514536a22d74330046726671accf3979f520c37dac76e  ./docs/CURRENT-STATE.md
+13dbda03524dc47d7e96da8cb090192615350d8706867d954c9debbdebacc6f1  ./README.md
+b9e75f43e4ba4df2a5e2efd6ee29ee444163ff8d5b6e2e1f4f08604f16feeec2  ./docs/CURRENT-STATE.md
 c0bbbf3c4e3c3d2a64f08a7a7ba7a984786fa53cc473d52a0cadc6d3f096b7b8  ./docs/PATCHES.md
 d61bf1973a6d6b3e840ef7eff94cb497eb57118a711f6891e2b0ee98ca6db461  ./docs/RECOVERY.md
 072edbe867996f268553f3da518769548159145691000f5f6dc7f888dd84cdf7  ./docs/WORKFLOW.md
-fdcb22abafc88760bc97146ab607cf0b4a493e6facd9faf8f0d4ef8f1ed79819  ./manifests/CURRENT-HASHES.txt
+8254c5994ef3128735d2ea61e6210e45dab10590fcfa30b33c59dfa2439259cd  ./manifests/CURRENT-HASHES.txt
 4f16537a51cf9d1ad18841ec138b5a6090407739af7b69898c933dcafdca8fea  ./patches/linux/0001-drm-asahi-checkpoint-T8122-G15-bring-up-through-RTKi.patch
 258eb0243e41b10800df1daf5671c8003f358efec31caaac405e74fc8c2cc00a  ./patches/linux/0002-drm-asahi-map-G15-RTKit-preallocated-crashlog-memory.patch
 7a0b6374402bc2fb4c75b01ae93645470385f1b671530ea9996b118915c9f961  ./patches/linux/0003-drm-asahi-stage-G15-RTKit-app-endpoint-start.patch
@@ -13,7 +13,7 @@ ab5edbdd7854dd46a2e191fc039d8fda657598d8a9db642faf8d269992831aca  ./patches/linu
 07821063a351d0306dc5cc0689979cf10c537af5a417dc5d97e390ee456ec798  ./patches/mesa/0002-hk-pass-depth-stencil-level-offsets-to-kernel.patch
 bc26f90769b09e298649b0fc8f5f6b0373c7e50c03f0b5926f5d285f562db569  ./patches/mesa/0003-hk-build-G15-EOT-state-loader-for-proven-path.patch
 f22a1fd0df6e1ec299bdf1c487da0c1a04a0ee836a0826173c17f8bc35439a59  ./research/g15/G15-COMPUTE-COMMAND.md
-210d54913549fc2d8040937ab8247d832a557fda199d322af0f039ae3c0a7318  ./research/g15/G15-COMPUTE-CONTROL-STREAM.md
+2b82c40b326f26a3eda43b7d16d68858d021c45d5c550aae356011b6e8baaf13  ./research/g15/G15-COMPUTE-CONTROL-STREAM.md
 1c7dac12eb7c1d58ae0b3640e5e39876cbcaa4917e1ca7f1996a8a3185bd1b6e  ./research/g15/G15-COMPUTE-LAUNCH-BOUNDARY.md
 4fe8283362173ca30c4bc908d4178b18d01652ede8b0df52cc487af9e2b7e9a9  ./research/g15/G15-COMPUTE-SKU-STREAM.md
 9628e938471e90b359a369c448788d3e41fa5b737250820eb13e51b404b1d4df  ./research/g15/G15-CONTROL-STATE.md

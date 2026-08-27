@@ -41,4 +41,18 @@ Thus the value programmed into `0x1a420` is part of a managed CDM token stream, 
 
 The constants `0x60000160` and `0x60000960` are mechanically proven Apple patch/reset grammar. They are **not** yet classified as safe standalone execution payloads. E063 therefore does not justify a live RunCompute.
 
-The remaining boundary is to classify the token/opcode family around these records and identify the smallest Apple-generated control stream that provably performs no threadgrid/shader work, if such a stream exists. That stream must then be combined with the already-closed UMA, stamp, timestamp, completion and fail-closed recovery prerequisites before the first bounded type-3 experiment.
+## E064 token-family classification
+
+Cross-checking the exact E063 constants against Mesa's independently reconstructed CDM block grammar closes their block types:
+
+- `0x60000160` is a **Barrier** (low bits 5/6/8).
+- `0x60000960` is a **Barrier** (low bits 5/6/8/11).
+- `0x20000000` is the **Stream Link** block type before target-address bits are added.
+- `0x40000000` is **Stream Terminate**.
+- conditional `0xa0000000` is block type 5, a G15/Apple extension not present in the current Mesa grammar and not required by the minimal path.
+
+Apple's exact G15 `endComputePass()` emits `0x40000000` and advances the stream pointer by one dword. Thus the 25F84 producer's terminate token is emitted as four bytes, even though Mesa's generic XML reserves an additional zero dword.
+
+This gives the first plausible no-threadgrid/no-shader root stream: a terminate-only G15 CDM stream. It is still not a live-test payload until an Apple-generated zero-dispatch Compute pass, or equivalent producer path, proves that the normal RunCompute container can carry such a root while the associated UMA/stamp/timestamp/completion objects remain valid.
+
+The remaining boundary is therefore the host/container proof for a terminate-only CDM root, followed by the already-closed UMA, stamp, timestamp, completion and fail-closed recovery prerequisites before the first bounded type-3 experiment.

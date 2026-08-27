@@ -166,6 +166,8 @@ The two remaining G15G dynamic register IDs are also fixed for J615: accelerator
 
 E063 closes the next host-side layer. `generateRegisterList()` directly programs CDM register `0x1a420` from the raw Compute control-stream pointer. Apple's Gen4 `patchCDMControlStreamAndReset()` emits exact `0x60000160` and `0x60000960` token forms through separate CDM token pools, with 16-byte pointer/state patch records carrying the `0x20000000` address encoding, then clears cached stream state. `endComputePass()` invokes this framing before its normal `0x40000000` end-of-pass command. These are exact patch/reset records, not yet proven harmless standalone payloads. The current target is therefore semantic classification of the smallest no-threadgrid/no-shader CDM token sequence before any live RunCompute.
 
+E064 cross-checks those constants against Mesa's independent CDM grammar: `0x60000160/0x60000960` are Barrier blocks, `0x20000000` is Stream Link, and `0x40000000` is Stream Terminate. Apple G15 emits the terminate token as one dword. A terminate-only root therefore contains no Launch block by construction; the remaining proof is that a normal Apple zero-dispatch Compute container can carry that root with valid associated objects. No live RunCompute is enabled.
+
 See `research/g15/G15-COMPUTE-LAUNCH-BOUNDARY.md`, `research/g15/G15-COMPUTE-SKU-STREAM.md`, and `research/g15/G15-COMPUTE-CONTROL-STREAM.md`.
 
 ## E061 — first real Compute is an execution boundary
