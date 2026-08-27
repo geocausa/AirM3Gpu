@@ -31,5 +31,6 @@ E044 KTrace-calibration candidate sha256  804eb61042d9949d166c1979a175fde34af4f8
 private evidence checkpoint E041  1cdc78f
 private evidence checkpoint E042  12656c5
 private evidence checkpoint E044  6d66742
-E044 selected KTrace counts  0x100=0 0x207=0 0x213=607
+E044 selected KTrace counts  0x100=0 (bit1 disabled) 0x207=0 0x213=607
+E044 correction  callback 0x100/0x101 use trace bit1; 0x207 uses trace bit2
 These modules are diagnostic-only and are not part of the clean public Linux patch series.

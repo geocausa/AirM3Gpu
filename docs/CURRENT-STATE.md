@@ -98,13 +98,13 @@ The callback can emit KTrace `0x100` on entry and `0x207` when the internal gate
 
 E043 enabled only that trace class after all existing pre-RTKit exactness checks and before `MSG_INIT`. The boot remained healthy and the signed empty Compute publication reproduced the same timeout with no crash or IOMMU fault. Selected `0x100/0x207` records were not observed, but that result is not yet sufficient to claim the callback was skipped because the KTrace class itself had not been independently calibrated live.
 
-## E044 closure and current boundary
+## E044 calibration correction and current boundary
 
-E044 calibrated the same trace class with firmware event `0x213`. The live signed publication delivered 607 selected `0x213` records while delivering zero `0x100` callback-entry records and zero `0x207` callback-blocked records. The pipe still remained `Read=0, CFI=0, Write=1` and timed out fail-closed.
+E044 proved q21 trace bit 2 is effective: the live signed publication delivered 607 selected class-2 `0x213` records while the pipe remained `Read=0, CFI=0, Write=1` and timed out fail-closed. No `0x207` blocked-path record was observed.
 
-This closes the E043 ambiguity: class-2 KTrace is live and correctly decoded, but the first Compute work doorbell never invokes `g15_pipe_work_callback`. Since `0x100` is emitted before that callback's internal runtime-power gate, `DAT_fffffc000010e528 & 0x78` and `FUN_cf58()` are not the immediate blocker for this failure.
+An exact callback assembly re-check corrected the initial E044 interpretation. `g15_pipe_work_callback` guards entry/exit events `0x100/0x101` with trace-mask **bit 1**, while `0x207` is guarded by **bit 2**. E043/E044 enabled only bit 2, so absence of `0x100` cannot distinguish callback absence from callback arrival.
 
-The current boundary is now **upstream of `g15_pipe_work_callback`**: EP21 work-doorbell decode, per-pipe work-source registration/lookup, or the scheduler/task mechanism that should enqueue the callback with Compute argument 2.
+The current boundary is therefore the corrected E045 discriminator: enable q21 trace bits 1+2 (`host_flags=0x6`) and observe callback entry (`0x100`) and blocked path (`0x207`) simultaneously. Until that test is run, both "before callback" and "callback reached but gate passed" remain live possibilities.
 
 No direct PMGR register poke and no real command-buffer submission is justified yet.
 

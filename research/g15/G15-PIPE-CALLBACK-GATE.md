@@ -41,7 +41,7 @@ For the first empty Compute queue, the slots are expected to be idle. Thus the C
 
 ## KTrace provenance
 
-The callback's `0x100` and `0x207` emissions are guarded by trace-mask bit 2. Firmware refreshes that mask from q21 `+0x00`, the Linux `G15SharedStatus.host_flags` word.
+The callback's trace guards are distinct: entry/exit class `0x100/0x101` is guarded by trace-mask **bit 1**, while blocked-path `0x207` is guarded by **bit 2**. Firmware refreshes the mask from q21 `+0x00`, the Linux `G15SharedStatus.host_flags` word.
 
 The trace emitter writes directly to the RuntimePointers KTrace state/ring at `+0x1d8/+0x1e0`. Linux already allocates, publishes, and polls the same 0x38-byte records.
 
@@ -75,25 +75,25 @@ The candidate booted normally, registered DRM and exposed `renderD128`. The sign
 
 Neither selected `0x100` nor `0x207` was observed. That negative result alone does not prove the callback was skipped because the enabled KTrace class had not yet been independently calibrated live.
 
-## E044 live closure
+## E044 live calibration and guard correction
 
-E044 added only the known class-2 `0x213` record to the info-level selector. Its diagnostic module SHA-256 was:
+E044 added the known bit-2/class-2 `0x213` record to the info-level selector. Its diagnostic module SHA-256 was:
 
 `804eb61042d9949d166c1979a175fde34af4f804e0c19e3d45135c197478d949`
 
-The one-shot candidate boot consumed the experimental GRUB entry and the installed module hash matched the built E044 module. The same signed empty Compute probe was then executed once as root. It again produced `WriteIndex 0 -> 1`, tag `0x0f/state=1`, no Read/CFI retirement, and the bounded fail-closed timeout.
+The one-shot boot was healthy and the signed empty Compute probe again produced `WriteIndex 0 -> 1`, tag `0x0f/state=1`, no Read/CFI retirement, and a bounded fail-closed timeout. The calibrated stream contained 607 selected `0x213` records and zero `0x207` records.
 
-The decisive new observation is the calibrated KTrace stream:
+An exact assembly re-check then caught an instrumentation mistake in the initial interpretation: callback-entry event `0x100` is guarded by internal trace-mask **bit 1**, not bit 2. E043/E044 set only q21 `host_flags` bit 2. Therefore zero observed `0x100` records in E044 is expected regardless of whether `g15_pipe_work_callback` ran.
 
-- `0x213`: 607 selected records during the boot/probe capture
-- `0x100`: 0 records
-- `0x207`: 0 records
+E044 proves that q21 bit 2 reaches firmware, the KTrace ring is live, and the packed ID decoder is valid for the class-2 records. It does **not** prove callback absence. Zero `0x207` means only that no visible bit-2 blocked-path record was produced; this is compatible with either (a) the callback not being invoked, or (b) the callback being invoked and passing its internal power gate.
 
-Class-2 tracing is therefore demonstrably enabled, the RuntimePointers KTrace ring is live, and Linux's packed ID decoding is correct. Because `g15_pipe_work_callback` emits `0x100` before checking its internal `0x10e528 & 0x78` gate, the absence of `0x100` proves that the failed first Compute publication does not invoke that callback.
+The correct next discriminator is E045: enable only q21 trace bits **1 and 2** (`host_flags=0x6`) after the existing pre-RTKit exact validators, keep `0x100`, `0x207`, and `0x213` selected at info level, and run one signed empty Compute publication. Then:
 
-The immediate blocker is consequently **upstream of the callback**. The next reconstruction target is the EP21 work-doorbell path between message decode and callback scheduling: doorbell field decode, per-pipe work-source lookup/registration, and the task/work-item dispatch mechanism that should schedule `g15_pipe_work_callback(arg=2)`.
+- `0x100 arg=2` + `0x207 arg=2`: callback arrives and internal power gate blocks scheduler entry;
+- `0x100 arg=2` without `0x207`: callback arrives and passes the outer gate; remaining stall is in `FUN_6a0c` or below;
+- calibrated `0x213` with no `0x100`: first-work path stalls before `g15_pipe_work_callback`.
 
-The internal callback power gate and `FUN_cf58()` remain valid firmware behavior, but they are exonerated as the immediate cause of this specific first-work timeout. No PMGR or internal power-state poke is justified.
+No PMGR or internal power-state poke is justified before this corrected trace experiment.
 
 ## Rejected inferences
 
