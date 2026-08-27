@@ -1,5 +1,5 @@
-AirM3Gpu research state: 2026-08-26
-Last live checkpoint: 2026-08-26
+AirM3Gpu research state: 2026-08-27
+Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
@@ -23,3 +23,11 @@ LIVE TRANSPORT BOUNDARY
 latest isolated candidate release  7.1.6-gc6fa9b794ba9
 E035 diagnostic asahi.ko sha256  47f13bb98ffa6b40fb793e2ababdb9ba0d3b8068be91282cf550d68dafb03c41
 E035 is a diagnostic-only negative experiment; its extra wake telemetry is not part of the clean 2f08 checkpoint.
+
+CALLBACK-GATE DIAGNOSTICS
+E041 passive-stats asahi.ko sha256  7bd19e2abfc2529cb835aac1b710850f71bbcfb5dd30159034aefedf0e99cad3
+E043 class-2 KTrace asahi.ko sha256  7a03f841f67d4ccfd7943453968fcb093c29f5c79ec0328c36f06190315f61c1
+E044 KTrace-calibration candidate sha256  804eb61042d9949d166c1979a175fde34af4f804e0c19e3d45135c197478d949
+private evidence checkpoint E041  1cdc78f
+private evidence checkpoint E042  12656c5
+These modules are diagnostic-only and are not part of the clean public Linux patch series.

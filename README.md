@@ -4,7 +4,7 @@ Experimental, clean-room bring-up work for the Apple M3 / T8122 G15 GPU on Asahi
 
 This repository is the **public, reproducible checkpoint** for the work. It intentionally does not contain Apple firmware, kernelcaches, extracted proprietary binaries, Ghidra databases, boot images, built kernel modules, or raw machine-local captures. Those are kept outside this repository; only derived facts, original research notes/scripts, hashes, and source patches are published here.
 
-## Current research state — 2026-08-26
+## Current research state — 2026-08-27
 
 Target hardware: MacBook Air M3 (J615 / T8122), GPU identified at runtime as G15G C0.
 
@@ -14,9 +14,9 @@ The current hard boundary is a deliberately bounded **empty Compute QueueInfo pu
 
 Offline reconstruction has ruled out the obvious TX-layout, RuntimePointers aliasing, barrier, doorbell, G15 wake-note, MTR, shared-bank1, and normal J615 submission-time power hypotheses. In particular, J615 initializes accelerator feature gate `+0x6c1` to zero, so Apple's `ensurePoweredHardware(false)` performs no `state 2 -> 1` transition on normal submission.
 
-The next boundary is therefore earlier: RTBuddy/RTKit runtime-state initialization and the firmware state-machine condition that allows the EP21 pipe callback to enter the real pipe consumer. Direct PMGR pokes are not justified by current evidence.
+The boundary is now narrower. RTKit-2419's actual G15 pipe callback checks an internal runtime-power byte before entering the scheduler. Compute maps to callback argument 2, and the callback emits KTrace `0x100` on entry and `0x207` when that gate blocks scheduler entry. A live class-2 trace calibration is the next discriminator; direct PMGR pokes remain unjustified.
 
-See [Current State](docs/CURRENT-STATE.md), [G15 Pipe Submission Boundary](research/g15/G15-PIPE-SUBMISSION-BOUNDARY.md), [Workflow](docs/WORKFLOW.md), [Patch Bases](docs/PATCHES.md), and [Recovery](docs/RECOVERY.md).
+See [Current State](docs/CURRENT-STATE.md), [G15 Pipe Submission Boundary](research/g15/G15-PIPE-SUBMISSION-BOUNDARY.md), [G15 Pipe Callback Gate](research/g15/G15-PIPE-CALLBACK-GATE.md), [Workflow](docs/WORKFLOW.md), [Patch Bases](docs/PATCHES.md), and [Recovery](docs/RECOVERY.md).
 
 ## Repository layout
 

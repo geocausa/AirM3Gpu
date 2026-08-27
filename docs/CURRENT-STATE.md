@@ -1,8 +1,8 @@
 # Current G15 Bring-up State
 
-Research state: 2026-08-26
+Research state: 2026-08-27
 
-Last live checkpoint: 2026-08-26
+Last live checkpoint: 2026-08-27
 
 ## Hardware identity
 
@@ -88,15 +88,28 @@ Current evidence rules out:
 - the earlier MTR sensor initialization failure;
 - absence of the shared-bank1/range-7 mapping backend.
 
+## Callback-gate closure — E041 through E043
+
+E041 passively decoded statistics tag `0x0f`: the record contains a software-state transition and reports `state=1` during the failed empty publication. The pipe nevertheless remains `Read=0, CFI=0, Write=1`, so the tag is not a retirement acknowledgement.
+
+E042 then reconstructed the real G15 firmware callback boundary. `g15_pipe_work_callback` checks an internal runtime-power byte at `DAT_fffffc000010e528` with mask `0x78` before calling scheduler `FUN_fffffc0000006a0c`. Compute maps to callback argument 2. Its narrow bypass calls `FUN_fffffc000000cf58()`, which returns nonzero only when one of sixteen firmware work-state slots is already non-idle.
+
+The callback can emit KTrace `0x100` on entry and `0x207` when the internal gate blocks scheduler entry. Both are guarded by trace-class bit 2 copied from q21 `host_flags`, and the records are written into the exact KTrace ring Linux already publishes.
+
+E043 enabled only that trace class after all existing pre-RTKit exactness checks and before `MSG_INIT`. The boot remained healthy and the signed empty Compute publication reproduced the same timeout with no crash or IOMMU fault. Selected `0x100/0x207` records were not observed, but that result is not yet sufficient to claim the callback was skipped because the KTrace class itself had not been independently calibrated live.
+
 ## Current boundary
 
-The next target is **pre-submission RTBuddy/RTKit runtime-state initialization** or an equivalent firmware state-machine gate.
+E044 adds the known class-2 KTrace event `0x213` as a calibration marker. This yields a precise next split:
 
-RTKit-2419's pipe work callback can be scheduled by a doorbell yet skip the real pipe consumer under firmware runtime/power-state conditions. That is consistent with the observed `stats tag 0x0f` plus unchanged Read/CFI indexes.
+- `0x213` present but no `0x100`: first-work path stalls before `g15_pipe_work_callback`;
+- `0x100` + `0x207`: callback arrives but internal runtime-power state blocks the scheduler;
+- `0x100` without `0x207`: the gate passes and the stall is inside `FUN_6a0c` or below;
+- no `0x213`: trace-mask timing/transport must be calibrated before interpreting callback absence.
 
-No direct PMGR register poke and no real command-buffer submission is justified yet. The next live experiment must wait until the relevant RTBuddy/firmware state transition is mechanically identified offline.
+No direct PMGR register poke and no real command-buffer submission is justified yet.
 
-See `research/g15/G15-PIPE-SUBMISSION-BOUNDARY.md` for the exact transport closure.
+See `research/g15/G15-PIPE-SUBMISSION-BOUNDARY.md` and `research/g15/G15-PIPE-CALLBACK-GATE.md`.
 
 ## Source checkpoint
 
