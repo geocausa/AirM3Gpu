@@ -95,6 +95,27 @@ The correct next discriminator is E045: enable only q21 trace bits **1 and 2** (
 
 No PMGR or internal power-state poke is justified before this corrected trace experiment.
 
+
+## E045 live closure
+
+E045 enabled only q21 trace bits 1+2 (`host_flags=0x6`) after all pre-RTKit exact validators and before `MSG_INIT`. Diagnostic module SHA-256:
+
+`e4a119856859dc00edef086d4dfc82e6f62ede7dd2ae0f33d7df32d750bf9c11`
+
+The one-shot boot remained healthy and one signed empty Compute/priority-2 publication reproduced the known transport timeout. The selected trace capture contained:
+
+- `0x100`: 1 record, `args[0]=1`
+- `0x207`: 0 records
+- `0x213`: 121 records
+
+`0x100` is the shared `g15_pipe_work_callback(param_1)` entry marker. Static reconstruction of `FUN_6a0c(param_1)` establishes that this argument is a dispatch/wake class, not PipeType: once entered, the scheduler walks all four priorities and all three vertex/fragment/compute rings. Therefore callback arg 1 is not evidence of Fragment misrouting.
+
+The missing `0x207` is decisive in combination with callback entry: the callback is invoked and does not take its outer `DAT_fffffc000010e528 & 0x78` / `FUN_cf58()` blocked path. It proceeds through the power-kick helper to `FUN_fffffc0000006a0c`.
+
+The immediate failure boundary is now **inside `FUN_6a0c` or below**, not RTBuddy's outer callback power gate. Firmware already provides passive bit-1 scheduler traces suitable for the next discriminator: `0x112` channel-index snapshots, `0x111` accepted RunWorkQueue records, and `0x128` bounded scan/exhaustion markers.
+
+No queue ABI, PMGR, power-state, or work-doorbell semantic change is justified before those existing traces are observed.
+
 ## Rejected inferences
 
 Two attractive but incorrect interpretations were explicitly rejected during this pass:

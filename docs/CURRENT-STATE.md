@@ -98,13 +98,13 @@ The callback can emit KTrace `0x100` on entry and `0x207` when the internal gate
 
 E043 enabled only that trace class after all existing pre-RTKit exactness checks and before `MSG_INIT`. The boot remained healthy and the signed empty Compute publication reproduced the same timeout with no crash or IOMMU fault. Selected `0x100/0x207` records were not observed, but that result is not yet sufficient to claim the callback was skipped because the KTrace class itself had not been independently calibrated live.
 
-## E044 calibration correction and current boundary
+## E045 closure and current boundary
 
-E044 proved q21 trace bit 2 is effective: the live signed publication delivered 607 selected class-2 `0x213` records while the pipe remained `Read=0, CFI=0, Write=1` and timed out fail-closed. No `0x207` blocked-path record was observed.
+E045 enabled q21 trace bits 1+2 (`host_flags=0x6`) and repeated one signed empty Compute/priority-2 publication. Firmware emitted one callback-entry `0x100` record (`args[0]=1`), no callback-blocked `0x207`, and a healthy class-2 calibration stream. The TX pipe still remained `Read=0, CFI=0, Write=1` and timed out fail-closed.
 
-An exact callback assembly re-check corrected the initial E044 interpretation. `g15_pipe_work_callback` guards entry/exit events `0x100/0x101` with trace-mask **bit 1**, while `0x207` is guarded by **bit 2**. E043/E044 enabled only bit 2, so absence of `0x100` cannot distinguish callback absence from callback arrival.
+The callback argument is a dispatch/wake class, not PipeType: `FUN_6a0c` subsequently scans all four priorities and all V/F/C channels. Thus arg 1 does not imply a Fragment doorbell.
 
-The current boundary is therefore the corrected E045 discriminator: enable q21 trace bits 1+2 (`host_flags=0x6`) and observe callback entry (`0x100`) and blocked path (`0x207`) simultaneously. Until that test is run, both "before callback" and "callback reached but gate passed" remain live possibilities.
+The current boundary is now **inside `FUN_6a0c` or below**. The outer RTBuddy runtime-power gate is exonerated for this failure because callback entry is observed and the `0x207` blocked path is not taken. The next passive experiment should expose firmware's existing bit-1 scheduler traces `0x112`, `0x111`, and `0x128` to see whether Compute/priority-2's producer index is visible and whether its RunWorkQueue record is accepted.
 
 No direct PMGR register poke and no real command-buffer submission is justified yet.
 
