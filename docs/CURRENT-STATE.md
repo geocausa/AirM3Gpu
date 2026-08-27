@@ -156,7 +156,7 @@ The current boundary is therefore **after scheduler registration and native reso
 
 See `research/g15/G15-QUEUE-REGISTRATION-LIFECYCLE.md`.
 
-## E061-E062 — first Compute execution contract
+## E061-E063 — first Compute execution contract
 
 E061 statically closes the next scheduler boundary: a normal G15 RunCompute/type-3 command is inherently hardware-facing. RTKit installs command `+0x760` as the engine-2 execution stream, and Apple unconditionally produces the G15 Compute RegisterArray plus SKU stream. There is no mechanically justified parser-only RunCompute shortcut.
 
@@ -164,7 +164,9 @@ E062 closes the SKU framing ambiguity. The ordinary no-feature stream is `0x2b8`
 
 The two remaining G15G dynamic register IDs are also fixed for J615: accelerator vslots `+0x10a8/+0x1090` return `0x101d8/0x107a0`. Register `0x1a420` still receives the raw Compute control-stream pointer, so reproducing SKU framing alone does not make a live command inert. The current target is a mechanically proven harmless CDM control stream plus its UMA, stamp, timestamp, and completion prerequisites. No live RunCompute is enabled.
 
-See `research/g15/G15-COMPUTE-LAUNCH-BOUNDARY.md` and `research/g15/G15-COMPUTE-SKU-STREAM.md`.
+E063 closes the next host-side layer. `generateRegisterList()` directly programs CDM register `0x1a420` from the raw Compute control-stream pointer. Apple's Gen4 `patchCDMControlStreamAndReset()` emits exact `0x60000160` and `0x60000960` token forms through separate CDM token pools, with 16-byte pointer/state patch records carrying the `0x20000000` address encoding, then clears cached stream state. `endComputePass()` invokes this framing before its normal `0x40000000` end-of-pass command. These are exact patch/reset records, not yet proven harmless standalone payloads. The current target is therefore semantic classification of the smallest no-threadgrid/no-shader CDM token sequence before any live RunCompute.
+
+See `research/g15/G15-COMPUTE-LAUNCH-BOUNDARY.md`, `research/g15/G15-COMPUTE-SKU-STREAM.md`, and `research/g15/G15-COMPUTE-CONTROL-STREAM.md`.
 
 ## E061 — first real Compute is an execution boundary
 

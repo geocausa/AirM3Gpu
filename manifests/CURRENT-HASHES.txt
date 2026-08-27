@@ -69,6 +69,7 @@ private evidence checkpoint E059  72a763c
 private evidence checkpoint E060  600f271
 private evidence checkpoint E061  ce57c13
 private evidence checkpoint E062  8c5523f
+private evidence checkpoint E063  93af1db
 E060 diagnostic asahi.ko sha256  a516262736853a707acf16f7639d9f6a7da40d671aa61e5713bcc00cd2c7c421
 E060 signed probe sha256  40d908e9c17ef187491c35a482b76d4d05226e98b20becaec44e45256af143c4
 E060 registration  scheduler 0x111 accepted; callback 0x101 returned; pipe (1,1,1,1)
