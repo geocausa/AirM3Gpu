@@ -156,6 +156,16 @@ The current boundary is therefore **after scheduler registration and native reso
 
 See `research/g15/G15-QUEUE-REGISTRATION-LIFECYCLE.md`.
 
+## E061-E062 — first Compute execution contract
+
+E061 statically closes the next scheduler boundary: a normal G15 RunCompute/type-3 command is inherently hardware-facing. RTKit installs command `+0x760` as the engine-2 execution stream, and Apple unconditionally produces the G15 Compute RegisterArray plus SKU stream. There is no mechanically justified parser-only RunCompute shortcut.
+
+E062 closes the SKU framing ambiguity. The ordinary no-feature stream is `0x2b8` bytes before alignment and exactly `0x2c0` after Apple's 0x40-byte rounding. Its fixed skeleton is opcode `0xb` + 0x1b8 payload, a 0x3c-byte start timestamp record, one Compute WFI dword `1`, a 0x3c-byte end timestamp record, a 0x7c-byte opcode-`0xc` record, and finish dword `0x40000002`. The optional paired feature records make the aligned stream `0x300`.
+
+The two remaining G15G dynamic register IDs are also fixed for J615: accelerator vslots `+0x10a8/+0x1090` return `0x101d8/0x107a0`. Register `0x1a420` still receives the raw Compute control-stream pointer, so reproducing SKU framing alone does not make a live command inert. The current target is a mechanically proven harmless CDM control stream plus its UMA, stamp, timestamp, and completion prerequisites. No live RunCompute is enabled.
+
+See `research/g15/G15-COMPUTE-LAUNCH-BOUNDARY.md` and `research/g15/G15-COMPUTE-SKU-STREAM.md`.
+
 ## E061 — first real Compute is an execution boundary
 
 Static E061 reconstruction identifies the previously unlabelled RTKit Compute launch hook at `0xfffffc00000251e8..0x256db`. After type-3 parser/DAG binding it registers RunCompute `+0x83e` as the UMA Page Pool State, propagates context-generation/selector state, then copies RunCompute `+0x760` into the per-stamp execution record at `+0x28/+0x30`. The common scheduler marks the command dispatched only after this hook returns.
