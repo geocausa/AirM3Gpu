@@ -120,6 +120,23 @@ The next experiment should remain passive: correlate q21/q4 host-visible shared 
 
 See `research/g15/G15-PIPE-SUBMISSION-BOUNDARY.md` and `research/g15/G15-PIPE-CALLBACK-GATE.md`.
 
+## E048-E051 cold-power handshake closure
+
+E048 added passive q21 snapshots around the bounded publication. During the failed first Compute publication q21 changes from `busy=0, unk10=0, ready=1, power=0` to `busy=0, unk10=1, ready=1, power=1`. The scheduler `busy` bit never asserts.
+
+E049 attempted broad class-2 power-dispatch logging but amplified a hot firmware trace stream into millions of host log records; that experiment is retained only as an instrumentation failure. E050 corrected the receiver by draining KTrace without generic per-record logging and promoting only bounded decision IDs. In the clean run, callback `0x100` and pstate `0x200` appeared; the state-1 KTrace timestamp matched statistics tag `0x0f/state=1`, while no callback exit or scheduler marker appeared.
+
+E051 then admitted `FUN_447ec` arg `1` into the bounded `0x20b/0x20c` filter. The live sequence was:
+
+- callback entry `0x100`, arg 1;
+- power-dispatch entry `0x20b`, arg 1;
+- pstate `0x200`, state 1;
+- power-dispatch exit `0x20c`, arg 1;
+- q21 settles at `busy=0, unk10=1, ready=1, power=1`;
+- TX Read/CFI remain zero and the bounded probe times out fail-closed.
+
+Exact firmware ordering matters: `FUN_447ec(case 1)` calls `FUN_14f98(..., state=1)`, then executes `FUN_4a560(&event_slot_1)`, and only afterward emits `0x20c`. Therefore E051 proves both the state-1 power worker and the event-1 post primitive return successfully. `FUN_18864` and `FUN_d300` in the later `FUN_3d330` tail are non-blocking bookkeeping. The current target is the remaining short post-handshake tail before `FUN_6a0c`, beginning with the always-fired `0x10078` notification path and the q22 `+0x4030` optional branch.
+
 ## Source checkpoint
 
 The current clean Linux checkpoint head is:

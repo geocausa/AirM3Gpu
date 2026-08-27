@@ -47,3 +47,15 @@ E047 bit1-only asahi.ko sha256  a46184ba4274770ff0e51b05619ecbcab15611294121b3a4
 private evidence checkpoint E047  9b37cad
 E047 selected KTrace  0x100=1(args0=1) 0x101=0 0x111=0 0x112=0 0x128=0 0x12e=0
 Boundary: callback enters, outer gate passed, FUN_3d330 cold-power transaction does not return before FUN_6a0c.
+
+E048-E051 COLD-POWER HANDSHAKE
+E048 q21-snapshot asahi.ko sha256  344ecf5c62f896b2be02595c73d688b80ec6998e36280c56c74dadd525f2a152
+private evidence checkpoint E048  f5863d7
+E049 power-dispatch diagnostic sha256  a9d033ccf91c5ef73d19449b50fe9199a879c9f8ae4de2a95077177c14977f74
+E049 is an instrumentation-flood failure; broad 0x20b/0x20c logging is rejected.
+E050 bounded power-completion sha256  985b7cf5b5db9c68833b23c2ae9138a3c82e9d62f31d4b3295bb8a247ea3d199
+private evidence checkpoint E050  414e8d1
+E051 arg1-dispatch sha256  8097a499f82bc12e43dbbcf2ef67e88d1f4f5a138860e9d69d9a919f0ed43faa
+private evidence checkpoint E051  e9848b2
+E051 selected KTrace  0x100=1 0x20b(arg1)=1 0x200=1 0x20c(arg1)=1 0x101=0 0x207=0 0x22f=0
+Boundary: state-1 worker and event-1 post complete; remaining stall is later in FUN_3d330 before FUN_6a0c.
