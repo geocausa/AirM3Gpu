@@ -75,20 +75,25 @@ The candidate booted normally, registered DRM and exposed `renderD128`. The sign
 
 Neither selected `0x100` nor `0x207` was observed. That negative result alone does not prove the callback was skipped because the enabled KTrace class had not yet been independently calibrated live.
 
-## E044 discriminator
+## E044 live closure
 
-E044 adds only the known class-2 `0x213` record to the info-level selector. Its built diagnostic module SHA-256 is:
+E044 added only the known class-2 `0x213` record to the info-level selector. Its diagnostic module SHA-256 was:
 
 `804eb61042d9949d166c1979a175fde34af4f804e0c19e3d45135c197478d949`
 
-Interpretation of the next one-shot signed publication is deliberately narrow:
+The one-shot candidate boot consumed the experimental GRUB entry and the installed module hash matched the built E044 module. The same signed empty Compute probe was then executed once as root. It again produced `WriteIndex 0 -> 1`, tag `0x0f/state=1`, no Read/CFI retirement, and the bounded fail-closed timeout.
 
-- `0x213` present, no `0x100`: KTrace class is live, but the Compute doorbell is not reaching `g15_pipe_work_callback`.
-- `0x100` plus `0x207`: callback is reached, but the internal runtime-power gate blocks scheduler entry.
-- `0x100` without `0x207`: callback gate passes; the remaining stall is inside `FUN_6a0c` or below.
-- no `0x213`: trace-mask timing/transport must be calibrated before drawing a callback conclusion.
+The decisive new observation is the calibrated KTrace stream:
 
-No direct PMGR write, real command-buffer submission, QueueInfo ABI change or guessed power-state poke is justified by this checkpoint.
+- `0x213`: 607 selected records during the boot/probe capture
+- `0x100`: 0 records
+- `0x207`: 0 records
+
+Class-2 tracing is therefore demonstrably enabled, the RuntimePointers KTrace ring is live, and Linux's packed ID decoding is correct. Because `g15_pipe_work_callback` emits `0x100` before checking its internal `0x10e528 & 0x78` gate, the absence of `0x100` proves that the failed first Compute publication does not invoke that callback.
+
+The immediate blocker is consequently **upstream of the callback**. The next reconstruction target is the EP21 work-doorbell path between message decode and callback scheduling: doorbell field decode, per-pipe work-source lookup/registration, and the task/work-item dispatch mechanism that should schedule `g15_pipe_work_callback(arg=2)`.
+
+The internal callback power gate and `FUN_cf58()` remain valid firmware behavior, but they are exonerated as the immediate cause of this specific first-work timeout. No PMGR or internal power-state poke is justified.
 
 ## Rejected inferences
 

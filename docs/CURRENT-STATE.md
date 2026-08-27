@@ -98,14 +98,13 @@ The callback can emit KTrace `0x100` on entry and `0x207` when the internal gate
 
 E043 enabled only that trace class after all existing pre-RTKit exactness checks and before `MSG_INIT`. The boot remained healthy and the signed empty Compute publication reproduced the same timeout with no crash or IOMMU fault. Selected `0x100/0x207` records were not observed, but that result is not yet sufficient to claim the callback was skipped because the KTrace class itself had not been independently calibrated live.
 
-## Current boundary
+## E044 closure and current boundary
 
-E044 adds the known class-2 KTrace event `0x213` as a calibration marker. This yields a precise next split:
+E044 calibrated the same trace class with firmware event `0x213`. The live signed publication delivered 607 selected `0x213` records while delivering zero `0x100` callback-entry records and zero `0x207` callback-blocked records. The pipe still remained `Read=0, CFI=0, Write=1` and timed out fail-closed.
 
-- `0x213` present but no `0x100`: first-work path stalls before `g15_pipe_work_callback`;
-- `0x100` + `0x207`: callback arrives but internal runtime-power state blocks the scheduler;
-- `0x100` without `0x207`: the gate passes and the stall is inside `FUN_6a0c` or below;
-- no `0x213`: trace-mask timing/transport must be calibrated before interpreting callback absence.
+This closes the E043 ambiguity: class-2 KTrace is live and correctly decoded, but the first Compute work doorbell never invokes `g15_pipe_work_callback`. Since `0x100` is emitted before that callback's internal runtime-power gate, `DAT_fffffc000010e528 & 0x78` and `FUN_cf58()` are not the immediate blocker for this failure.
+
+The current boundary is now **upstream of `g15_pipe_work_callback`**: EP21 work-doorbell decode, per-pipe work-source registration/lookup, or the scheduler/task mechanism that should enqueue the callback with Compute argument 2.
 
 No direct PMGR register poke and no real command-buffer submission is justified yet.
 

@@ -30,4 +30,6 @@ E043 class-2 KTrace asahi.ko sha256  7a03f841f67d4ccfd7943453968fcb093c29f5c79ec
 E044 KTrace-calibration candidate sha256  804eb61042d9949d166c1979a175fde34af4f804e0c19e3d45135c197478d949
 private evidence checkpoint E041  1cdc78f
 private evidence checkpoint E042  12656c5
+private evidence checkpoint E044  6d66742
+E044 selected KTrace counts  0x100=0 0x207=0 0x213=607
 These modules are diagnostic-only and are not part of the clean public Linux patch series.
