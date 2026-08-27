@@ -33,32 +33,24 @@ The following stages have been independently exercised on real hardware with fai
 11. Native q22 mapping notification/pressure handling.
 12. G15 shared-bank1 and range-7 page-table spine/L3/leaf handling.
 13. J615 MTR sensor initialization sufficient to remove the earlier MTR alarm boundary.
-14. A signed, one-shot empty Compute QueueInfo publication used only to test accelerator transport.
+14. A signed, one-shot Compute QueueInfo registration using one already-satisfied firmware Barrier record, followed by clean native G15 `ReleaseResource` teardown.
 
 No normal render workload is enabled at this checkpoint.
 
-## Current pipe transport boundary
+## Historical pipe transport boundary
 
-The bounded empty QueueInfo probe publishes no GPU command-ring entry. For Compute priority 2 it advances the G15 TX `WriteIndex` from 0 to 1 and rings EP21.
+The original bounded empty QueueInfo probe exposed no command-ring entry. For Compute priority 2 it advanced the G15 TX `WriteIndex` from 0 to 1 and rang EP21, but firmware initially left Read/CFI at zero. That historical boundary drove E041-E056.
 
-The exact G15 TX descriptor is:
+The exact G15 TX descriptor remains:
 
 1. ReadIndex
 2. CFIIndex
 3. WriteIndex
 4. ring GPU pointer
 
-The Linux PipeChannel descriptor and the RuntimePointers-exported descriptor were proven to reference the same exact objects. The host-side publication barrier/order and the Compute priority-2 work doorbell (`0x008300000000000a`) also match the reconstructed Apple contract.
+The Linux PipeChannel descriptor and RuntimePointers-exported descriptor reference the same objects, and the Compute/priority-2 work doorbell is `0x008300000000000a`.
 
-The live result remains:
-
-- before publication: `Read=0, CFI=0, Write=0`
-- after host publication: `Read=0, CFI=0, Write=1`
-- after bounded wait: `Read=0, CFI=0, Write=1`
-- firmware statistics tag `0x0f` is emitted during the wait
-- publication times out and backing is retained fail-closed
-
-The tag proves that the EP21 activity is reaching firmware far enough to generate firmware-side telemetry, but the real pipe consumer does not retire the entry.
+This boundary is now superseded. E057-E060 reach scheduler acceptance and retire the barrier-only registration to `(Read, CFI, Write, Shadow) = (1,1,1,1)`, then complete native context/resource release. No RunVertex/RunFragment/RunCompute command is used by that proof.
 
 ## Submission-time wake/power closure
 
@@ -98,7 +90,7 @@ The callback can emit KTrace `0x100` on entry and `0x207` when the internal gate
 
 E043 enabled only that trace class after all existing pre-RTKit exactness checks and before `MSG_INIT`. The boot remained healthy and the signed empty Compute publication reproduced the same timeout with no crash or IOMMU fault. Selected `0x100/0x207` records were not observed, but that result is not yet sufficient to claim the callback was skipped because the KTrace class itself had not been independently calibrated live.
 
-## E045 closure and current boundary
+## E045 closure
 
 E045 enabled q21 trace bits 1+2 (`host_flags=0x6`) and repeated one signed empty Compute/priority-2 publication. Firmware emitted one callback-entry `0x100` record (`args[0]=1`), no callback-blocked `0x207`, and a healthy class-2 calibration stream. The TX pipe still remained `Read=0, CFI=0, Write=1` and timed out fail-closed.
 
@@ -137,6 +129,33 @@ E051 then admitted `FUN_447ec` arg `1` into the bounded `0x20b/0x20c` filter. Th
 
 Exact firmware ordering matters: `FUN_447ec(case 1)` calls `FUN_14f98(..., state=1)`, then executes `FUN_4a560(&event_slot_1)`, and only afterward emits `0x20c`. Therefore E051 proves both the state-1 power worker and the event-1 post primitive return successfully. `FUN_18864` and `FUN_d300` in the later `FUN_3d330` tail are non-blocking bookkeeping. The current target is the remaining short post-handshake tail before `FUN_6a0c`, beginning with the always-fired `0x10078` notification path and the q22 `+0x4030` optional branch.
 
+## E052-E060 — scheduler registration lifecycle closure
+
+E052 confirms q22 `+0x4030` remains zero across the old timeout, ruling out the optional CPMS tail as the blocker. E056 then identifies the material host-layout error: G15 HwDataA `+0x4188..+0x41db` is a DPE leakage-update image, not the sparse SoCHot structure previously assigned there. Apple's exact J615/C0 image includes HwDataA `+0x41d8 = 1` and mirrored q23 `+0x1a8 = 1`. Firmware case `0x14` consumes this state when arming its DPE timer.
+
+After restoring the DPE image, E057 crosses the long-standing pre-scheduler boundary:
+
+- callback `0x100` is observed;
+- q21 `busy` changes `0 -> 1`;
+- scheduler `0x112` snapshots appear;
+- one `0x111` record accepts the Compute/2 QueueInfo.
+
+E057 then crashes because the old diagnostic exposed untouched stamp-index sentinel `0x80`. E058 proves that merely substituting EventManager slot 0 is insufficient: firmware's internal per-slot state pointer is still null. Static reconstruction identifies the missing edge in the G15 Barrier/type-4 helper, which binds the RunWorkQueue stamp slot to QueueInfo `+0x18` (`gpu_buf`).
+
+E059 publishes exactly one already-satisfied firmware Barrier record at QueueInfo ring entry 0 and uses `wptr=1`. There is still no RunVertex, RunFragment, or RunCompute object and no shader command stream. The result is the first complete registration:
+
+- `0x111` accepts the QueueInfo;
+- callback exit `0x101` appears;
+- the pipe reaches `(Read, CFI, Write, Shadow) = (1,1,1,1)`;
+- QueueInfo registration returns success;
+- context/resource bytes become `(02,00,00,0f)`.
+
+E060 closes teardown. Apple's G15 `submitReleaseResource()` opcode is `0x11`; Linux's versioned enum accidentally encoded `0x12` because it retained a legacy V13.3 `Unk0d` placeholder on G15. Excluding that placeholder from G15 numbering, plus a fail-closed pre-send `0x11` assertion, makes native `ReleaseResource` return success. The temporary command-submission gate returns `1 -> 0`, software-state telemetry returns `1 -> 0`, and no RTKit/GPU/DART/kernel fault is observed.
+
+The current boundary is therefore **after scheduler registration and native resource retirement**. The next work is static reconstruction of the smallest real G15 scheduler command contract. Live shader/render/compute execution remains blocked until its pointer, stamp, dependency, and completion prerequisites are closed.
+
+See `research/g15/G15-QUEUE-REGISTRATION-LIFECYCLE.md`.
+
 ## Source checkpoint
 
 The current clean Linux checkpoint head is:
@@ -149,7 +168,7 @@ The current clean Linux checkpoint head is:
 
 - no production G15 render path claim
 - no general command-buffer submission
-- no user workload execution through the experimental empty-publication gate
+- no RunVertex/RunFragment/RunCompute or shader payload enabled by the registration-only diagnostic
 - no direct experimental PMGR writes
 - no upstream AsahiLinux push implied by this public checkpoint
 

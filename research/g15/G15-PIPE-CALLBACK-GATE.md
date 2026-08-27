@@ -155,3 +155,12 @@ E049 demonstrated an instrumentation pitfall: broad `0x20b/0x20c` promotion prod
 E051 added only `FUN_447ec` arg `1` to the selective power-dispatch filter. One bounded live run produced `0x20b(arg=1)` followed by `0x20c(arg=1)`. Static ordering proves the common event-1 post `FUN_4a560(&DAT_...e2d8)` runs before `0x20c`. Therefore the worker-side `FUN_14f98` transition returns and event slot 1 is posted successfully. The earlier hypothesis that the cold-power worker fails to complete is rejected.
 
 The remaining `FUN_3d330` tail has been reduced further. `FUN_18864` is deterministic state initialization, `FUN_d300` is accounting plus a pending-bit update, and the `0x10078` notification callback `FUN_3d2e8` is a short non-blocking path that emits existing bit-1 KTrace `0x13b` and raises dispatcher bits. The next bounded discriminator is to surface that existing `0x13b` marker and passively sample q22 `+0x4030`, which gates the optional CPMS tail. No direct power-register write is justified.
+
+
+## E056-E060 closure — callback gate and scheduler registration are no longer the boundary
+
+Later reconstruction identified HwDataA `+0x4188..+0x41db` as G15 DPE leakage-update state, not the sparse SoCHot payload previously assigned there. Restoring the exact J615/C0 image, including `+0x41d8 = 1`, removes the pathological power-dispatch retrigger and allows the callback to reach `FUN_6a0c`.
+
+E057 observes scheduler `0x112` and accepted RunWorkQueue `0x111`. E059 adds the firmware-only Barrier needed to bind stamp state, after which callback exit `0x101` and complete pipe retirement are observed. E060 fixes G15 ReleaseResource numbering to opcode `0x11` and completes native teardown without a firmware crash.
+
+This note remains the proof history for the callback/power gate, but its former `FUN_3d330` boundary is superseded. Current state is in `G15-QUEUE-REGISTRATION-LIFECYCLE.md`.

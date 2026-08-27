@@ -59,3 +59,17 @@ E051 arg1-dispatch sha256  8097a499f82bc12e43dbbcf2ef67e88d1f4f5a138860e9d69d9a9
 private evidence checkpoint E051  e9848b2
 E051 selected KTrace  0x100=1 0x20b(arg1)=1 0x200=1 0x20c(arg1)=1 0x101=0 0x207=0 0x22f=0
 Boundary: state-1 worker and event-1 post complete; remaining stall is later in FUN_3d330 before FUN_6a0c.
+
+E052-E060 SCHEDULER REGISTRATION LIFECYCLE
+private evidence checkpoint E052  9a263a8
+private evidence checkpoint E057 scheduler crash  81a7df9
+private evidence checkpoint E057 DPE ABI  a94c8c1
+private evidence checkpoint E058  76fd9d7
+private evidence checkpoint E059  72a763c
+private evidence checkpoint E060  600f271
+E060 diagnostic asahi.ko sha256  a516262736853a707acf16f7639d9f6a7da40d671aa61e5713bcc00cd2c7c421
+E060 signed probe sha256  40d908e9c17ef187491c35a482b76d4d05226e98b20becaec44e45256af143c4
+E060 registration  scheduler 0x111 accepted; callback 0x101 returned; pipe (1,1,1,1)
+E060 release  generated G15 ReleaseResource tag=0x11; native teardown returned success
+Boundary: bounded Barrier-only QueueInfo registration and native G15 release are closed; no RunVertex/RunFragment/RunCompute or shader payload executed.
+The E057-E060 source modules are diagnostic-only and are not part of the clean public 2f08 Linux patch series.

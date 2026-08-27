@@ -1,6 +1,6 @@
 # G15 Pipe Submission Boundary — J615 / T8122
 
-Research checkpoint: 2026-08-26
+Research checkpoint: 2026-08-27
 
 This note records the clean-room boundary reached after first G15 DRM registration and a deliberately bounded empty-queue publication probe. It contains derived facts only; no Apple firmware, kernelcache, or raw proprietary capture is included.
 
@@ -89,10 +89,10 @@ The current evidence rules out these explanations for the first pipe timeout:
 - MTR sensor initialization failure;
 - shared-bank1/range-7 page-table absence.
 
-## Remaining boundary
+## Boundary superseded by E056-E060
 
-The next target is earlier than submission: reconstruct the RTBuddy/RTKit runtime-state initialization and the firmware state-machine condition that permits the EP21 pipe callback to enter the real pipe consumer.
+The `Read=0, CFI=0, Write=1` boundary above is historical. E056 found the missing G15 DPE leakage-update image at HwDataA `+0x4188..+0x41db`; after restoring it, E057 reaches `FUN_6a0c`, emits scheduler `0x112`, and accepts the QueueInfo with `0x111`.
 
-RTKit-2419's pipe work callback can receive/schedule the doorbell while still skipping the real consumer under firmware power/runtime-state bits. That behavior matches the observed combination of `stats tag 0x0f` plus unchanged Read/CFI indexes.
+E059 then supplies the required Barrier-only stamp-state binding and retires the pipe to `(1,1,1,1)`. E060 closes native G15 `ReleaseResource` teardown. No RunVertex/RunFragment/RunCompute payload is used by those tests.
 
-No direct PMGR register write is justified by the current evidence. The next experiment should remain offline until the relevant RTBuddy/firmware state transition is mechanically identified.
+See `G15-QUEUE-REGISTRATION-LIFECYCLE.md` for the current boundary.

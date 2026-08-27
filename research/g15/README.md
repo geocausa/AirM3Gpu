@@ -6,8 +6,9 @@ Raw Apple binaries, kernelcaches, firmware extracts, raw decompiler output, and 
 
 Current high-level state: `../../docs/CURRENT-STATE.md`.
 
-Key current boundary note:
+Key current boundary notes:
 
-- `G15-PIPE-SUBMISSION-BOUNDARY.md` — live empty-QueueInfo transport boundary, exact G15 TX/doorbell facts, E035 wake-note negative result, and E036 submission-time power closure.
+- `G15-QUEUE-REGISTRATION-LIFECYCLE.md` — E056-E060 DPE correction, scheduler acceptance, stamp-state binding, pipe retirement, and native G15 ReleaseResource closure.
+- `G15-PIPE-SUBMISSION-BOUNDARY.md` — historical transport/TX/doorbell proof chain that led to the now-closed registration boundary.
 
 Earlier startup notes remain useful as the proof chain for the now-closed InitData/RTKit/`MSG_INIT` stages.
