@@ -156,6 +156,16 @@ The current boundary is therefore **after scheduler registration and native reso
 
 See `research/g15/G15-QUEUE-REGISTRATION-LIFECYCLE.md`.
 
+## E061 — first real Compute is an execution boundary
+
+Static E061 reconstruction identifies the previously unlabelled RTKit Compute launch hook at `0xfffffc00000251e8..0x256db`. After type-3 parser/DAG binding it registers RunCompute `+0x83e` as the UMA Page Pool State, propagates context-generation/selector state, then copies RunCompute `+0x760` into the per-stamp execution record at `+0x28/+0x30`. The common scheduler marks the command dispatched only after this hook returns.
+
+Apple's matching producer is equally explicit. `AGXCLChannelG15::generateRegisterList()` builds the real G15 CDM register list, while `encodeCLCommandSKUStream()` emits a leading type-`0xb` SKU packet whose payload references the command RegisterArray (`+0x20`) and JobParameters2 (`+0x76c`), surrounds Compute WFI with timestamps, and publishes the final stream at `+0x760/+0x768`. Therefore a normal Apple-style RunCompute cannot be treated as a parser-only diagnostic; it is already hardware-facing.
+
+RTKit's UMA registration accepts a zero-page descriptor, but the 0x70-byte Page Pool State must be real and later refresh requires a valid FW-uncached-state pointer/mirror. The next live command remains blocked until the minimum G15 register, SKU, UMA, notifier/context, stamp/completion, and recovery contracts are closed together.
+
+See `research/g15/G15-COMPUTE-LAUNCH-BOUNDARY.md`.
+
 ## Source checkpoint
 
 The current clean Linux checkpoint head is:

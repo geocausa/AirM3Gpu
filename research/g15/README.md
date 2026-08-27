@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-COMPUTE-LAUNCH-BOUNDARY.md` — E061 proof that normal type-3 RunCompute is inherently hardware-facing; exact RTKit stream/UMA handoff and remaining first-command prerequisites.
 - `G15-QUEUE-REGISTRATION-LIFECYCLE.md` — E056-E060 DPE correction, scheduler acceptance, stamp-state binding, pipe retirement, and native G15 ReleaseResource closure.
 - `G15-PIPE-SUBMISSION-BOUNDARY.md` — historical transport/TX/doorbell proof chain that led to the now-closed registration boundary.
 
