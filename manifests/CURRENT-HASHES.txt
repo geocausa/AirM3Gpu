@@ -1,4 +1,4 @@
-AirM3Gpu research state: 2026-08-27
+AirM3Gpu research state: 2026-08-28
 Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
@@ -71,6 +71,11 @@ private evidence checkpoint E061  ce57c13
 private evidence checkpoint E062  8c5523f
 private evidence checkpoint E063  93af1db
 private evidence checkpoint E064  1826d67
+private evidence checkpoint E065  a35107c
+private evidence checkpoint E066  2254375
+E066 exact 23J220 Compute/CLE size  0x880
+E066 exact 23J220 RunWorkQueue entry size  0x18; Compute pipe type=2
+E066 exact 23J220 ReleaseResource opcode  0x11
 E060 diagnostic asahi.ko sha256  a516262736853a707acf16f7639d9f6a7da40d671aa61e5713bcc00cd2c7c421
 E060 signed probe sha256  40d908e9c17ef187491c35a482b76d4d05226e98b20becaec44e45256af143c4
 E060 registration  scheduler 0x111 accepted; callback 0x101 returned; pipe (1,1,1,1)

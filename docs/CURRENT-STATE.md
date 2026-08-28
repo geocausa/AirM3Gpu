@@ -1,6 +1,6 @@
 # Current G15 Bring-up State
 
-Research state: 2026-08-27
+Research state: 2026-08-28
 
 Last live checkpoint: 2026-08-27
 
@@ -169,6 +169,14 @@ E063 closes the next host-side layer. `generateRegisterList()` directly programs
 E064 cross-checks those constants against Mesa's independent CDM grammar: `0x60000160/0x60000960` are Barrier blocks, `0x20000000` is Stream Link, and `0x40000000` is Stream Terminate. Apple G15 emits the terminate token as one dword. A terminate-only root therefore contains no Launch block by construction; the remaining proof is that a normal Apple zero-dispatch Compute container can carry that root with valid associated objects. No live RunCompute is enabled.
 
 See `research/g15/G15-COMPUTE-LAUNCH-BOUNDARY.md`, `research/g15/G15-COMPUTE-SKU-STREAM.md`, and `research/g15/G15-COMPUTE-CONTROL-STREAM.md`.
+
+E065 then captures Apple’s normal direct Compute CDM packet: one 1x1x1 launch is 10 dwords (`Launch Word0`, pipeline/Launch Word1 state, global size, local/workgroup size) followed by the ordinary `0x60000160` Barrier. This independently identifies the first 40 bytes as the actual dispatch block rather than patch/reset framing.
+
+E066 moves the outer-container proof onto the exact macOS 14.8.3 / 23J220 ABI used by the M3/J615 Linux target. Apple’s own `AGXFirmware::configurePoolElementSizes()` fixes Compute/CLE at **0x880 bytes**, exactly matching the independently reconstructed Linux `RunComputeG15V14_7`. The exact 23J220 accelerator-ring entry is **0x18 bytes** with fields at `+0x00/+0x08/+0x10/+0x14/+0x16/+0x17`, also exactly matching Linux; Compute is data-master/pipe type **2**. Exact 23J220 `submitReleaseResource()` again uses opcode **0x11**.
+
+The remaining first-command blocker is now narrower: the Linux G15 RegisterArray remains deliberately empty/fail-closed until the exact 23J220 user-space G15 register producer is verified. The 25F84 register list is not being copied blindly across the ABI boundary. No live Linux RunCompute is enabled.
+
+See `research/g15/G15-23J220-COMPUTE-ABI.md`.
 
 ## E061 — first real Compute is an execution boundary
 
