@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-23J220-COMPUTE-REGISTERARRAY.md` — E067 exact-target G15 Compute RegisterArray order/source/synthesis validation and the remaining Linux-producer boundary.
 - `G15-23J220-COMPUTE-ABI.md` — E066 exact 23J220 cross-check of the 0x880 Compute/CLE command, 0x18 accelerator-ring entry, Compute pipe ID 2, and ReleaseResource opcode 0x11.
 - `G15-COMPUTE-SKU-STREAM.md` — E062 exact Compute SKU packet grammar, fixed WFI dword, timestamp record geometry, aligned stream sizes, and J615 dynamic register-ID closure.
 - `G15-COMPUTE-CONTROL-STREAM.md` — E063 macOS-oracle proof of the `0x1a420` raw CDM stream edge and exact Gen4 patch/reset token/address-record grammar.

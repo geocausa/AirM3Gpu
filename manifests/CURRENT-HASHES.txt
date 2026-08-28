@@ -73,6 +73,10 @@ private evidence checkpoint E063  93af1db
 private evidence checkpoint E064  1826d67
 private evidence checkpoint E065  a35107c
 private evidence checkpoint E066  2254375
+private evidence checkpoint E067  247a3ec
+E067 exact 23J220 AGXG15G binary sha256  e29327fd1eeec53ea47bba91572d393cd6bc38ab77b9ac3c9ab62cc70f94854b
+E067 exact RegisterArray producer sha256  495020a4205780e2f916c0e9d1e7f9462b0a237d93cb422dc3f5236f59ebeb09
+E067 closure  target 23J220 list/order/synthesis matches independently reconstructed 25F84 G15 producer; Linux raw/private value producers remain gated
 E066 exact 23J220 Compute/CLE size  0x880
 E066 exact 23J220 RunWorkQueue entry size  0x18; Compute pipe type=2
 E066 exact 23J220 ReleaseResource opcode  0x11

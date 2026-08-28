@@ -174,9 +174,9 @@ E065 then captures Apple’s normal direct Compute CDM packet: one 1x1x1 launch 
 
 E066 moves the outer-container proof onto the exact macOS 14.8.3 / 23J220 ABI used by the M3/J615 Linux target. Apple’s own `AGXFirmware::configurePoolElementSizes()` fixes Compute/CLE at **0x880 bytes**, exactly matching the independently reconstructed Linux `RunComputeG15V14_7`. The exact 23J220 accelerator-ring entry is **0x18 bytes** with fields at `+0x00/+0x08/+0x10/+0x14/+0x16/+0x17`, also exactly matching Linux; Compute is data-master/pipe type **2**. Exact 23J220 `submitReleaseResource()` again uses opcode **0x11**.
 
-The remaining first-command blocker is now narrower: the Linux G15 RegisterArray remains deliberately empty/fail-closed until the exact 23J220 user-space G15 register producer is verified. The 25F84 register list is not being copied blindly across the ABI boundary. No live Linux RunCompute is enabled.
+E067 closes the cross-build RegisterArray identity question on the exact target. The matching 23J220 KDK exposes kernel-side `AGXCLChannelG15::generateRegisterList()`, and its exact order, descriptor offsets, J615 dynamic IDs, `0x1a440`/`0x1a458` synthesis and optional tail match the independently reconstructed 25F84 program. The remaining blocker is no longer list identity: several Apple raw/private Compute inputs still lack mechanically proven Linux producers. Full G15 RegisterArray emission therefore remains deliberately fail-closed while those values are mapped one by one. No live Linux RunCompute is enabled.
 
-See `research/g15/G15-23J220-COMPUTE-ABI.md`.
+See `research/g15/G15-23J220-COMPUTE-ABI.md` and `research/g15/G15-23J220-COMPUTE-REGISTERARRAY.md`.
 
 ## E061 — first real Compute is an execution boundary
 
