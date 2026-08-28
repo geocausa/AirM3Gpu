@@ -1,0 +1,205 @@
+From 886820e1f460d4af0e6bbd4d33812d89d5adddd1 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 00:14:53 +0100
+Subject: [PATCH] drm: asahi: model G15 FList range-7 state
+
+---
+ drivers/gpu/drm/asahi/alloc.rs     | 23 +++++++++++++++
+ drivers/gpu/drm/asahi/fw/buffer.rs | 13 +++++++++
+ drivers/gpu/drm/asahi/mmu.rs       | 47 ++++++++++++++++++++++++------
+ drivers/gpu/drm/asahi/pgtable.rs   |  9 ++++++
+ 4 files changed, 83 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/alloc.rs b/drivers/gpu/drm/asahi/alloc.rs
+index 46f4dfa8bbbc..7c58cc2c5bfa 100644
+--- a/drivers/gpu/drm/asahi/alloc.rs
++++ b/drivers/gpu/drm/asahi/alloc.rs
+@@ -481,6 +481,29 @@ pub(crate) fn new(
+         }
+     }
+ 
++    /// Dedicated eGartRange-7 allocator for the exact 8-byte AGXUMAFList
++    /// FW-Uncached-State object. It shares the collision-safe range-7 VA arena
++    /// with PM/q22 but fixes the distinct compact-0x00b protection class.
++    #[allow(dead_code)]
++    pub(crate) fn new_range7_flist(
++        dev: &AsahiDevice,
++        bank1: mmu::G15SharedBank1,
++        min_align: usize,
++        mut cpu_maps: bool,
++        notifier: Option<Arc<Mutex<mmu::G15MappingNotifier>>>,
++    ) -> Self {
++        if debug_enabled(DebugFlags::ForceCPUMaps) { cpu_maps = true; }
++        Self {
++            dev: dev.into(),
++            bank1,
++            aperture: mmu::G15SharedBank1Aperture::Range7FList,
++            prot: mmu::PROT_G15_RANGE7_FLIST_FW,
++            min_align,
++            cpu_maps,
++            notifier,
++        }
++    }
++
+     /// Dedicated eGartRange-8 allocator for G15 FList Page-Pool State objects.
+     /// The protection class is fixed by the exact E075 leaf proof rather than
+     /// supplied by callers, keeping PM/range-7 attributes impossible here.
+diff --git a/drivers/gpu/drm/asahi/fw/buffer.rs b/drivers/gpu/drm/asahi/fw/buffer.rs
+index 4f9cdd57c10a..52138e19f5fe 100644
+--- a/drivers/gpu/drm/asahi/fw/buffer.rs
++++ b/drivers/gpu/drm/asahi/fw/buffer.rs
+@@ -105,6 +105,19 @@ pub(crate) struct G15UMAPagePoolState {
+     const _: [(); 0x60] = [(); core::mem::offset_of!(G15UMAPagePoolState, host_zero_60)];
+     const _: [(); 0x68] = [(); core::mem::offset_of!(G15UMAPagePoolState, host_zero_68)];
+ 
++    /// Exact 23J220 AGXUMAFList +0x1b0 backing. Apple allocates one 8-byte
++    /// GPU/FW-visible object in eGartRange 7, zeros it, and mirrors this qword
++    /// into G15UMAPagePoolState +0x50. Firmware requires the pointed value and
++    /// mirror to remain equal before refreshing the page-pool descriptor.
++    #[derive(Clone, Copy, Debug)]
++    #[repr(C)]
++    pub(crate) struct G15UMAFWUncachedState {
++        pub(crate) coherency_value: U64,
++    }
++    default_zeroed!(G15UMAFWUncachedState);
++    const _: [(); 0x08] = [(); core::mem::size_of::<G15UMAFWUncachedState>()];
++    const _: [(); 0x00] = [(); core::mem::offset_of!(G15UMAFWUncachedState, coherency_value)];
++
+     #[derive(Debug, Default)]
+     #[repr(C)]
+     pub(crate) struct Stats {
+diff --git a/drivers/gpu/drm/asahi/mmu.rs b/drivers/gpu/drm/asahi/mmu.rs
+index 996778dbb855..fe3072f249cb 100644
+--- a/drivers/gpu/drm/asahi/mmu.rs
++++ b/drivers/gpu/drm/asahi/mmu.rs
+@@ -1061,6 +1061,7 @@ impl G15SharedBank1PageTable {
+     const L2_SPAN: u64 = (UAT_PGSZ as u64) * (Self::L3_ENTRIES as u64);
+     const TABLE_TYPE_BITS: u64 = 0x3;
+     const RANGE7_LEAF_BITS: u64 = 0x00c0_0000_0000_0447;
++    const RANGE7_FLIST_LEAF_BITS: u64 = 0x00c0_0000_0000_044b;
+     const RANGE8_LEAF_BITS: u64 = 0x00c0_0000_0000_0443;
+ 
+     fn new(dev: &driver::AsahiDevice, cfg: &'static hw::HwConfig, ttb: PhysicalAddr) -> Result<Self> {
+@@ -1302,13 +1303,21 @@ fn validate_range(&self, iova_range: &Range<u64>) -> Result<usize> {
+         Ok(((iova_range.end - iova_range.start) >> UAT_PGBIT) as usize)
+     }
+ 
+-    fn expected_leaf_bits(iova_range: &Range<u64>) -> Result<u64> {
++    fn validate_leaf_bits(iova_range: &Range<u64>, leaf_bits: u64) -> Result {
+         if iova_range.start >= G15_GART_RANGE7.start && iova_range.end <= G15_GART_RANGE7.end {
+-            Ok(Self::RANGE7_LEAF_BITS)
++            if leaf_bits == Self::RANGE7_LEAF_BITS || leaf_bits == Self::RANGE7_FLIST_LEAF_BITS {
++                Ok(())
++            } else {
++                Err(EINVAL)
++            }
+         } else if iova_range.start >= G15_GART_RANGE8.start
+             && iova_range.end <= G15_GART_RANGE8.end
+         {
+-            Ok(Self::RANGE8_LEAF_BITS)
++            if leaf_bits == Self::RANGE8_LEAF_BITS {
++                Ok(())
++            } else {
++                Err(EINVAL)
++            }
+         } else {
+             Err(EINVAL)
+         }
+@@ -1392,14 +1401,12 @@ fn map_pages(
+             return Err(EINVAL);
+         }
+         let leaf_bits = prot.as_pte() | Self::TABLE_TYPE_BITS;
+-        let expected_leaf_bits = Self::expected_leaf_bits(&iova_range)?;
+-        if leaf_bits != expected_leaf_bits {
++        if Self::validate_leaf_bits(&iova_range, leaf_bits).is_err() {
+             pr_err!(
+-                "MMU: G15 bank-1 rejected PTE protection bits {:#x} for {:#x}..{:#x} (expected {:#x})\n",
++                "MMU: G15 bank-1 rejected PTE protection bits {:#x} for {:#x}..{:#x}\n",
+                 leaf_bits,
+                 iova_range.start,
+-                iova_range.end,
+-                expected_leaf_bits
++                iova_range.end
+             );
+             return Err(EINVAL);
+         }
+@@ -1944,7 +1951,11 @@ fn drop(&mut self) {
+ /// PM/range-7 VA (or vice versa) even though both share one page-table root.
+ #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+ pub(crate) enum G15SharedBank1Aperture {
++    /// PM/q22 resource class, compact SecureGart option 0x007.
+     Range7,
++    /// AGXUMAFList FW-Uncached-State class, compact option 0x00b.
++    Range7FList,
++    /// AGXUMAFList Page-Pool-State class, compact option 0x003.
+     Range8,
+ }
+ 
+@@ -1975,18 +1986,36 @@ pub(crate) fn map(
+         let mut phys_pages = KVec::with_capacity(size / UAT_PGSZ, GFP_KERNEL)?;
+         let mut shared = self.inner.lock();
+         let bank1 = shared.g15_shared_bank1.as_mut().ok_or(EINVAL)?;
+-        let (arena, start, end) = match aperture {
++        let (arena, start, end, expected_prot) = match aperture {
+             G15SharedBank1Aperture::Range7 => (
+                 &mut bank1.range7_mm,
+                 G15_GART_RANGE7.start,
+                 G15_GART_RANGE7.end,
++                PROT_G15_RANGE7_FW,
++            ),
++            G15SharedBank1Aperture::Range7FList => (
++                &mut bank1.range7_mm,
++                G15_GART_RANGE7.start,
++                G15_GART_RANGE7.end,
++                PROT_G15_RANGE7_FLIST_FW,
+             ),
+             G15SharedBank1Aperture::Range8 => (
+                 &mut bank1.range8_mm,
+                 G15_GART_RANGE8.start,
+                 G15_GART_RANGE8.end,
++                PROT_G15_RANGE8_FW,
+             ),
+         };
++        if prot.as_pte() != expected_prot.as_pte() {
++            dev_err!(
++                self.dev.as_ref(),
++                "MMU: G15 shared bank-1 aperture/protection mismatch {:?} got={:#x} expected={:#x}\n",
++                aperture,
++                prot.as_pte(),
++                expected_prot.as_pte()
++            );
++            return Err(EINVAL);
++        }
+         let node = arena.insert_node_in_range(
+             G15SharedBank1MappingInner {
+                 _gem: gem.into(),
+diff --git a/drivers/gpu/drm/asahi/pgtable.rs b/drivers/gpu/drm/asahi/pgtable.rs
+index 312bc9f76b11..f726bc8a2a3a 100644
+--- a/drivers/gpu/drm/asahi/pgtable.rs
++++ b/drivers/gpu/drm/asahi/pgtable.rs
+@@ -171,6 +171,11 @@ pub(crate) mod prot {
+     /// UXN=1, GPU-access=1, PXN=0.
+     pub(crate) const PROT_G15_RANGE7_FW: Prot =
+         PROT_FW_RW.memattr(MEMATTR_DEV);
++    /// Exact 23J220 AGXUMAFList FW-Uncached-State range-7 protection.
++    /// This is a separate SecureMemoryMap class from PM/q22 range-7: compact
++    /// option 0x00b encodes AP=1, uncached memory, UXN=1, GPU-access=1, PXN=0.
++    pub(crate) const PROT_G15_RANGE7_FLIST_FW: Prot =
++        PROT_FW_RW.memattr(MEMATTR_UNCACHED);
+     /// Exact non-legacy G15 eGartRange-8 Page-Pool-State protection shape.
+     /// The FList SecureMemoryMap path differs from the PM range-7 resource
+     /// class: exact 23J220 derives compact UAT option 0x003, which encodes
+@@ -201,6 +206,10 @@ pub(crate) mod prot {
+ // UXN + GPU-access high bits.
+ const _: [(); 1] = [(); ((prot::PROT_G15_RANGE7_FW.as_pte() & UAT_PROT_BITS)
+     == 0x00c0_0000_0000_0044) as usize];
++// FList FW-Uncached State: compact 0x00b -> AP=1, uncached memattr,
++// UXN + GPU-access high bits.
++const _: [(); 1] = [(); ((prot::PROT_G15_RANGE7_FLIST_FW.as_pte() & UAT_PROT_BITS)
++    == 0x00c0_0000_0000_0048) as usize];
+ // FList range-8 Page-Pool State: compact 0x003 -> AP=1, cached memattr,
+ // UXN + GPU-access high bits.
+ const _: [(); 1] = [(); ((prot::PROT_G15_RANGE8_FW.as_pte() & UAT_PROT_BITS)
+-- 
+2.53.0
+

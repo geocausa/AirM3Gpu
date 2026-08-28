@@ -149,3 +149,12 @@ E076 Linux tree  aa7d564fd4cfb6efd6ca4674df74d64663c6f13b
 E076 module sha256  ec87dd9d33a4de3cd643637549c215f452a9adee2e62f14dfc6bea8b4c0a46fe
 E076 patch 0010 sha256  0288180a8a951ad3705fda84654bf2bb8df2c6ffb2931d61be0103b3c46cf439
 E076 closure  dedicated range-8 allocator class exists compile-only; no persistent object or RunCompute
+private evidence checkpoint E077  5fdbcd4
+E077 macOS oracle result sha256  aad7d200fefade5116757f6bbf5740cb070a5d27b87beded0b61d9c7ab654bc6
+E077 closure  exact four-resource FList constructor and symbolic list-size formulas; fallback numeric sizes remain conditional; no RunCompute
+private evidence checkpoint E078  507f403
+E078 Linux checkpoint  886820e1f460d4af0e6bbd4d33812d89d5adddd1
+E078 Linux tree  0e95ec2eacd9151962a73a951efdc6e728b9c810
+E078 module sha256  36dc754ad4744d38dc54a73b79739cd0a8c78970f0f1bed09acd3bc2a3c82afb
+E078 patch 0011 sha256  0b3b8c77fb440da5e152d60e3a1330fee92eb7c5f3bfd802940de139fec1feb2
+E078 closure  FList FW-Uncached leaf 0x00c000000000044b + exact 8-byte ABI compile-only; persistent FList and RunCompute remain blocked
