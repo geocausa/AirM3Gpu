@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-23J220-COMPUTE-SKU-SOURCES.md` — E070 exact-target SKU packet/source map, timestamp geometry, PerfCtr optional-pair identity, and the Linux +0x760 producer correction.
 - `G15-EMPTY-COMPUTE-CONTAINER.md` — E069 exact-23J220 proof that the stock empty Compute descriptor reaches normal `submitBuffer()`/firmware submission rather than being host-elided.
 - `G15-EMPTY-COMPUTE-REGISTERARRAY.md` — E068 stock empty-Compute raw oracle, final descriptor-source closure, and exact 20-entry J615/G15G list.
 - `G15-23J220-COMPUTE-REGISTERARRAY.md` — E067 exact-target G15 Compute RegisterArray order/source/synthesis validation and the remaining Linux-producer boundary.

@@ -79,6 +79,13 @@ private evidence checkpoint E066  2254375
 private evidence checkpoint E067  247a3ec
 private evidence checkpoint E068  5a3890b
 private evidence checkpoint E069  3ad20c2
+
+private evidence checkpoint E070  0e2d379
+E070 private result sha256  39733ea95c15e146b2d92c0a8b5e033251f6e58fb2a37d92013d70d99a661e00
+E070 exact 23J220 encodeCLCommandSKUStream sha256  0e368f85b5411a982c721e78a238eb194ebad604b165ad23a6a34610c6663287
+E070 exact 23J220 encodeComputeWFI sha256  60f30f184711499ca738305101cd821f732ec6ea2f04309ad58d2160ab6effcc
+E070 exact 23J220 AGXCLChannelSKU::submitBuffer sha256  120ff0cc89acfeaffac930eac51a15ba4bebfec105e33e5d8185d02359cad8de
+E070 closure  G15 +0x760 is exact SKU execution stream; inherited Linux microsequence producer must not be used; no live RunCompute
 E069 exact-target result sha256  81a46a7264d0600345bc81103a5d013b9078be4ba1c6d70bd5bd8ea5ce167159
 E069 macOS evidence bundle sha256  9611184ba81af8e5da4953db5919a5f8b46b34e2fee09e909fd4275a1f968822
 E069 closure  exact 23J220 ordinary empty Compute reaches AGXCLChannelSKU::submitBuffer; no host elision; no Linux RunCompute
