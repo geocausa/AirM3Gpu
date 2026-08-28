@@ -14,7 +14,7 @@ Previous public checkpoint head:
 
 Current clean checkpoint head:
 
-`1d264651a20410af426cb3ee269ede2ec15011dd`
+`f73b9e5516589fde5820ea487911fd830fac958c`
 
 Local checkpoint tags:
 
@@ -30,8 +30,9 @@ Series:
 3. `patches/linux/0003-drm-asahi-stage-G15-RTKit-app-endpoint-start.patch`
 4. `patches/linux/0004-drm-asahi-checkpoint-G15-through-empty-queue-boundary.patch`
 5. `patches/linux/0005-drm-asahi-model-G15-empty-Compute-register-list.patch`
+6. `patches/linux/0006-drm-asahi-mark-G15-empty-Compute-UMA-prepared.patch`
 
-Patch 0004 is intentionally a squashed checkpoint delta from `1b57b289af96` to `2f08f68bb2ef`. Patch 0005 is the focused compile-only delta from `2f08f68bb2ef` to `1d264651a204`, adding the exact E068 stock empty-Compute G15 RegisterArray while leaving ordinary G15 submission fail-closed. The local development history between those revisions contains many staged bring-up commits; publishing the validated end-state delta keeps this repository reproducible without presenting every one-shot experiment as an upstream-ready commit series.
+Patch 0004 is intentionally a squashed checkpoint delta from `1b57b289af96` to `2f08f68bb2ef`. Patch 0005 is the focused compile-only delta from `2f08f68bb2ef` to `1d264651a204`, adding the exact E068 stock empty-Compute G15 RegisterArray while leaving ordinary G15 submission fail-closed. Patch 0006 is the focused E071 delta from `1d264651a204` to `f73b9e551658`, changing only RunCompute `+0x846` to the exact prepared-state value `1`. The local development history between those revisions contains many staged bring-up commits; publishing the validated end-state delta keeps this repository reproducible without presenting every one-shot experiment as an upstream-ready commit series.
 
 Validation performed on 2026-08-26:
 
@@ -45,6 +46,13 @@ Patch 0005 validation performed on 2026-08-28:
 - `git apply --cached --check` against `2f08f68bb2ef`: PASS
 - temporary-index application tree: `b913cff9035c398aa04c1a0bb737d9cdfc139e58`
 - expected `1d264651a204^{tree}`: `b913cff9035c398aa04c1a0bb737d9cdfc139e58`
+- exact tree match: PASS
+
+Patch 0006 validation performed on 2026-08-28:
+
+- `git apply --check` against `1d264651a204`: PASS
+- temporary-index application tree: `a833d07fe3bbcd6103090c8cbb9dfa378614521e`
+- expected `f73b9e551658^{tree}`: `a833d07fe3bbcd6103090c8cbb9dfa378614521e`
 - exact tree match: PASS
 
 The temporary runtime diagnostics used for E034 descriptor identity and E035 exact-wake testing are deliberately not included in the clean source checkpoint. Their conclusions are captured in `research/g15/G15-PIPE-SUBMISSION-BOUNDARY.md`.

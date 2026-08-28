@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  2f08f68bb2efdadf2d337441553c1f682152a748
-linux current checkpoint    1d264651a20410af426cb3ee269ede2ec15011dd
-linux current tree          b913cff9035c398aa04c1a0bb737d9cdfc139e58
+linux previous public head  1d264651a20410af426cb3ee269ede2ec15011dd
+linux current checkpoint    f73b9e5516589fde5820ea487911fd830fac958c
+linux current tree          a833d07fe3bbcd6103090c8cbb9dfa378614521e
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -16,6 +16,9 @@ PUBLIC LINUX DELTA
 0005 sha256  aff55c652bfaf267939c7272fd2d09f5806b66820a99fdb294b5d8ab933281f7
 0005 applies from 2f08f68bb2efdadf2d337441553c1f682152a748
 0005 reconstructs tree b913cff9035c398aa04c1a0bb737d9cdfc139e58
+0006 sha256  296c512b562d84827480aedec08bcb19d9fbf2f37c435eeecdeafb897450cbf1
+0006 applies from 1d264651a20410af426cb3ee269ede2ec15011dd
+0006 reconstructs tree a833d07fe3bbcd6103090c8cbb9dfa378614521e
 
 GOLDEN LOCAL BOOT CONTRACT
 golden kernel release   7.1.6-ubuntu-m3-usbpd-gc5037a961e4d
@@ -86,6 +89,11 @@ E070 exact 23J220 encodeCLCommandSKUStream sha256  0e368f85b5411a982c721e78a238e
 E070 exact 23J220 encodeComputeWFI sha256  60f30f184711499ca738305101cd821f732ec6ea2f04309ad58d2160ab6effcc
 E070 exact 23J220 AGXCLChannelSKU::submitBuffer sha256  120ff0cc89acfeaffac930eac51a15ba4bebfec105e33e5d8185d02359cad8de
 E070 closure  G15 +0x760 is exact SKU execution stream; inherited Linux microsequence producer must not be used; no live RunCompute
+
+private evidence checkpoint E071  031baf6
+E071 private result sha256  7b655b3d12df224e9bb3a90b6ee722538377e3a98afafed8cfcc24eab8a772ce
+E071 Linux checkpoint  f73b9e5516589fde5820ea487911fd830fac958c
+E071 closure  stock empty path uses no-feature 0x2c0 SKU; prepared UMA byte RunCompute +0x846 = 1; no live RunCompute
 E069 exact-target result sha256  81a46a7264d0600345bc81103a5d013b9078be4ba1c6d70bd5bd8ea5ce167159
 E069 macOS evidence bundle sha256  9611184ba81af8e5da4953db5919a5f8b46b34e2fee09e909fd4275a1f968822
 E069 closure  exact 23J220 ordinary empty Compute reaches AGXCLChannelSKU::submitBuffer; no host elision; no Linux RunCompute

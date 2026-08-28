@@ -1,0 +1,28 @@
+From f73b9e5516589fde5820ea487911fd830fac958c Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Fri, 28 Aug 2026 18:14:59 +0100
+Subject: [PATCH] drm: asahi: mark G15 empty Compute UMA prepared
+
+---
+ drivers/gpu/drm/asahi/queue/compute.rs | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/asahi/queue/compute.rs b/drivers/gpu/drm/asahi/queue/compute.rs
+index 246ccc82109e..7d7ac429b774 100644
+--- a/drivers/gpu/drm/asahi/queue/compute.rs
++++ b/drivers/gpu/drm/asahi/queue/compute.rs
+@@ -479,7 +479,10 @@ pub(super) fn submit_compute(
+                     #[ver(G == G15)]
+                     g15_uma_page_pool_state_fwva_83e: U64(0),
+                     #[ver(G == G15)]
+-                    g15_uma_prepared_846: 0,
++                    // AGXUMAPool::prepareLocked() sets the descriptor prepared
++                    // state before submitBuffer() copies descriptor +0x624 here.
++                    // The exact stock 23J220 empty-Compute path therefore uses 1.
++                    g15_uma_prepared_846: 1,
+                     #[ver(G == G15)]
+                     g15_uma_min_pool_size_847: U64(0),
+                     #[ver(G == G15)]
+-- 
+2.53.0
+

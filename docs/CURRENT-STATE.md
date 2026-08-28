@@ -180,7 +180,9 @@ E068 then captures Apple’s stock no-dispatch Compute container and closes the 
 
 E069 then proves on the exact 23J220 KDK that this empty descriptor is **not host-elided**. `processCompute()` proceeds through `processComputeSetup()`, `addComputeToWorkqueue()`, `AGXCLWorkQueue::submitCommand()`, and the ordinary CL-channel vslot `+0x148`; the exact G15 vtable resolves that slot to `AGXCLChannelSKU::submitBuffer()`. The same exact-target image also confirms the E062 SKU grammar (`0xb + 0x1b8`, 0x3c timestamps, WFI dword `1`, trailing `0xc`, final `0x40000002`; sizes 0x2c0/0x300). Compute data-master 2 selects `AGXAccelerator::submitCLChannel()`. Apple therefore carries the stock `0x1a420=0` no-dispatch descriptor through normal G15 Compute command construction/submission rather than dropping it on the host. Linux still does not issue RunCompute; UMA/context/timestamp/stamp/completion/recovery prerequisites remain the live boundary.
 
-E070 closes the SKU source map on that same 23J220 image. `submitBuffer()` calls G15 register generation first and SKU encoding second, passing descriptor `+0x350` as the 0x880 command GPU/FW address. Compute timestamp packets use command-relative `+0x810/+0x818/+0x820/+0x828/+0x868`. Accelerator `+0x2488` is `AGXPerfCtrSamplerGen15`, proving the optional `0x90000004/0x10000004` pair is performance-counter state. Crucially, Linux must not use the inherited StartCompute/WaitForIdle/FinalizeCompute microsequence as G15 RunCompute `+0x760`: Apple publishes the SKU execution stream there. The next implementation step is a separate compile-only G15 SKU backing/builder; the inactive PerfCtr `+0x34` predicate and UMA/completion ownership remain live gates.
+E070 closes the SKU source map on that same 23J220 image. `submitBuffer()` calls G15 register generation first and SKU encoding second, passing descriptor `+0x350` as the 0x880 command GPU/FW address. Compute timestamp packets use command-relative `+0x810/+0x818/+0x820/+0x828/+0x868`. Accelerator `+0x2488` is `AGXPerfCtrSamplerGen15`, proving the optional `0x90000004/0x10000004` pair is performance-counter state. Crucially, Linux must not use the inherited StartCompute/WaitForIdle/FinalizeCompute microsequence as G15 RunCompute `+0x760`: Apple publishes the SKU execution stream there.
+
+E071 closes the exact inactive stock-empty SKU gate and the first UMA handoff byte. The relevant PerfCtr feature state and the empty descriptor input are zero, so the optional pair is absent and the stock empty path is exactly `0x2c0`. After `AGXUMAPool::prepareLocked()`, exact 23J220 `submitBuffer()` copies descriptor `+0x624` into RunCompute `+0x846`, requiring `+0x846=1`; Linux commit `f73b9e551658` corrects its previous zero. RunCompute `+0x810/+0x860/+0x870/+0x878` remain exact empty-path zeros, while `+0x85f` is dynamic and deliberately not hard-coded. Live RunCompute remains blocked on the Page-Pool/FW-uncached pointer, min/ideal/metrics values, dynamic context generation, and stamp/notifier completion/recovery ownership.
 
 See `research/g15/G15-23J220-COMPUTE-ABI.md`, `research/g15/G15-23J220-COMPUTE-REGISTERARRAY.md`, `research/g15/G15-EMPTY-COMPUTE-REGISTERARRAY.md`, `research/g15/G15-EMPTY-COMPUTE-CONTAINER.md`, and `research/g15/G15-23J220-COMPUTE-SKU-SOURCES.md`.
 
@@ -198,9 +200,9 @@ See `research/g15/G15-COMPUTE-LAUNCH-BOUNDARY.md`.
 
 The current clean Linux checkpoint head is:
 
-`1d264651a20410af426cb3ee269ede2ec15011dd`
+`f73b9e5516589fde5820ea487911fd830fac958c`
 
-Patch 0004 remains the squashed delta through the scheduler-registration boundary. Patch 0005 is the focused compile-only E068 delta from `2f08f68` to `1d264651`, adding only the exact stock empty-Compute G15 RegisterArray and its `0x1a440` mirror. Runtime G15 submission remains fail-closed.
+Patch 0004 remains the squashed delta through the scheduler-registration boundary. Patch 0005 is the focused compile-only E068 delta from `2f08f68` to `1d264651`, adding only the exact stock empty-Compute G15 RegisterArray and its `0x1a440` mirror. Patch 0006 is the focused E071 delta from `1d264651` to `f73b9e55`, correcting only the exact stock empty-Compute UMA prepared byte at RunCompute `+0x846` from `0` to `1`. Runtime G15 submission remains fail-closed.
 
 ## Explicitly not enabled
 

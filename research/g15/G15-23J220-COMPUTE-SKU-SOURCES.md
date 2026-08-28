@@ -43,10 +43,16 @@ The opcode-0xb and opcode-0xc payloads are populated from command, descriptor, c
 
 Exact 23J220 `AGXAcceleratorG15G::start()` allocates accelerator `+0x2488` as `AGXPerfCtrSamplerGen15`. Base sampler init explicitly clears byte `+0x54`, while later source-sampler lifecycle changes it. Therefore the optional `0x90000004/0x10000004` pair belongs to performance-counter state rather than mandatory Compute framing.
 
-The second predicate byte at sampler `+0x34` still needs an exact inactive/default-state proof before Linux hard-codes the no-feature stream as a universal G15 default.
+E071 closes the ordinary inactive/default path: the relevant sampler feature state starts zero, the stock E068 empty descriptor supplies the corresponding feature input as zero, and the exact payload builder preserves that zero. The stock empty-Compute path therefore uses the no-feature `0x2c0` stream; the optional pair is absent. This is an empty/inactive-path proof, not a claim that performance-counter-enabled Compute can never use `0x300`.
+
+## UMA prepared-state handoff
+
+Exact 23J220 `AGXCLCommandDescriptor::prepare()` reaches UMA preparation before normal submission. After successful `AGXUMAPool::prepareLocked()`, `AGXCLChannelSKU::submitBuffer()` copies descriptor byte `+0x624` directly into RunCompute byte `+0x846`. The stock prepared empty-Compute path therefore requires `+0x846 = 1`.
+
+Linux previously initialized the compile-only G15 field to zero. Commit `f73b9e551658` corrects that single value to `1`. The exact empty-path zeros at RunCompute `+0x810`, `+0x860`, `+0x870`, and `+0x878` remain unchanged, while context-generation byte `+0x85f` remains dynamic and must not be hard-coded.
 
 ## Linux consequence
 
 The current compile-only Linux G15 RunCompute layout is correct at `+0x760`, but its inherited producer still supplies the older StartCompute/WaitForIdle/FinalizeCompute microsequence. Exact G15 Apple code instead publishes the SKU execution stream there.
 
-The next source step is therefore a separate compile-only G15 SKU backing/builder. Ordinary G15 userspace submission remains fail-closed, and a live RunCompute remains gated on the inactive PerfCtr predicate plus UMA Page Pool State/FW-uncached backing, context-generation/selector, stamp/notifier sequencing and completion/recovery ownership.
+The next source step is therefore a separate compile-only G15 SKU backing/builder. Ordinary G15 userspace submission remains fail-closed. E071 closes the inactive empty-path PerfCtr predicate and prepared byte, but a live RunCompute remains gated on the exact UMA Page Pool State/FW-uncached backing and min/ideal/metrics values, dynamic context-generation/selector, stamp/notifier sequencing and completion/recovery ownership.
