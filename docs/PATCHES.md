@@ -14,7 +14,7 @@ Previous public checkpoint head:
 
 Current clean checkpoint head:
 
-`03fdbb86230f1c431bb6958dfa6bc752ad35b1cd`
+`4e26fc0898606f09b9bf726ebba2c5452ee957f2`
 
 Local checkpoint tags:
 
@@ -32,8 +32,9 @@ Series:
 5. `patches/linux/0005-drm-asahi-model-G15-empty-Compute-register-list.patch`
 6. `patches/linux/0006-drm-asahi-mark-G15-empty-Compute-UMA-prepared.patch`
 7. `patches/linux/0007-drm-asahi-track-G15-context-ID-generation.patch`
+8. `patches/linux/0008-drm-asahi-add-G15-range-8-parent-preflight.patch`
 
-Patch 0004 is intentionally a squashed checkpoint delta from `1b57b289af96` to `2f08f68bb2ef`. Patch 0005 is the focused compile-only delta from `2f08f68bb2ef` to `1d264651a204`, adding the exact E068 stock empty-Compute G15 RegisterArray while leaving ordinary G15 submission fail-closed. Patch 0006 is the focused E071 delta from `1d264651a204` to `f73b9e551658`, changing only RunCompute `+0x846` to the exact prepared-state value `1`. Patch 0007 is the focused E073 delta from `f73b9e551658` to `03fdbb86230f`, adding the exact managed G15 context-generation lifetime and exporting it at RunCompute `+0x85f`. The local development history between those revisions contains many staged bring-up commits; publishing the validated end-state delta keeps this repository reproducible without presenting every one-shot experiment as an upstream-ready commit series.
+Patch 0004 is intentionally a squashed checkpoint delta from `1b57b289af96` to `2f08f68bb2ef`. Patch 0005 is the focused compile-only delta from `2f08f68bb2ef` to `1d264651a204`, adding the exact E068 stock empty-Compute G15 RegisterArray while leaving ordinary G15 submission fail-closed. Patch 0006 is the focused E071 delta from `1d264651a204` to `f73b9e551658`, changing only RunCompute `+0x846` to the exact prepared-state value `1`. Patch 0007 is the focused E073 delta from `f73b9e551658` to `03fdbb86230f`, adding the exact managed G15 context-generation lifetime and exporting it at RunCompute `+0x85f`. Patch 0008 is the focused E074 diagnostic delta from `03fdbb86230f` to `4e26fc089860`: it performs only a read-only range-8 shared-parent ownership check and then fails closed before persistent G15 runtime. The local development history between those revisions contains many staged bring-up commits; publishing the validated end-state delta keeps this repository reproducible without presenting every one-shot experiment as an upstream-ready commit series.
 
 Validation performed on 2026-08-26:
 
@@ -65,6 +66,16 @@ Patch 0007 validation performed on 2026-08-28:
 - exact tree match: PASS
 - strict checkpatch: 0 errors, 0 warnings, 0 checks
 - Asahi module build: PASS; no install or RunCompute execution
+
+Patch 0008 validation performed on 2026-08-28:
+
+- `git apply --check` against `03fdbb86230f`: PASS
+- temporary-index application tree: `4a844f6c6a6077b9658a4d3e3b3c16cd6c89ba42`
+- expected `4e26fc089860^{tree}`: `4a844f6c6a6077b9658a4d3e3b3c16cd6c89ba42`
+- exact tree match: PASS
+- strict checkpatch: PASS
+- Asahi module build: PASS at the existing 24-warning bring-up baseline
+- one-shot live diagnostic: PASS; read-only shared-L2[6..8) ownership check only, then fail-closed `ENODEV`; no RunCompute
 
 The temporary runtime diagnostics used for E034 descriptor identity and E035 exact-wake testing are deliberately not included in the clean source checkpoint. Their conclusions are captured in `research/g15/G15-PIPE-SUBMISSION-BOUNDARY.md`.
 

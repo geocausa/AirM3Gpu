@@ -129,3 +129,9 @@ E073 Linux tree  999f7f6cc80a2e5cfd92c8de88dbc1a05d6c3de3
 E073 public context-generation note sha256  b9a78d72d92a44b2e1487e9329037f22bb45c3dc5e9aed6470b61886f3881771
 E073 module sha256  a54dee9c2b3a435c7f3c5fcebb33cde71dacf81b0b1af4df846851631f97b376
 E073 closure  G15 context ID 1..63 + dynamic generation now modeled at RunCompute +0x10/+0x85f; HardwareBuffer-ID/mapping lifetime still blocks live +0x83e; no live RunCompute
+private evidence checkpoint E074  7e92ea8
+E074 private result sha256  452a315e4a6f7e2148d73f6fce56fae241fb540e45145169577c94bdf1b2653d
+E074 Linux checkpoint  4e26fc0898606f09b9bf726ebba2c5452ee957f2
+E074 Linux tree  4a844f6c6a6077b9658a4d3e3b3c16cd6c89ba42
+E074 patch 0008 sha256  ae5fcd160c8730424af6bc312831f57a809fa08e9986d8e2669cb44d77e7defd
+E074 closure  shared bank-1 range-8 parent L2[6..8) is empty on exact J615; read-only one-shot PASS; no child table or RunCompute
