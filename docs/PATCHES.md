@@ -14,7 +14,7 @@ Previous public checkpoint head:
 
 Current clean checkpoint head:
 
-`e9f50fcc17d58244740360e484ae9904c0cd8d6c`
+`6e3850dcdd51d4bd912b9c02b0ea9633c7fd7060`
 
 Local checkpoint tags:
 
@@ -34,8 +34,9 @@ Series:
 7. `patches/linux/0007-drm-asahi-track-G15-context-ID-generation.patch`
 8. `patches/linux/0008-drm-asahi-add-G15-range-8-parent-preflight.patch`
 9. `patches/linux/0009-drm-asahi-validate-G15-range-8-leaf-PTE.patch`
+10. `patches/linux/0010-drm-asahi-split-G15-bank-1-range-allocators.patch`
 
-Patch 0004 is intentionally a squashed checkpoint delta from `1b57b289af96` to `2f08f68bb2ef`. Patch 0005 is the focused compile-only delta from `2f08f68bb2ef` to `1d264651a204`, adding the exact E068 stock empty-Compute G15 RegisterArray while leaving ordinary G15 submission fail-closed. Patch 0006 is the focused E071 delta from `1d264651a204` to `f73b9e551658`, changing only RunCompute `+0x846` to the exact prepared-state value `1`. Patch 0007 is the focused E073 delta from `f73b9e551658` to `03fdbb86230f`, adding the exact managed G15 context-generation lifetime and exporting it at RunCompute `+0x85f`. Patch 0008 is the focused E074 diagnostic delta from `03fdbb86230f` to `4e26fc089860`: it performs only a read-only range-8 shared-parent ownership check and then fails closed before persistent G15 runtime. Patch 0009 is the focused E075 delta from `4e26fc089860` to `e9f50fcc17d5`: it live-validates the exact range-8 leaf class and reversible eight-parent bank-1 teardown while keeping the persistent allocator range-7-only. The local development history between those revisions contains many staged bring-up commits; publishing the validated end-state delta keeps this repository reproducible without presenting every one-shot experiment as an upstream-ready commit series.
+Patch 0004 is intentionally a squashed checkpoint delta from `1b57b289af96` to `2f08f68bb2ef`. Patch 0005 is the focused compile-only delta from `2f08f68bb2ef` to `1d264651a204`, adding the exact E068 stock empty-Compute G15 RegisterArray while leaving ordinary G15 submission fail-closed. Patch 0006 is the focused E071 delta from `1d264651a204` to `f73b9e551658`, changing only RunCompute `+0x846` to the exact prepared-state value `1`. Patch 0007 is the focused E073 delta from `f73b9e551658` to `03fdbb86230f`, adding the exact managed G15 context-generation lifetime and exporting it at RunCompute `+0x85f`. Patch 0008 is the focused E074 diagnostic delta from `03fdbb86230f` to `4e26fc089860`: it performs only a read-only range-8 shared-parent ownership check and then fails closed before persistent G15 runtime. Patch 0009 is the focused E075 delta from `4e26fc089860` to `e9f50fcc17d5`: it live-validates the exact range-8 leaf class and reversible eight-parent bank-1 teardown while keeping the persistent allocator range-7-only. Patch 0010 is the focused E076 compile-only delta from `e9f50fcc17d5` to `6e3850dcdd51`: it splits bank-1 VA allocation into disjoint range-7/range-8 arenas and hard-wires the new range-8 constructor to the E075 protection class. The local development history between those revisions contains many staged bring-up commits; publishing the validated end-state delta keeps this repository reproducible without presenting every one-shot experiment as an upstream-ready commit series.
 
 Validation performed on 2026-08-26:
 
@@ -87,6 +88,16 @@ Patch 0009 validation performed on 2026-08-28:
 - strict checkpatch: 0 errors, 0 warnings, 0 checks
 - Asahi module build: PASS at the established 24-warning bring-up baseline
 - one-shot live diagnostic: exact range-8 leaf `0x00c0000000000443` PASS, clean leaf clear and eight-parent detach, then fail-closed `ENODEV`; no RunCompute
+
+
+Patch 0010 validation performed on 2026-08-28:
+
+- base: `e9f50fcc17d58244740360e484ae9904c0cd8d6c`
+- expected commit tree: `aa7d564fd4cfb6efd6ca4674df74d64663c6f13b`
+- patch SHA-256: `0288180a8a951ad3705fda84654bf2bb8df2c6ffb2931d61be0103b3c46cf439`
+- strict checkpatch: 0 errors, 0 warnings, 0 checks
+- Asahi module build: PASS at the exact existing 24-warning bring-up baseline
+- runtime: not installed/not executed; compile-only allocator topology
 
 The temporary runtime diagnostics used for E034 descriptor identity and E035 exact-wake testing are deliberately not included in the clean source checkpoint. Their conclusions are captured in `research/g15/G15-PIPE-SUBMISSION-BOUNDARY.md`.
 

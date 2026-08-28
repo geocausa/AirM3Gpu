@@ -1,0 +1,153 @@
+From 6e3850dcdd51d4bd912b9c02b0ea9633c7fd7060 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Fri, 28 Aug 2026 23:55:08 +0100
+Subject: [PATCH] drm: asahi: split G15 bank-1 range allocators
+
+---
+ drivers/gpu/drm/asahi/alloc.rs | 35 +++++++++++++++++++++++++++++++++-
+ drivers/gpu/drm/asahi/mmu.rs   | 34 ++++++++++++++++++++++++++++-----
+ 2 files changed, 63 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/alloc.rs b/drivers/gpu/drm/asahi/alloc.rs
+index 2c513f310591..46f4dfa8bbbc 100644
+--- a/drivers/gpu/drm/asahi/alloc.rs
++++ b/drivers/gpu/drm/asahi/alloc.rs
+@@ -453,6 +453,7 @@ fn device(&self) -> &AsahiDevice { &self.dev }
+ pub(crate) struct G15SharedBank1Allocator {
+     dev: AsahiDevRef,
+     bank1: mmu::G15SharedBank1,
++    aperture: mmu::G15SharedBank1Aperture,
+     prot: mmu::Prot,
+     min_align: usize,
+     cpu_maps: bool,
+@@ -469,7 +470,38 @@ pub(crate) fn new(
+         notifier: Option<Arc<Mutex<mmu::G15MappingNotifier>>>,
+     ) -> Self {
+         if debug_enabled(DebugFlags::ForceCPUMaps) { cpu_maps = true; }
+-        Self { dev: dev.into(), bank1, prot, min_align, cpu_maps, notifier }
++        Self {
++            dev: dev.into(),
++            bank1,
++            aperture: mmu::G15SharedBank1Aperture::Range7,
++            prot,
++            min_align,
++            cpu_maps,
++            notifier,
++        }
++    }
++
++    /// Dedicated eGartRange-8 allocator for G15 FList Page-Pool State objects.
++    /// The protection class is fixed by the exact E075 leaf proof rather than
++    /// supplied by callers, keeping PM/range-7 attributes impossible here.
++    #[allow(dead_code)]
++    pub(crate) fn new_range8(
++        dev: &AsahiDevice,
++        bank1: mmu::G15SharedBank1,
++        min_align: usize,
++        mut cpu_maps: bool,
++        notifier: Option<Arc<Mutex<mmu::G15MappingNotifier>>>,
++    ) -> Self {
++        if debug_enabled(DebugFlags::ForceCPUMaps) { cpu_maps = true; }
++        Self {
++            dev: dev.into(),
++            bank1,
++            aperture: mmu::G15SharedBank1Aperture::Range8,
++            prot: mmu::PROT_G15_RANGE8_FW,
++            min_align,
++            cpu_maps,
++            notifier,
++        }
+     }
+ }
+ 
+@@ -486,6 +518,7 @@ fn alloc(&mut self, size: usize, align: usize) -> Result<Self::Raw> {
+         let p = obj.vmap()?.as_mut_ptr() as *mut u8;
+         if debug_enabled(DebugFlags::FillAllocations) { obj.vmap()?.memset(0xde); }
+         let mapping = self.bank1.map(
++            self.aperture,
+             &obj.gem,
+             size_aligned,
+             self.min_align.max(mmu::UAT_PGSZ) as u64,
+diff --git a/drivers/gpu/drm/asahi/mmu.rs b/drivers/gpu/drm/asahi/mmu.rs
+index b432a045f3b9..996778dbb855 100644
+--- a/drivers/gpu/drm/asahi/mmu.rs
++++ b/drivers/gpu/drm/asahi/mmu.rs
+@@ -1628,7 +1628,8 @@ fn drop(&mut self) {
+ 
+ struct G15SharedBank1State {
+     page_table: G15SharedBank1PageTable,
+-    mm: mm::Allocator<(), G15SharedBank1MappingInner>,
++    range7_mm: mm::Allocator<(), G15SharedBank1MappingInner>,
++    range8_mm: mm::Allocator<(), G15SharedBank1MappingInner>,
+ }
+ 
+ impl G15SharedBank1State {
+@@ -1639,7 +1640,8 @@ fn new(
+     ) -> Result<Self> {
+         Ok(Self {
+             page_table: G15SharedBank1PageTable::new(dev, cfg, ttb)?,
+-            mm: mm::Allocator::new(G15_GART_RANGE7.start, G15_GART_RANGE7.range(), ())?,
++            range7_mm: mm::Allocator::new(G15_GART_RANGE7.start, G15_GART_RANGE7.range(), ())?,
++            range8_mm: mm::Allocator::new(G15_GART_RANGE8.start, G15_GART_RANGE8.range(), ())?,
+         })
+     }
+ 
+@@ -1937,6 +1939,15 @@ fn drop(&mut self) {
+     }
+ }
+ 
++/// Disjoint Apple G15 bank-1 VA classes. Keeping the allocator arenas
++/// separate prevents a range-8 Page-Pool-State allocation from consuming a
++/// PM/range-7 VA (or vice versa) even though both share one page-table root.
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub(crate) enum G15SharedBank1Aperture {
++    Range7,
++    Range8,
++}
++
+ /// Cloneable mapping handle for the accelerator-shared G15 UAT bank 1.
+ #[derive(Clone)]
+ pub(crate) struct G15SharedBank1 {
+@@ -1948,6 +1959,7 @@ impl G15SharedBank1 {
+     #[allow(clippy::too_many_arguments)]
+     pub(crate) fn map(
+         &self,
++        aperture: G15SharedBank1Aperture,
+         gem: &gem::Object,
+         size: usize,
+         alignment: u64,
+@@ -1963,7 +1975,19 @@ pub(crate) fn map(
+         let mut phys_pages = KVec::with_capacity(size / UAT_PGSZ, GFP_KERNEL)?;
+         let mut shared = self.inner.lock();
+         let bank1 = shared.g15_shared_bank1.as_mut().ok_or(EINVAL)?;
+-        let node = bank1.mm.insert_node_in_range(
++        let (arena, start, end) = match aperture {
++            G15SharedBank1Aperture::Range7 => (
++                &mut bank1.range7_mm,
++                G15_GART_RANGE7.start,
++                G15_GART_RANGE7.end,
++            ),
++            G15SharedBank1Aperture::Range8 => (
++                &mut bank1.range8_mm,
++                G15_GART_RANGE8.start,
++                G15_GART_RANGE8.end,
++            ),
++        };
++        let node = arena.insert_node_in_range(
+             G15SharedBank1MappingInner {
+                 _gem: gem.into(),
+                 mapped_size: size,
+@@ -1971,8 +1995,8 @@ pub(crate) fn map(
+             reserve_size as u64,
+             alignment,
+             0,
+-            G15_GART_RANGE7.start,
+-            G15_GART_RANGE7.end,
++            start,
++            end,
+             mm::InsertMode::Best,
+         )?;
+ 
+-- 
+2.53.0
+

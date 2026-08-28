@@ -142,3 +142,10 @@ E075 Linux tree  0bb806b6dc8361763144fccba2fd3dcf37b323f7
 E075 diagnostic module sha256  dd67f99fc3cb166530532813a867e053e4e91e06993f69e7966c96b48402766c
 E075 patch 0009 sha256  0280f3bd00932887698d9ebb24a18b10c34f0101622f20b8296fbe473559321c
 E075 closure  exact range-8 leaf 0x00c0000000000443 live PASS at 0xfffffc200c000000; clean eight-parent detach; no RunCompute
+private evidence checkpoint E076  7e253cc
+E076 private result sha256  5d7d7b3ce47b17996406da2b9e4b59f4464bc90ba852239047456e09b80edfe0
+E076 Linux checkpoint  6e3850dcdd51d4bd912b9c02b0ea9633c7fd7060
+E076 Linux tree  aa7d564fd4cfb6efd6ca4674df74d64663c6f13b
+E076 module sha256  ec87dd9d33a4de3cd643637549c215f452a9adee2e62f14dfc6bea8b4c0a46fe
+E076 patch 0010 sha256  0288180a8a951ad3705fda84654bf2bb8df2c6ffb2931d61be0103b3c46cf439
+E076 closure  dedicated range-8 allocator class exists compile-only; no persistent object or RunCompute

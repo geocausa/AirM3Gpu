@@ -192,6 +192,8 @@ E074 closes the next ownership boundary for that live Page-Pool-State pointer. E
 
 E075 closes that leaf/PTE encoding. The existing `0x00c0000000000447` range-7 PM leaf belongs to the ParameterManagement/IOGPUResource class; the FList SecureMemoryMap path is distinct. Exact 23J220 derives compact option `0x003` for the range-8 Page-Pool State, yielding exact leaf `0x00c0000000000443`. Linux commit `e9f50fcc17d5` published two bounded range-8 L3 parents plus one temporary leaf at `0xfffffc200c000000`, read the exact PTE back, cleared it, and detached all eight range-7/range-8 parents cleanly. ASC was stopped and the driver returned `ENODEV` before persistent runtime; no RunCompute or GPU command was issued. The persistent allocator remains range-7-only pending the next checkpoint.
 
+E076 promotes the proven range-8 class into compile-only allocator ownership. Linux now keeps separate range-7 and range-8 `mm::Allocator` arenas beneath the same bank-1 page-table owner, tags each small-object allocator with an explicit aperture, and provides a range-8 constructor that fixes `PROT_G15_RANGE8_FW` rather than accepting PM/range-7 attributes from callers. All existing callers remain range 7 and the new constructor is intentionally unused, so this checkpoint creates no new persistent mapping and does not change the RunCompute pointer.
+
 See `research/g15/G15-23J220-COMPUTE-ABI.md`, `research/g15/G15-23J220-COMPUTE-REGISTERARRAY.md`, `research/g15/G15-EMPTY-COMPUTE-REGISTERARRAY.md`, `research/g15/G15-EMPTY-COMPUTE-CONTAINER.md`, and `research/g15/G15-23J220-COMPUTE-SKU-SOURCES.md`.
 
 ## E061 — first real Compute is an execution boundary
@@ -208,9 +210,9 @@ See `research/g15/G15-COMPUTE-LAUNCH-BOUNDARY.md`.
 
 The current clean Linux checkpoint head is:
 
-`e9f50fcc17d58244740360e484ae9904c0cd8d6c`
+`6e3850dcdd51d4bd912b9c02b0ea9633c7fd7060`
 
-Patch 0004 remains the squashed delta through the scheduler-registration boundary. Patch 0005 is the focused compile-only E068 delta from `2f08f68` to `1d264651`, adding only the exact stock empty-Compute G15 RegisterArray and its `0x1a440` mirror. Patch 0006 is the focused E071 delta from `1d264651` to `f73b9e55`, correcting only the exact stock empty-Compute UMA prepared byte at RunCompute `+0x846` from `0` to `1`. Patch 0007 is the E073 delta from `f73b9e55` to `03fdbb86`, wiring the exact managed context-generation byte to RunCompute `+0x85f`. Patch 0008 is the E074 one-shot read-only range-8 parent-ownership diagnostic from `03fdbb86` to `4e26fc08`. Patch 0009 is the E075 range-8 leaf-PTE proof from `4e26fc08` to `e9f50fcc`, extending the bounded bank-1 preflight only. Runtime G15 submission remains fail-closed.
+Patch 0004 remains the squashed delta through the scheduler-registration boundary. Patch 0005 is the focused compile-only E068 delta from `2f08f68` to `1d264651`, adding only the exact stock empty-Compute G15 RegisterArray and its `0x1a440` mirror. Patch 0006 is the focused E071 delta from `1d264651` to `f73b9e55`, correcting only the exact stock empty-Compute UMA prepared byte at RunCompute `+0x846` from `0` to `1`. Patch 0007 is the E073 delta from `f73b9e55` to `03fdbb86`, wiring the exact managed context-generation byte to RunCompute `+0x85f`. Patch 0008 is the E074 one-shot read-only range-8 parent-ownership diagnostic from `03fdbb86` to `4e26fc08`. Patch 0009 is the E075 range-8 leaf-PTE proof from `4e26fc08` to `e9f50fcc`, extending the bounded bank-1 preflight only. Patch 0010 is the E076 compile-only allocator split from `e9f50fcc` to `6e3850dc`, adding a dedicated range-8 arena without instantiating it. Runtime G15 submission remains fail-closed.
 
 ## Explicitly not enabled
 
