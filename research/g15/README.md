@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-23J220-RANGE8-LEAF-PTE.md` — E075 exact range-8 Page-Pool-State leaf class, one-shot PTE PASS, and clean eight-parent teardown.
 - `G15-23J220-RANGE8-PAGE-POOL-STATE.md` — E074 exact-target range-8 Page-Pool-State aperture plus one-shot shared-parent ownership PASS and the remaining leaf/PTE boundary.
 - `G15-23J220-CONTEXT-ID-GENERATION.md` — E073 exact-target 64-ID context/generation lifecycle, 256-ID HardwareBuffer lifetime, and Linux `+0x85f` implementation.
 - `G15-23J220-COMPUTE-UMA-TAIL.md` — E072 exact-target stock-empty UMA value closure plus Page-Pool State and HWMetrics pointer producers.

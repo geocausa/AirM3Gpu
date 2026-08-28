@@ -135,3 +135,10 @@ E074 Linux checkpoint  4e26fc0898606f09b9bf726ebba2c5452ee957f2
 E074 Linux tree  4a844f6c6a6077b9658a4d3e3b3c16cd6c89ba42
 E074 patch 0008 sha256  ae5fcd160c8730424af6bc312831f57a809fa08e9986d8e2669cb44d77e7defd
 E074 closure  shared bank-1 range-8 parent L2[6..8) is empty on exact J615; read-only one-shot PASS; no child table or RunCompute
+private evidence checkpoint E075  f0f319f
+E075 private result sha256  c573fbbcee163056c1677eea37505eae97137e6a103a582d0cb0438f7a04fe34
+E075 Linux checkpoint  e9f50fcc17d58244740360e484ae9904c0cd8d6c
+E075 Linux tree  0bb806b6dc8361763144fccba2fd3dcf37b323f7
+E075 diagnostic module sha256  dd67f99fc3cb166530532813a867e053e4e91e06993f69e7966c96b48402766c
+E075 patch 0009 sha256  0280f3bd00932887698d9ebb24a18b10c34f0101622f20b8296fbe473559321c
+E075 closure  exact range-8 leaf 0x00c0000000000443 live PASS at 0xfffffc200c000000; clean eight-parent detach; no RunCompute
