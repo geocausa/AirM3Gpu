@@ -178,7 +178,9 @@ E067 closes the cross-build RegisterArray identity question on the exact target.
 
 E068 then captures Apple’s stock no-dispatch Compute container and closes the remaining ordinary-list values. Its exact 0x1d0 raw Compute payload has all RegisterArray-fed raw state zero. Host-driver reconstruction further proves descriptor `+0x460/+0x468/+0x470` come from raw Compute `+0x158/+0x15c/+0x160`; these are also zero in the empty oracle. The resulting J615/G15G list is exactly 20 entries / `0xf0` bytes, with `0x1a440=0x154024201`, `0x1a458=0x10c08860`, and `0x107a0=0x00ff0000`. Linux now models this exact **empty-path** list compile-only. Ordinary G15 submission remains rejected with `ENODEV`, and no live Linux RunCompute is enabled.
 
-See `research/g15/G15-23J220-COMPUTE-ABI.md`, `research/g15/G15-23J220-COMPUTE-REGISTERARRAY.md`, and `research/g15/G15-EMPTY-COMPUTE-REGISTERARRAY.md`.
+E069 then proves on the exact 23J220 KDK that this empty descriptor is **not host-elided**. `processCompute()` proceeds through `processComputeSetup()`, `addComputeToWorkqueue()`, `AGXCLWorkQueue::submitCommand()`, and the ordinary CL-channel vslot `+0x148`; the exact G15 vtable resolves that slot to `AGXCLChannelSKU::submitBuffer()`. The same exact-target image also confirms the E062 SKU grammar (`0xb + 0x1b8`, 0x3c timestamps, WFI dword `1`, trailing `0xc`, final `0x40000002`; sizes 0x2c0/0x300). Compute data-master 2 selects `AGXAccelerator::submitCLChannel()`. Apple therefore carries the stock `0x1a420=0` no-dispatch descriptor through normal G15 Compute command construction/submission rather than dropping it on the host. Linux still does not issue RunCompute; UMA/context/timestamp/stamp/completion/recovery prerequisites remain the live boundary.
+
+See `research/g15/G15-23J220-COMPUTE-ABI.md`, `research/g15/G15-23J220-COMPUTE-REGISTERARRAY.md`, `research/g15/G15-EMPTY-COMPUTE-REGISTERARRAY.md`, and `research/g15/G15-EMPTY-COMPUTE-CONTAINER.md`.
 
 ## E061 — first real Compute is an execution boundary
 

@@ -78,6 +78,10 @@ private evidence checkpoint E065  a35107c
 private evidence checkpoint E066  2254375
 private evidence checkpoint E067  247a3ec
 private evidence checkpoint E068  5a3890b
+private evidence checkpoint E069  3ad20c2
+E069 exact-target result sha256  81a46a7264d0600345bc81103a5d013b9078be4ba1c6d70bd5bd8ea5ce167159
+E069 macOS evidence bundle sha256  9611184ba81af8e5da4953db5919a5f8b46b34e2fee09e909fd4275a1f968822
+E069 closure  exact 23J220 ordinary empty Compute reaches AGXCLChannelSKU::submitBuffer; no host elision; no Linux RunCompute
 E068 empty raw Compute sha256  daba7c272a8bd1009fc04d0128e546892ee4eee70a5859904b1e4ac38b803611
 E068 one-thread raw Compute sha256  457f415f84077982ffb3e2dbb5e252e87fa31b52b400c3c16ccabeaf55e5fd32
 E068 Linux checkpoint  1d264651a20410af426cb3ee269ede2ec15011dd
