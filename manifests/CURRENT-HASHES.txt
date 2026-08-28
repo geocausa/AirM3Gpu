@@ -170,3 +170,9 @@ E080 Linux tree  0ab1640083173ac0070b3717bce4e8fbbee85ec3
 E080 module sha256  91da584b67236872bb8bb22c3ea99c7aeb068759e16d625531aebacccde2feca
 E080 patch 0013 sha256  a99aa363f523ea201287efa5eabcb3b3df3e0a69eb19434c2d34db73cd5ca473
 E080 closure  synchronized HardwareBuffer manager/FList sticky owner compile-only; no runtime instance or RunCompute
+private evidence checkpoint E081  cef34c8
+E081 Linux checkpoint  affdd1fba79d333530cac22d069212b6e65ef9d4
+E081 Linux tree  2626c74fdd6b91a09e51a24b187e7510760dd3b3
+E081 module sha256  23fbaeaf602208c1f5aef14ba8f8fb4c14a943a9339dd41c5a0f80a41b82b204
+E081 patch 0014 sha256  b20da8f6d4b4df1d6e58dd5e2eb90449a4da830f17acfa4837f4d78bd4bd9a33
+E081 closure  exact symbolic FList geometry plus fixed-object/HardwareBuffer plan; no GPU allocator or RunCompute

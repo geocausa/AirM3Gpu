@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-FLIST-RESOURCE-PLAN.md` — E081 side-effect-free FList resource geometry/HardwareBuffer ownership plan with no GPU allocator.
 - `G15-HARDWARE-BUFFER-ID-OWNER.md` — E080 synchronized manager wrapper plus FList sticky owner, compile-only and uninstantiated.
 - `G15-HARDWARE-BUFFER-ID-STATE.md` — E079 exact 0x100-entry sticky/refcount/bitmap/free-stack HardwareBuffer-ID state machine, compile-only and uninstantiated.
 - `G15-23J220-FLIST-RESOURCE-LIFETIME.md` — E077/E078 exact FList four-resource constructor, symbolic list-size formulas, distinct `0x...044b` FW-Uncached range-7 leaf class, and compile-only Linux mapping ownership.

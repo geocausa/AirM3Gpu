@@ -1,0 +1,152 @@
+From affdd1fba79d333530cac22d069212b6e65ef9d4 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 00:26:47 +0100
+Subject: [PATCH] drm: asahi: plan G15 FList persistent resources
+
+---
+ drivers/gpu/drm/asahi/buffer.rs | 129 ++++++++++++++++++++++++++++++++
+ 1 file changed, 129 insertions(+)
+
+diff --git a/drivers/gpu/drm/asahi/buffer.rs b/drivers/gpu/drm/asahi/buffer.rs
+index 40b22dfd1f03..ffd3e5ff4a4a 100644
+--- a/drivers/gpu/drm/asahi/buffer.rs
++++ b/drivers/gpu/drm/asahi/buffer.rs
+@@ -332,6 +332,135 @@ pub(crate) fn complete_reference(&self, hardware_buffer_id: u32) -> Result<bool>
+     }
+ }
+ 
++/// Exact AGXUMAFList persistent-resource geometry recovered from 23J220.
++///
++/// `max_pool_bytes` is Apple AGXUMAPool +0x48 (`M`), `block_bytes` is +0x50
++/// (`B`), and `host_page_bytes` is the host page size (`P`). E077 proved the
++/// formulas below but did not mechanically close J615's override-sensitive M/B
++/// values, so this type requires them from a future proven producer instead of
++/// baking in the 2-GiB/4-MiB fallback values.
++#[derive(Clone, Copy, Debug)]
++#[allow(dead_code)]
++pub(crate) struct G15FListGeometry {
++    pub(crate) max_pool_bytes: u64,
++    pub(crate) block_bytes: u64,
++    pub(crate) host_page_bytes: u64,
++    pub(crate) page_pool_list_bytes: u64,
++    pub(crate) page_pool_list_entries: u32,
++    pub(crate) backup_page_list_bytes: u64,
++}
++
++#[allow(dead_code)]
++impl G15FListGeometry {
++    pub(crate) const PAGE_POOL_LIST_ENTRY_BYTES: u64 = 8;
++    pub(crate) const BACKUP_PAGE_LIST_ENTRY_BYTES: u64 = 8;
++    pub(crate) const PAGE_POOL_STATE_BYTES: usize =
++        core::mem::size_of::<buffer::raw::G15UMAPagePoolState>();
++    pub(crate) const FW_UNCACHED_STATE_BYTES: usize =
++        core::mem::size_of::<buffer::raw::G15UMAFWUncachedState>();
++
++    fn align_up(value: u64, align: u64) -> Result<u64> {
++        if align == 0 || !align.is_power_of_two() {
++            return Err(EINVAL);
++        }
++        Ok(value
++            .checked_add(align - 1)
++            .ok_or(EOVERFLOW)?
++            & !(align - 1))
++    }
++
++    pub(crate) fn new(max_pool_bytes: u64, block_bytes: u64, host_page_bytes: u64) -> Result<Self> {
++        if max_pool_bytes == 0 || block_bytes == 0 {
++            return Err(EINVAL);
++        }
++
++        // Exact AGXUMAFList::init(): align_up(M >> 9, P).
++        let page_pool_list_bytes = Self::align_up(max_pool_bytes >> 9, host_page_bytes)?;
++        if page_pool_list_bytes == 0
++            || page_pool_list_bytes % Self::PAGE_POOL_LIST_ENTRY_BYTES != 0
++        {
++            return Err(EINVAL);
++        }
++        let page_pool_list_entries_u64 =
++            page_pool_list_bytes / Self::PAGE_POOL_LIST_ENTRY_BYTES;
++        let page_pool_list_entries: u32 = page_pool_list_entries_u64
++            .try_into()
++            .map_err(|_| EOVERFLOW)?;
++
++        // Exact AGXUMAFList::init(): align_up((M / B) * 64, P).
++        let backup_unaligned = max_pool_bytes
++            .checked_div(block_bytes)
++            .ok_or(EINVAL)?
++            .checked_mul(64)
++            .ok_or(EOVERFLOW)?;
++        let backup_page_list_bytes = Self::align_up(backup_unaligned, host_page_bytes)?;
++        if backup_page_list_bytes == 0
++            || backup_page_list_bytes % Self::BACKUP_PAGE_LIST_ENTRY_BYTES != 0
++        {
++            return Err(EINVAL);
++        }
++
++        Ok(Self {
++            max_pool_bytes,
++            block_bytes,
++            host_page_bytes,
++            page_pool_list_bytes,
++            page_pool_list_entries,
++            backup_page_list_bytes,
++        })
++    }
++}
++
++const _: [(); 0x70] = [(); G15FListGeometry::PAGE_POOL_STATE_BYTES];
++const _: [(); 0x08] = [(); G15FListGeometry::FW_UNCACHED_STATE_BYTES];
++const _: [(); G15_HARDWARE_BUFFER_ID_COUNT] = [(); 0x100];
++
++/// Complete host-side *plan* for one G15 FList's persistent ownership. This
++/// combines the exact symbolic resource geometry with the synchronized sticky
++/// HardwareBuffer owner but deliberately owns no GPU allocation object.
++///
++/// In particular, E081 does not choose a Page/Backup List mapping class, does
++/// not call the range-7/range-8 allocators, and cannot publish Page-Pool State
++/// to RunCompute. A future constructor may consume this plan only after M/B and
++/// the remaining range-5 mapping classes are mechanically closed.
++#[allow(dead_code)]
++pub(crate) struct G15FListResourcePlan {
++    geometry: G15FListGeometry,
++    hardware: G15FListHardwareBufferOwner,
++}
++
++#[allow(dead_code)]
++impl G15FListResourcePlan {
++    pub(crate) fn new(
++        manager: G15HardwareBufferIdManager,
++        owner_cookie: u64,
++        max_pool_bytes: u64,
++        block_bytes: u64,
++        host_page_bytes: u64,
++    ) -> Result<Self> {
++        Ok(Self {
++            geometry: G15FListGeometry::new(max_pool_bytes, block_bytes, host_page_bytes)?,
++            hardware: G15FListHardwareBufferOwner::new(manager, owner_cookie)?,
++        })
++    }
++
++    pub(crate) fn geometry(&self) -> G15FListGeometry {
++        self.geometry
++    }
++
++    pub(crate) fn sticky_hardware_buffer_id(&self) -> Option<u32> {
++        self.hardware.sticky_id()
++    }
++
++    pub(crate) fn prepare_reference(&mut self) -> Result<G15HardwareBufferLease> {
++        self.hardware.prepare_reference()
++    }
++
++    pub(crate) fn complete_reference(&self, hardware_buffer_id: u32) -> Result<bool> {
++        self.hardware.complete_reference(hardware_buffer_id)
++    }
++}
++
+ /// Apple G15 parameter-management device configuration recovered from
+ /// `AGXAcceleratorG15::halGetPMConfig()`.
+ ///
+-- 
+2.53.0
+
