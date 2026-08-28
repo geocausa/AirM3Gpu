@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-23J220-CONTEXT-ID-GENERATION.md` — E073 exact-target 64-ID context/generation lifecycle, 256-ID HardwareBuffer lifetime, and Linux `+0x85f` implementation.
 - `G15-23J220-COMPUTE-UMA-TAIL.md` — E072 exact-target stock-empty UMA value closure plus Page-Pool State and HWMetrics pointer producers.
 - `G15-23J220-COMPUTE-SKU-SOURCES.md` — E070/E071 exact-target SKU packet/source map, inactive PerfCtr closure, UMA prepared-state handoff, timestamp geometry, and the Linux +0x760/+0x846 corrections.
 - `G15-EMPTY-COMPUTE-CONTAINER.md` — E069 exact-23J220 proof that the stock empty Compute descriptor reaches normal `submitBuffer()`/firmware submission rather than being host-elided.

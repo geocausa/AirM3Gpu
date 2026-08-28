@@ -186,6 +186,8 @@ E071 closes the exact inactive stock-empty SKU gate and the first UMA handoff by
 
 E072 closes the remaining stock-empty UMA value ambiguity and identifies the two live pointer producers. The raw empty UMA record remains zero at the qwords copied to descriptor `+0x628/+0x630`, so RunCompute `+0x847/+0x84f` are **exactly zero**; Apple's `getMinPoolSize()/getIdealPoolSize()` results govern backing allocation instead. RunCompute `+0x83e` is the live FW address of the FList-owned 0x70-byte `UMA Page Pool State`, and `+0x857` is the base FW address of the one-page `AGXUMAHWMetrics` mapping because descriptor offset `+0x620` remains zero. Linux already models the 0x70 ABI and 256-entry Page Pool descriptor table but has no G15 HardwareBuffer-ID allocator or Compute metrics owner, so those pointers remain zero/fail-closed rather than guessed.
 
+E073 closes the managed context-ID/generation lifecycle on the exact 23J220 target. G15 has 64 context IDs with ID 0 reserved; user IDs 1..63 carry an 8-bit generation byte. Fresh assignment registers the GART then increments the generation, while sticky reuse preserves it. Linux already had the same 64-slot/GPTBAT context-ID mechanism, so commit `03fdbb86230f` adds the missing per-slot generation and exports it at RunCompute `+0x85f`. The same oracle pass proves the separate G15 HardwareBuffer manager has 0x100 IDs and owns FList mapping preparation/completion, so `+0x83e` still cannot be made live with a constant ID or naked pointer.
+
 See `research/g15/G15-23J220-COMPUTE-ABI.md`, `research/g15/G15-23J220-COMPUTE-REGISTERARRAY.md`, `research/g15/G15-EMPTY-COMPUTE-REGISTERARRAY.md`, `research/g15/G15-EMPTY-COMPUTE-CONTAINER.md`, and `research/g15/G15-23J220-COMPUTE-SKU-SOURCES.md`.
 
 ## E061 — first real Compute is an execution boundary
@@ -202,9 +204,9 @@ See `research/g15/G15-COMPUTE-LAUNCH-BOUNDARY.md`.
 
 The current clean Linux checkpoint head is:
 
-`f73b9e5516589fde5820ea487911fd830fac958c`
+`03fdbb86230f1c431bb6958dfa6bc752ad35b1cd`
 
-Patch 0004 remains the squashed delta through the scheduler-registration boundary. Patch 0005 is the focused compile-only E068 delta from `2f08f68` to `1d264651`, adding only the exact stock empty-Compute G15 RegisterArray and its `0x1a440` mirror. Patch 0006 is the focused E071 delta from `1d264651` to `f73b9e55`, correcting only the exact stock empty-Compute UMA prepared byte at RunCompute `+0x846` from `0` to `1`. Runtime G15 submission remains fail-closed.
+Patch 0004 remains the squashed delta through the scheduler-registration boundary. Patch 0005 is the focused compile-only E068 delta from `2f08f68` to `1d264651`, adding only the exact stock empty-Compute G15 RegisterArray and its `0x1a440` mirror. Patch 0006 is the focused E071 delta from `1d264651` to `f73b9e55`, correcting only the exact stock empty-Compute UMA prepared byte at RunCompute `+0x846` from `0` to `1`. Patch 0007 is the E073 delta from `f73b9e55` to `03fdbb86`, wiring the exact managed context-generation byte to RunCompute `+0x85f`. Runtime G15 submission remains fail-closed.
 
 ## Explicitly not enabled
 

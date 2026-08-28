@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  1d264651a20410af426cb3ee269ede2ec15011dd
-linux current checkpoint    f73b9e5516589fde5820ea487911fd830fac958c
-linux current tree          a833d07fe3bbcd6103090c8cbb9dfa378614521e
+linux previous public head  f73b9e5516589fde5820ea487911fd830fac958c
+linux current checkpoint    03fdbb86230f1c431bb6958dfa6bc752ad35b1cd
+linux current tree          999f7f6cc80a2e5cfd92c8de88dbc1a05d6c3de3
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -19,6 +19,9 @@ PUBLIC LINUX DELTA
 0006 sha256  296c512b562d84827480aedec08bcb19d9fbf2f37c435eeecdeafb897450cbf1
 0006 applies from 1d264651a20410af426cb3ee269ede2ec15011dd
 0006 reconstructs tree a833d07fe3bbcd6103090c8cbb9dfa378614521e
+0007 sha256  af6b45190901a8c19f34823f448ac151d54687e75faf4d0bca319556fc772b69
+0007 applies from f73b9e5516589fde5820ea487911fd830fac958c
+0007 reconstructs tree 999f7f6cc80a2e5cfd92c8de88dbc1a05d6c3de3
 
 GOLDEN LOCAL BOOT CONTRACT
 golden kernel release   7.1.6-ubuntu-m3-usbpd-gc5037a961e4d
@@ -119,3 +122,10 @@ private evidence checkpoint E072  3fec9b0
 E072 macOS oracle result sha256  3bccf6a407c9c77508a79ead37e1187871ab5399d015eb2226e8c5f90f88b182
 E072 public UMA-tail note sha256  c6987066af4b4e00dc601eff1c22404ccbdfa68ce4e7e608605c291cecc9c785
 E072 closure  empty +0x847/+0x84f are zero; +0x83e is live 0x70 Page-Pool State; +0x857 is live one-page HWMetrics base; no live RunCompute
+private evidence checkpoint E073  9b6d600
+E073 private result sha256  284c02c752d6d3d3d000a451b35c867d3be2986c1578905ab6bede882d5cbfad
+E073 Linux checkpoint  03fdbb86230f1c431bb6958dfa6bc752ad35b1cd
+E073 Linux tree  999f7f6cc80a2e5cfd92c8de88dbc1a05d6c3de3
+E073 public context-generation note sha256  b9a78d72d92a44b2e1487e9329037f22bb45c3dc5e9aed6470b61886f3881771
+E073 module sha256  a54dee9c2b3a435c7f3c5fcebb33cde71dacf81b0b1af4df846851631f97b376
+E073 closure  G15 context ID 1..63 + dynamic generation now modeled at RunCompute +0x10/+0x85f; HardwareBuffer-ID/mapping lifetime still blocks live +0x83e; no live RunCompute
