@@ -1,0 +1,216 @@
+From 865f24f2a9fc2be36db3ffae11eee22aa0ebc63c Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 00:20:16 +0100
+Subject: [PATCH] drm: asahi: model G15 HardwareBuffer ID state
+
+---
+ drivers/gpu/drm/asahi/buffer.rs | 193 ++++++++++++++++++++++++++++++++
+ 1 file changed, 193 insertions(+)
+
+diff --git a/drivers/gpu/drm/asahi/buffer.rs b/drivers/gpu/drm/asahi/buffer.rs
+index c921294ff38d..aefc8b45291c 100644
+--- a/drivers/gpu/drm/asahi/buffer.rs
++++ b/drivers/gpu/drm/asahi/buffer.rs
+@@ -74,6 +74,199 @@
+ /// publishes its 32-byte-aligned base and base + 0x280 to the TA command.
+ pub(crate) const G15_RENDER_CTXSWITCH_BYTES: usize = 0x8e0;
+ 
++/// Exact G15 AGXHardwareBufferIDManager capacity. Apple G15/G15G start()
++/// initializes this manager with 0x100 entries; RTKit reuses the assigned ID
++/// directly as the UMA Page-Pool descriptor-table index.
++pub(crate) const G15_HARDWARE_BUFFER_ID_COUNT: usize = 0x100;
++const G15_HARDWARE_BUFFER_ID_NONE: u32 = u32::MAX;
++const G15_HARDWARE_BUFFER_BITMAP_WORDS: usize = G15_HARDWARE_BUFFER_ID_COUNT / 64;
++
++const fn g15_hardware_buffer_initial_free_stack() -> [u16; G15_HARDWARE_BUFFER_ID_COUNT] {
++    let mut stack = [0u16; G15_HARDWARE_BUFFER_ID_COUNT];
++    let mut i = 0;
++    while i < G15_HARDWARE_BUFFER_ID_COUNT {
++        stack[i] = (G15_HARDWARE_BUFFER_ID_COUNT - 1 - i) as u16;
++        i += 1;
++    }
++    stack
++}
++
++const G15_HARDWARE_BUFFER_INITIAL_FREE_STACK: [u16; G15_HARDWARE_BUFFER_ID_COUNT] =
++    g15_hardware_buffer_initial_free_stack();
++const _: [(); 0xff] = [(); G15_HARDWARE_BUFFER_INITIAL_FREE_STACK[0] as usize];
++const _: [(); 0x00] = [(); G15_HARDWARE_BUFFER_INITIAL_FREE_STACK[0xff] as usize];
++
++/// Per-FList sticky HardwareBuffer-ID state. Apple stores the sticky ID at
++/// AGXHardwareBufferBase +0x10; when an inactive ID is stolen, the old object
++/// keeps that stale value until its next allocation detects the owner mismatch.
++#[derive(Clone, Copy, Debug)]
++#[allow(dead_code)]
++pub(crate) struct G15HardwareBufferBinding {
++    owner_cookie: u64,
++    hardware_buffer_id: u32,
++}
++
++#[allow(dead_code)]
++impl G15HardwareBufferBinding {
++    pub(crate) fn new(owner_cookie: u64) -> Result<Self> {
++        if owner_cookie == 0 {
++            return Err(EINVAL);
++        }
++        Ok(Self {
++            owner_cookie,
++            hardware_buffer_id: G15_HARDWARE_BUFFER_ID_NONE,
++        })
++    }
++
++    pub(crate) fn hardware_buffer_id(&self) -> Option<u32> {
++        (self.hardware_buffer_id != G15_HARDWARE_BUFFER_ID_NONE)
++            .then_some(self.hardware_buffer_id)
++    }
++}
++
++/// Result of one HardwareBuffer-ID reference acquisition. `first_reference`
++/// matches Apple's bool out-parameter and the argument passed to
++/// AGXHardwareBufferBase::prepareBufferResources(): it is true exactly on the
++/// transition from zero references to one.
++#[derive(Clone, Copy, Debug)]
++#[allow(dead_code)]
++pub(crate) struct G15HardwareBufferLease {
++    pub(crate) hardware_buffer_id: u32,
++    pub(crate) first_reference: bool,
++}
++
++/// Compile-only reconstruction of AGXHardwareBufferIDManager's exact G15 state
++/// machine. Callers must provide external synchronization before this becomes
++/// runtime-active; E079 deliberately does not instantiate or lock this object.
++#[derive(Debug)]
++#[allow(dead_code)]
++pub(crate) struct G15HardwareBufferIdState {
++    owners: [u64; G15_HARDWARE_BUFFER_ID_COUNT],
++    refs: [u32; G15_HARDWARE_BUFFER_ID_COUNT],
++    free_bitmap: [u64; G15_HARDWARE_BUFFER_BITMAP_WORDS],
++    free_stack: [u16; G15_HARDWARE_BUFFER_ID_COUNT],
++    free_top: i16,
++}
++
++#[allow(dead_code)]
++impl G15HardwareBufferIdState {
++    pub(crate) fn new() -> Self {
++        Self {
++            owners: [0; G15_HARDWARE_BUFFER_ID_COUNT],
++            refs: [0; G15_HARDWARE_BUFFER_ID_COUNT],
++            free_bitmap: [u64::MAX; G15_HARDWARE_BUFFER_BITMAP_WORDS],
++            free_stack: G15_HARDWARE_BUFFER_INITIAL_FREE_STACK,
++            free_top: (G15_HARDWARE_BUFFER_ID_COUNT - 1) as i16,
++        }
++    }
++
++    fn set_free(&mut self, id: usize, free: bool) {
++        let word = id >> 6;
++        let bit = 1u64 << (id & 63);
++        if free {
++            self.free_bitmap[word] |= bit;
++        } else {
++            self.free_bitmap[word] &= !bit;
++        }
++    }
++
++    fn pop_free_id(&mut self) -> Option<u32> {
++        if self.free_top >= 0 {
++            let top = self.free_top as usize;
++            let id = self.free_stack[top] as u32;
++            self.free_top -= 1;
++            return Some(id);
++        }
++
++        for (word_index, word) in self.free_bitmap.iter().copied().enumerate() {
++            if word != 0 {
++                let bit = word.trailing_zeros() as usize;
++                return Some((word_index * 64 + bit) as u32);
++            }
++        }
++        None
++    }
++
++    fn push_free_id(&mut self, id: u32) -> Result {
++        let next = self.free_top as i32 + 1;
++        if next < 0 || next as usize >= G15_HARDWARE_BUFFER_ID_COUNT {
++            return Err(EOVERFLOW);
++        }
++        self.free_top = next as i16;
++        self.free_stack[next as usize] = id as u16;
++        Ok(())
++    }
++
++    /// Mirrors AGXHardwareBufferIDManager::alloc(). Sticky reuse succeeds when
++    /// binding ID and manager owner still match. Otherwise an unowned LIFO ID
++    /// is used first; after that initial stack is exhausted, the lowest set bit
++    /// in the zero-reference bitmap may steal a dormant sticky ID.
++    pub(crate) fn acquire(
++        &mut self,
++        binding: &mut G15HardwareBufferBinding,
++    ) -> Result<G15HardwareBufferLease> {
++        if binding.owner_cookie == 0 {
++            return Err(EINVAL);
++        }
++
++        if let Some(id) = binding.hardware_buffer_id() {
++            let idx = id as usize;
++            if idx < G15_HARDWARE_BUFFER_ID_COUNT && self.owners[idx] == binding.owner_cookie {
++                self.refs[idx] = self.refs[idx].checked_add(1).ok_or(EOVERFLOW)?;
++                self.set_free(idx, false);
++                return Ok(G15HardwareBufferLease {
++                    hardware_buffer_id: id,
++                    first_reference: self.refs[idx] == 1,
++                });
++            }
++        }
++
++        let id = self.pop_free_id().ok_or(ENOSPC)?;
++        let idx = id as usize;
++        if idx >= G15_HARDWARE_BUFFER_ID_COUNT || self.refs[idx] != 0 {
++            return Err(EIO);
++        }
++        self.refs[idx] = 1;
++        self.set_free(idx, false);
++        self.owners[idx] = binding.owner_cookie;
++        binding.hardware_buffer_id = id;
++        Ok(G15HardwareBufferLease {
++            hardware_buffer_id: id,
++            first_reference: true,
++        })
++    }
++
++    /// Mirrors AGXHardwareBufferIDManager::complete(). The return value is true
++    /// exactly when the reference count is zero after completion and therefore
++    /// the caller must run completeBufferResources(). A normally sticky owner
++    /// retains its ID/owner entry; a mismatched stale owner releases the slot to
++    /// the LIFO stack after clearing the manager's owner entry.
++    pub(crate) fn complete(
++        &mut self,
++        binding: &G15HardwareBufferBinding,
++        hardware_buffer_id: u32,
++    ) -> Result<bool> {
++        let idx = hardware_buffer_id as usize;
++        if idx >= G15_HARDWARE_BUFFER_ID_COUNT {
++            return Err(EINVAL);
++        }
++
++        if self.refs[idx] != 0 {
++            self.refs[idx] -= 1;
++        }
++        if self.refs[idx] != 0 {
++            return Ok(false);
++        }
++
++        self.set_free(idx, true);
++        if binding.hardware_buffer_id != hardware_buffer_id {
++            self.owners[idx] = 0;
++            self.push_free_id(hardware_buffer_id)?;
++        }
++        Ok(true)
++    }
++}
++
+ /// Apple G15 parameter-management device configuration recovered from
+ /// `AGXAcceleratorG15::halGetPMConfig()`.
+ ///
+-- 
+2.53.0
+

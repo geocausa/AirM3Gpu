@@ -158,3 +158,9 @@ E078 Linux tree  0e95ec2eacd9151962a73a951efdc6e728b9c810
 E078 module sha256  36dc754ad4744d38dc54a73b79739cd0a8c78970f0f1bed09acd3bc2a3c82afb
 E078 patch 0011 sha256  0b3b8c77fb440da5e152d60e3a1330fee92eb7c5f3bfd802940de139fec1feb2
 E078 closure  FList FW-Uncached leaf 0x00c000000000044b + exact 8-byte ABI compile-only; persistent FList and RunCompute remain blocked
+private evidence checkpoint E079  670a48b
+E079 Linux checkpoint  865f24f2a9fc2be36db3ffae11eee22aa0ebc63c
+E079 Linux tree  f88bf712fb898afb3f5a436acb62f18eadf3dc87
+E079 module sha256  5ffd4013a82ef211178f618001a5bc4f0faa5706c0548bb087bb18fba525830a
+E079 patch 0012 sha256  28d46d3d827587f174600c3c7055191a63bbe1758a2add25532d1aa479f9b7e9
+E079 closure  exact 256-ID sticky/refcount/free-state manager modeled compile-only; no synchronized runtime instance or RunCompute
