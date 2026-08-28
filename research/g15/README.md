@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-23J220-COMPUTE-UMA-TAIL.md` — E072 exact-target stock-empty UMA value closure plus Page-Pool State and HWMetrics pointer producers.
 - `G15-23J220-COMPUTE-SKU-SOURCES.md` — E070/E071 exact-target SKU packet/source map, inactive PerfCtr closure, UMA prepared-state handoff, timestamp geometry, and the Linux +0x760/+0x846 corrections.
 - `G15-EMPTY-COMPUTE-CONTAINER.md` — E069 exact-23J220 proof that the stock empty Compute descriptor reaches normal `submitBuffer()`/firmware submission rather than being host-elided.
 - `G15-EMPTY-COMPUTE-REGISTERARRAY.md` — E068 stock empty-Compute raw oracle, final descriptor-source closure, and exact 20-entry J615/G15G list.

@@ -114,3 +114,8 @@ E060 registration  scheduler 0x111 accepted; callback 0x101 returned; pipe (1,1,
 E060 release  generated G15 ReleaseResource tag=0x11; native teardown returned success
 Boundary: bounded Barrier-only QueueInfo registration and native G15 release are closed; no RunVertex/RunFragment/RunCompute or shader payload executed.
 The E057-E060 diagnostic modules are not part of the clean public Linux source checkpoint.
+
+private evidence checkpoint E072  3fec9b0
+E072 macOS oracle result sha256  3bccf6a407c9c77508a79ead37e1187871ab5399d015eb2226e8c5f90f88b182
+E072 public UMA-tail note sha256  c6987066af4b4e00dc601eff1c22404ccbdfa68ce4e7e608605c291cecc9c785
+E072 closure  empty +0x847/+0x84f are zero; +0x83e is live 0x70 Page-Pool State; +0x857 is live one-page HWMetrics base; no live RunCompute
