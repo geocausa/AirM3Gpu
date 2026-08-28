@@ -1,0 +1,81 @@
+From 1d264651a20410af426cb3ee269ede2ec15011dd Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Fri, 28 Aug 2026 16:12:14 +0100
+Subject: [PATCH] drm: asahi: model G15 empty Compute register list
+
+---
+ drivers/gpu/drm/asahi/queue/compute.rs | 51 ++++++++++++++++++--------
+ 1 file changed, 36 insertions(+), 15 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/queue/compute.rs b/drivers/gpu/drm/asahi/queue/compute.rs
+index 1c8016d1e8dd..246ccc82109e 100644
+--- a/drivers/gpu/drm/asahi/queue/compute.rs
++++ b/drivers/gpu/drm/asahi/queue/compute.rs
+@@ -315,20 +315,39 @@ pub(super) fn submit_compute(
+                     #[ver(G == G15)]
+                     registers: fw::job::raw::RegisterArray::new(
+                         inner_weak_ptr!(_ptr, registers.registers),
+-                        |_r| {
+-                            // Apple G15 generateRegisterList() is not the G14X list:
+-                            // 0x1a440 is dynamically synthesized, 0x1a458 and a
+-                            // G15-only tail are added, and the old USC/helper entries
+-                            // are absent. Keep the exact array geometry but emit no
+-                            // unverified register programming while G15 stays fail-closed.
+-                            let _ = (
+-                                inner.preempt_buf.gpu_pointer(),
+-                                cmdbuf.cdm_ctrl_stream_base,
+-                                cmdbuf.helper.binary,
+-                                cmdbuf.helper.data,
+-                                cmdbuf.helper.cfg,
+-                                self.usc_exec_base,
+-                            );
++                        |r| {
++                            // Keep the legacy per-queue USC base consumed on the G15
++                            // specialization even though Apple does not encode it in
++                            // this exact empty-Compute RegisterArray.
++                            let _ = self.usc_exec_base;
++
++                            // E067/E068 close the exact J615/G15G Apple empty-Compute
++                            // RegisterArray. Ordinary G15 SUBMIT remains rejected with
++                            // ENODEV, so this is a compile-only representation and does
++                            // not enable general Compute execution.
++                            //
++                            // Form-1 Apple register IDs are encoded with bit 0 set in
++                            // the 12-byte RegisterArray entry (e.g. 0x12090 -> 0x12091).
++                            r.add(0x1a510, 0);
++                            r.add(0x1a420, 0);
++                            r.add(0x1a4d0, 0);
++                            r.add(0x1a4d8, 0);
++                            r.add(0x1a4e0, 0);
++                            r.add(0x1a4e8, 0);
++                            r.add(0x1a440, 0x154024201);
++                            r.add(0x1a458, 0x10c08860);
++                            r.add(0x12091, 0);
++                            r.add(0x101d9, 0);
++                            r.add(0x1a089, 0);
++                            r.add(0x1a091, 0);
++                            r.add(0x1a059, 0);
++                            r.add(0x1a061, 0);
++                            r.add(0x1a0b9, 0);
++                            r.add(0x1a0c1, 0);
++                            r.add(0x101d1, 0);
++                            r.add(0x0d479, 0);
++                            r.add(0x1a0e9, 0);
++                            r.add(0x107a1, 0x00ff0000);
+                         },
+                     ),
+                     #[ver(G != G15)]
+@@ -385,7 +404,9 @@ pub(super) fn submit_compute(
+                         #[ver(G != G15)]
+                         unk_58: 0,
+                         #[ver(G == G15)]
+-                        g15_reg_1a440_value: U64(0),
++                        // Apple mirrors the exact emitted 0x1a440 value here.
++                        // E068 empty Compute has raw +0x170 == 0 on J615/G15G.
++                        g15_reg_1a440_value: U64(0x154024201),
+                         #[ver(V < V13_0B4)]
+                         unk_5c: 0,
+                     }),
+-- 
+2.53.0
+

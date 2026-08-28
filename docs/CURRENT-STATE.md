@@ -174,9 +174,11 @@ E065 then captures Apple’s normal direct Compute CDM packet: one 1x1x1 launch 
 
 E066 moves the outer-container proof onto the exact macOS 14.8.3 / 23J220 ABI used by the M3/J615 Linux target. Apple’s own `AGXFirmware::configurePoolElementSizes()` fixes Compute/CLE at **0x880 bytes**, exactly matching the independently reconstructed Linux `RunComputeG15V14_7`. The exact 23J220 accelerator-ring entry is **0x18 bytes** with fields at `+0x00/+0x08/+0x10/+0x14/+0x16/+0x17`, also exactly matching Linux; Compute is data-master/pipe type **2**. Exact 23J220 `submitReleaseResource()` again uses opcode **0x11**.
 
-E067 closes the cross-build RegisterArray identity question on the exact target. The matching 23J220 KDK exposes kernel-side `AGXCLChannelG15::generateRegisterList()`, and its exact order, descriptor offsets, J615 dynamic IDs, `0x1a440`/`0x1a458` synthesis and optional tail match the independently reconstructed 25F84 program. The remaining blocker is no longer list identity: several Apple raw/private Compute inputs still lack mechanically proven Linux producers. Full G15 RegisterArray emission therefore remains deliberately fail-closed while those values are mapped one by one. No live Linux RunCompute is enabled.
+E067 closes the cross-build RegisterArray identity question on the exact target. The matching 23J220 KDK exposes kernel-side `AGXCLChannelG15::generateRegisterList()`, and its exact order, descriptor offsets, J615 dynamic IDs, `0x1a440`/`0x1a458` synthesis and optional tail match the independently reconstructed 25F84 program.
 
-See `research/g15/G15-23J220-COMPUTE-ABI.md` and `research/g15/G15-23J220-COMPUTE-REGISTERARRAY.md`.
+E068 then captures Apple’s stock no-dispatch Compute container and closes the remaining ordinary-list values. Its exact 0x1d0 raw Compute payload has all RegisterArray-fed raw state zero. Host-driver reconstruction further proves descriptor `+0x460/+0x468/+0x470` come from raw Compute `+0x158/+0x15c/+0x160`; these are also zero in the empty oracle. The resulting J615/G15G list is exactly 20 entries / `0xf0` bytes, with `0x1a440=0x154024201`, `0x1a458=0x10c08860`, and `0x107a0=0x00ff0000`. Linux now models this exact **empty-path** list compile-only. Ordinary G15 submission remains rejected with `ENODEV`, and no live Linux RunCompute is enabled.
+
+See `research/g15/G15-23J220-COMPUTE-ABI.md`, `research/g15/G15-23J220-COMPUTE-REGISTERARRAY.md`, and `research/g15/G15-EMPTY-COMPUTE-REGISTERARRAY.md`.
 
 ## E061 — first real Compute is an execution boundary
 
@@ -192,9 +194,9 @@ See `research/g15/G15-COMPUTE-LAUNCH-BOUNDARY.md`.
 
 The current clean Linux checkpoint head is:
 
-`2f08f68bb2efdadf2d337441553c1f682152a748`
+`1d264651a20410af426cb3ee269ede2ec15011dd`
 
-`patches/linux/0004-drm-asahi-checkpoint-G15-through-empty-queue-boundary.patch` is a squashed delta from the previous public checkpoint head `1b57b289af96973badfbb8489ef379a1b3a96f07`. It has been validated in a temporary Git index to reconstruct the exact `2f08f68` tree.
+Patch 0004 remains the squashed delta through the scheduler-registration boundary. Patch 0005 is the focused compile-only E068 delta from `2f08f68` to `1d264651`, adding only the exact stock empty-Compute G15 RegisterArray and its `0x1a440` mirror. Runtime G15 submission remains fail-closed.
 
 ## Explicitly not enabled
 

@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  1b57b289af96973badfbb8489ef379a1b3a96f07
-linux current checkpoint    2f08f68bb2efdadf2d337441553c1f682152a748
-linux current tree          e985490062efc4baf5847b6e73cd7cf799a5ffaa
+linux previous public head  2f08f68bb2efdadf2d337441553c1f682152a748
+linux current checkpoint    1d264651a20410af426cb3ee269ede2ec15011dd
+linux current tree          b913cff9035c398aa04c1a0bb737d9cdfc139e58
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -13,6 +13,9 @@ PUBLIC LINUX DELTA
 0004 sha256  ab5edbdd7854dd46a2e191fc039d8fda657598d8a9db642faf8d269992831aca
 0004 applies from 1b57b289af96973badfbb8489ef379a1b3a96f07
 0004 reconstructs tree e985490062efc4baf5847b6e73cd7cf799a5ffaa
+0005 sha256  aff55c652bfaf267939c7272fd2d09f5806b66820a99fdb294b5d8ab933281f7
+0005 applies from 2f08f68bb2efdadf2d337441553c1f682152a748
+0005 reconstructs tree b913cff9035c398aa04c1a0bb737d9cdfc139e58
 
 GOLDEN LOCAL BOOT CONTRACT
 golden kernel release   7.1.6-ubuntu-m3-usbpd-gc5037a961e4d
@@ -74,6 +77,12 @@ private evidence checkpoint E064  1826d67
 private evidence checkpoint E065  a35107c
 private evidence checkpoint E066  2254375
 private evidence checkpoint E067  247a3ec
+private evidence checkpoint E068  5a3890b
+E068 empty raw Compute sha256  daba7c272a8bd1009fc04d0128e546892ee4eee70a5859904b1e4ac38b803611
+E068 one-thread raw Compute sha256  457f415f84077982ffb3e2dbb5e252e87fa31b52b400c3c16ccabeaf55e5fd32
+E068 Linux checkpoint  1d264651a20410af426cb3ee269ede2ec15011dd
+E068 native asahi.ko sha256  05f6137f5fc1f0dc2202b2d587156a960c1ab55e70ddadba477a7fb23274e78c
+E068 build  PASS at exact 24-warning baseline; no install or RunCompute execution
 E067 exact 23J220 AGXG15G binary sha256  e29327fd1eeec53ea47bba91572d393cd6bc38ab77b9ac3c9ab62cc70f94854b
 E067 exact RegisterArray producer sha256  495020a4205780e2f916c0e9d1e7f9462b0a237d93cb422dc3f5236f59ebeb09
 E067 closure  target 23J220 list/order/synthesis matches independently reconstructed 25F84 G15 producer; Linux raw/private value producers remain gated
@@ -85,4 +94,4 @@ E060 signed probe sha256  40d908e9c17ef187491c35a482b76d4d05226e98b20becaec44e45
 E060 registration  scheduler 0x111 accepted; callback 0x101 returned; pipe (1,1,1,1)
 E060 release  generated G15 ReleaseResource tag=0x11; native teardown returned success
 Boundary: bounded Barrier-only QueueInfo registration and native G15 release are closed; no RunVertex/RunFragment/RunCompute or shader payload executed.
-The E057-E060 source modules are diagnostic-only and are not part of the clean public 2f08 Linux patch series.
+The E057-E060 diagnostic modules are not part of the clean public Linux source checkpoint.
