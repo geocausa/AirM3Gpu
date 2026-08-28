@@ -164,3 +164,9 @@ E079 Linux tree  f88bf712fb898afb3f5a436acb62f18eadf3dc87
 E079 module sha256  5ffd4013a82ef211178f618001a5bc4f0faa5706c0548bb087bb18fba525830a
 E079 patch 0012 sha256  28d46d3d827587f174600c3c7055191a63bbe1758a2add25532d1aa479f9b7e9
 E079 closure  exact 256-ID sticky/refcount/free-state manager modeled compile-only; no synchronized runtime instance or RunCompute
+private evidence checkpoint E080  d6374bb
+E080 Linux checkpoint  ed17ac035ad2422d4a85146e97c88cb3057eb174
+E080 Linux tree  0ab1640083173ac0070b3717bce4e8fbbee85ec3
+E080 module sha256  91da584b67236872bb8bb22c3ea99c7aeb068759e16d625531aebacccde2feca
+E080 patch 0013 sha256  a99aa363f523ea201287efa5eabcb3b3df3e0a69eb19434c2d34db73cd5ca473
+E080 closure  synchronized HardwareBuffer manager/FList sticky owner compile-only; no runtime instance or RunCompute

@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-HARDWARE-BUFFER-ID-OWNER.md` — E080 synchronized manager wrapper plus FList sticky owner, compile-only and uninstantiated.
 - `G15-HARDWARE-BUFFER-ID-STATE.md` — E079 exact 0x100-entry sticky/refcount/bitmap/free-stack HardwareBuffer-ID state machine, compile-only and uninstantiated.
 - `G15-23J220-FLIST-RESOURCE-LIFETIME.md` — E077/E078 exact FList four-resource constructor, symbolic list-size formulas, distinct `0x...044b` FW-Uncached range-7 leaf class, and compile-only Linux mapping ownership.
 - `G15-RANGE8-DEDICATED-ALLOCATOR.md` — E076 compile-only split of range-7/range-8 bank-1 VA ownership and hard-wired range-8 protection class.
