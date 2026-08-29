@@ -232,3 +232,8 @@ E089 module sha256  0bf6bc2f1329c58a0e048016315c2a0ff509d334bb467b7d3150430fa8bb
 E089 patch 0019 sha256  7f6c87799aa8c79c4f8dacc8e91e20dd6564733735eb9bc41262a7548690f0ff
 E089 closure  exact G15 RunCompute +0x14 event-control FWVA now zero/fail-closed instead of wrong queue-wide notifier; no install or RunCompute
 E089 public event-control note sha256  0e98ccfbef99140ce80fd7a171b1b2f25e518bb49075b84f6894aa33e95433d4
+private evidence checkpoint E090  6737844
+E090 exact oracle result sha256  28dd918ecabf946333439010ae09a4d11c2d6356bd732665aa54446d072de0c5
+E090 private result sha256  28dd918ecabf946333439010ae09a4d11c2d6356bd732665aa54446d072de0c5
+E090 closure  destructive recovery force-completes stamps into normal descriptor retirement then separately drains cached context, async UMA request, sticky FList HardwareBuffer, page-pool and channel state; no Linux source change or RunCompute
+E090 public recovery note sha256  815cd3145a66052462d2d10e2d3377fc68898ff1467b4a7e0d51ce6261d414fb
