@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-RUNCOMPUTE-INTEGRATION-GAPS.md` — E112 static audit blocking direct E111 → RunCompute mutation and defining the required two-phase integration boundary.
 - `G15-RUNCOMPUTE-FIELD-STAGE.md` — E111 host-only staging of exact stock-empty RunCompute-facing asset fields with no firmware-command writer.
 - `G15-GUARDED-COMMAND-ASSETS.md` — E110 definition-only armed-fence integration of exact event/SKU retirement guards with the private E109 asset materializer.
 - `G15-UNPUBLISHED-COMMAND-ASSETS.md` — E109 private non-Copy coherent event/SKU/Page-Pool/HWMetrics/HardwareBuffer assets token with no RunCompute consumer.

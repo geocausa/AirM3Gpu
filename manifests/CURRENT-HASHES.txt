@@ -395,3 +395,9 @@ E111 patch 0034 sha256  3ac519ee47769c346b5d82bb092b3d46b9ce742275949389b31981f0
 E111 private result sha256  64b11b92bb896d76dfd4ebd5ee95321332d410adf6cde41c69386ae6b6422b13
 E111 public field-stage note sha256  fbce44e6ee7fa840d603865ac2102080102d666aeb004dc0d2164093ed38a60b
 E111 closure  exact stock-empty RunCompute-facing asset values staged host-only with retained HardwareBuffer lifetime; no firmware-command writer/call site/install/RunCompute
+
+private evidence checkpoint E112  222a0cec0db9bf4ead8f389d43007b7829b5a303
+E112 private result sha256  af4de75d096791378edef0c96b7e78e1c96e65c2a8d877b2bca0cbb777cc6bea
+E112 audit sha256  f148502308e6d07b92350f7fcaa03233b3007101698a7e4dc29c48959feb55cf
+E112 public integration-gap note sha256  4a9bed0e1c18897748e474066889ce94bcc47002d73fc53e4c2fdcfe4bf96450
+E112 closure  static audit blocks direct E111->RunCompute writer; requires two-phase SKU/command ordering, early fence arm/rollback, missing runtime source bridges, and exact active pre-micro/JobParameters2 producers; no Linux source change/install/RunCompute

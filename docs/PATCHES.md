@@ -416,3 +416,5 @@ Patch 0034 validation performed on 2026-08-29:
 - module SHA-256: `ec27e7ac2f4fdb9725813017baeb1431e9361bcf9bf7083322f4082b62b3f755`
 - reachability: field stage / guarded materializer definitions only; no `RunCompute` writer/call site; live pointer fields unchanged
 - runtime: not installed/not executed; no RunCompute
+
+E112 is a static integration-gap audit only and has no Linux patch. It leaves checkpoint `139b745dbf0092825cad3c65bc18fb03385f2305` / patch 0034 unchanged and explicitly blocks a direct staged-field writer until two-phase ordering, fence rollback, missing SKU sources, and active pre-SKU/JobParameters2 producers are closed.
