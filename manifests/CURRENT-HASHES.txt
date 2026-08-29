@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  47a8c0070a4be796f27ed64f3ca7a7f198b8af1b
-linux current checkpoint    bd95b9c01004eeb8b35f6c7d06224bac635d2cfa
-linux current tree          8f10c024ee2743f91112f920d37567979ef0a07c
+linux previous public head  bd95b9c01004eeb8b35f6c7d06224bac635d2cfa
+linux current checkpoint    897d3ae4189603b58438131724e8d481f03b6917
+linux current tree          2bc3de6ea13b5115594305bb597f10df92a735bc
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -310,3 +310,17 @@ E100 patch 0026 sha256  562c1194867b1d305af3aa8c5f41731385db1d4b1e905bee73e422cf
 E100 private result sha256  3d9e8114c701be231b3077c43dfb734883f2db78944412461f6bd00ecd7cbe4c
 E100 public stock-empty activation note sha256  9922493704a2c61e256dbdf0e1ddaf6b78454e5a8db13888fb19db35d3235a8c
 E100 closure  stock-empty first activation has zero populated pages and zero Backup extents with real mapped resources/capacity/HardwareBuffer ID; helper unreachable; RunCompute +0x83e zero; no install or RunCompute
+
+private evidence checkpoint E101  86c1c46f25be05bc09ae7f98cd13e43417af1304
+E101 exact oracle result sha256  f01cdbedda0cd26434591712633b57dc79795f96cfe24be5f5b9cd7103acc678
+E101 private result sha256  2103e7e0a0c6df754d408399f186789ae729b631d9957e80e7c562f17be4b5ce
+E101 closure  exact inactive stock-empty 23J220 SKU source map corrected/closed; no Linux source change or RunCompute
+private evidence checkpoint E102  4a0a98c0834ed694ade9c3868af815517bbf7219
+E102 Linux checkpoint  897d3ae4189603b58438131724e8d481f03b6917
+E102 Linux tree  2bc3de6ea13b5115594305bb597f10df92a735bc
+E102 module sha256  b6373f5b22796f11994d2292663bff0464f945488c09edccb666bdce81829778
+E102 patch 0027 sha256  7d19ec1154d99778587329ec3dc10304f141e11d0214a741a186ed4b94eb9adf
+E102 private result sha256  e02f2d42433ba55a75065e8dab8ea5c8e0e2924c9f3b4ba4fdc62dcfa1f93f0e
+E102 layout audit sha256  bc5a7b842224c81fb4e671d944ddbef87c9e988ca90c376f6b264503572c13b5
+E101-E102 public SKU note sha256  792be8bdc02307094251d128939714acf2a595e96fdccc3ee57cf4189824389c
+E102 closure  exact stock-empty 0x2c0 SKU serializer compile-only/unreachable; no GPU backing, +0x760 integration, install or RunCompute

@@ -1,0 +1,237 @@
+From 897d3ae4189603b58438131724e8d481f03b6917 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 14:11:24 +0100
+Subject: [PATCH] drm: asahi: serialize stock-empty G15 Compute SKU stream
+
+---
+ drivers/gpu/drm/asahi/fw/compute.rs | 207 +++++++++++++++++++++++++++-
+ 1 file changed, 206 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/asahi/fw/compute.rs b/drivers/gpu/drm/asahi/fw/compute.rs
+index 607e298ee4d6..34ff1f08b6ba 100644
+--- a/drivers/gpu/drm/asahi/fw/compute.rs
++++ b/drivers/gpu/drm/asahi/fw/compute.rs
+@@ -12,7 +12,7 @@
+     microseq,
+     mmu, //
+ };
+-use kernel::sync::Arc;
++use kernel::{prelude::*, sync::Arc};
+ 
+ pub(crate) mod raw {
+     use super::*;
+@@ -272,6 +272,211 @@ pub(crate) struct RunCompute<'a> {
+     const _: [(); 0x878] = [(); core::mem::offset_of!(RunComputeG15V14_7<'static>, g15_recovery_marker_878)];
+ }
+ 
++
++/// Exact inactive/stock-empty J615 G15 Compute SKU stream size.
++///
++/// This is the 23J220 no-PerfCtr path: type-0xb setup, start timestamp,
++/// Compute WFI, end timestamp, type-0xc retirement packet, finish word, and
++/// zero padding to Apple's 0x40-byte reported alignment.
++pub(crate) const G15_STOCK_EMPTY_SKU_STREAM_SIZE: usize = 0x2c0;
++const G15_STOCK_EMPTY_SKU_PRE_ROUND_SIZE: usize = 0x2b8;
++const G15_SKU_TYPE0B_PACKET_SIZE: usize = 0x1bc;
++const G15_SKU_TIMESTAMP_SIZE: usize = 0x3c;
++const G15_SKU_TYPE0C_PACKET_SIZE: usize = 0x7c;
++const G15_SKU_START_TIMESTAMP_OFFSET: usize = 0x1bc;
++const G15_SKU_WFI_OFFSET: usize = 0x1f8;
++const G15_SKU_END_TIMESTAMP_OFFSET: usize = 0x1fc;
++const G15_SKU_TYPE0C_OFFSET: usize = 0x238;
++const G15_SKU_FINISH_OFFSET: usize = 0x2b4;
++
++// Exact J615 CL-channel resource geometry from AGXCLChannel::init():
++// aligned `(num_cores * 0x1800 + num_mgpus * 0x40)` with 10 cores / 1 MGPU,
++// then one 0x800-byte MGPU span.
++const G15_J615_CL_SKU_REGION_STRIDE: u64 = 0xf400;
++const G15_J615_CL_SKU_MGPU_SPAN: u64 = 0x800;
++
++const _: [(); G15_STOCK_EMPTY_SKU_PRE_ROUND_SIZE] = [();
++    G15_SKU_TYPE0B_PACKET_SIZE
++        + G15_SKU_TIMESTAMP_SIZE
++        + 4
++        + G15_SKU_TIMESTAMP_SIZE
++        + G15_SKU_TYPE0C_PACKET_SIZE
++        + 4
++];
++const _: [(); G15_STOCK_EMPTY_SKU_STREAM_SIZE] = [(); 0x2c0];
++const _: [(); G15_SKU_START_TIMESTAMP_OFFSET] = [(); G15_SKU_TYPE0B_PACKET_SIZE];
++const _: [(); G15_SKU_WFI_OFFSET] =
++    [(); G15_SKU_START_TIMESTAMP_OFFSET + G15_SKU_TIMESTAMP_SIZE];
++const _: [(); G15_SKU_END_TIMESTAMP_OFFSET] = [(); G15_SKU_WFI_OFFSET + 4];
++const _: [(); G15_SKU_TYPE0C_OFFSET] =
++    [(); G15_SKU_END_TIMESTAMP_OFFSET + G15_SKU_TIMESTAMP_SIZE];
++const _: [(); G15_SKU_FINISH_OFFSET] = [(); G15_SKU_TYPE0C_OFFSET + G15_SKU_TYPE0C_PACKET_SIZE];
++
++/// Runtime-owned sources required to serialize Apple's exact stock-empty G15
++/// Compute SKU stream. E101 closes every byte producer; this structure keeps
++/// dynamic addresses/state explicit instead of capturing or guessing them.
++#[derive(Clone, Copy, Debug)]
++#[allow(dead_code)]
++pub(crate) struct G15StockEmptySkuInputs {
++    pub(crate) command_fwva: u64,
++    pub(crate) stream_fwva: u64,
++    /// Converted firmware-object +0x268 value used in both type-0xb/0xc.
++    pub(crate) firmware_state_fwva: u64,
++    /// Converted AGXChannel +0x90 state address.
++    pub(crate) channel_state_fwva: u64,
++    /// Base of the four CL channel command-resource regions (channel +0x1c0).
++    pub(crate) channel_command_region_base_fwva: u64,
++    pub(crate) event_control_fwva: u64,
++    pub(crate) page_pool_state_fwva: u64,
++    pub(crate) hwmetrics_fwva: u64,
++    pub(crate) fw_stamp_fwva: u64,
++    pub(crate) user_timestamp_start: u64,
++    pub(crate) user_timestamp_end: u64,
++    pub(crate) command_counter: u64,
++    pub(crate) context_id: u32,
++    pub(crate) state_sequence: u32,
++    pub(crate) queue_event_sequence: u32,
++    pub(crate) evctl_index: u32,
++    pub(crate) uuid: u32,
++    pub(crate) stamp_value: u32,
++    pub(crate) gart_soft_fault_enabled: bool,
++    pub(crate) accelerator_654_bit7: bool,
++}
++
++/// Byte-exact serializer for the inactive stock-empty 23J220 G15 Compute SKU
++/// stream. It owns no GPU memory and is deliberately unused by RunCompute.
++#[derive(Clone, Debug)]
++#[allow(dead_code)]
++pub(crate) struct G15StockEmptySkuStream {
++    bytes: [u8; G15_STOCK_EMPTY_SKU_STREAM_SIZE],
++}
++
++#[allow(dead_code)]
++impl G15StockEmptySkuStream {
++    fn put_u32(bytes: &mut [u8], offset: usize, value: u32) {
++        bytes[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
++    }
++
++    fn put_u64(bytes: &mut [u8], offset: usize, value: u64) {
++        bytes[offset..offset + 8].copy_from_slice(&value.to_le_bytes());
++    }
++
++    fn add_addr(base: u64, offset: u64) -> Result<u64> {
++        base.checked_add(offset).ok_or(EOVERFLOW)
++    }
++
++    fn write_timestamp(
++        bytes: &mut [u8],
++        offset: usize,
++        start: bool,
++        input: &G15StockEmptySkuInputs,
++    ) -> Result {
++        Self::put_u32(bytes, offset, if start { 0x8000_0003 } else { 0x0000_0003 });
++        Self::put_u64(bytes, offset + 0x04, Self::add_addr(input.command_fwva, 0x810)?);
++        Self::put_u64(bytes, offset + 0x0c, Self::add_addr(input.command_fwva, 0x818)?);
++        Self::put_u64(
++            bytes,
++            offset + 0x14,
++            Self::add_addr(input.command_fwva, if start { 0x818 } else { 0x820 })?,
++        );
++        Self::put_u64(bytes, offset + 0x1c, input.channel_state_fwva);
++        let user_ts = if input.user_timestamp_start != 0 || input.user_timestamp_end != 0 {
++            Self::add_addr(input.command_fwva, 0x828)?
++        } else {
++            0
++        };
++        Self::put_u64(bytes, offset + 0x24, user_ts);
++        Self::put_u64(bytes, offset + 0x2c, Self::add_addr(input.command_fwva, 0x868)?);
++        // Exact encodeTimeStamp() stores its first argument here. The G15 CL
++        // caller passes command +0x808 (UUID); command type 3 only selects the
++        // offset table above.
++        Self::put_u32(bytes, offset + 0x34, input.uuid);
++        Ok(())
++    }
++
++    pub(crate) fn new(input: G15StockEmptySkuInputs) -> Result<Self> {
++        if input.command_fwva == 0
++            || input.stream_fwva == 0
++            || input.firmware_state_fwva == 0
++            || input.channel_state_fwva == 0
++            || input.channel_command_region_base_fwva == 0
++            || input.event_control_fwva == 0
++            || input.page_pool_state_fwva == 0
++            || input.hwmetrics_fwva == 0
++            || input.fw_stamp_fwva == 0
++        {
++            return Err(EINVAL);
++        }
++
++        let mut bytes = [0u8; G15_STOCK_EMPTY_SKU_STREAM_SIZE];
++
++        // Type-0xb packet. The exact host zeroes all 0x1b8 payload bytes first.
++        Self::put_u32(&mut bytes, 0x000, 0x0000_000b);
++        let p = 0x004;
++        Self::put_u64(&mut bytes, p + 0x10, Self::add_addr(input.command_fwva, 0x20)?);
++        Self::put_u64(&mut bytes, p + 0x18, input.firmware_state_fwva);
++        Self::put_u64(&mut bytes, p + 0x20, input.channel_state_fwva);
++        Self::put_u32(&mut bytes, p + 0x28, input.context_id);
++        Self::put_u32(&mut bytes, p + 0x2c, input.gart_soft_fault_enabled as u32);
++        Self::put_u32(&mut bytes, p + 0x30, input.state_sequence);
++        Self::put_u32(&mut bytes, p + 0x34, input.queue_event_sequence);
++        Self::put_u32(&mut bytes, p + 0x38, input.evctl_index);
++        // p+0x3c is exact `(descriptor+0x460 != 0)`, zero on stock-empty.
++        Self::put_u64(&mut bytes, p + 0x40, Self::add_addr(input.command_fwva, 0x76c)?);
++        Self::put_u32(&mut bytes, p + 0x4c, input.uuid);
++        // p+0x50..+0x150 are zero: no stock-empty per-counter subrecords/count.
++        Self::put_u64(&mut bytes, p + 0x158, input.page_pool_state_fwva);
++        // p+0x160/+0x168 are zero on the shared/async stock-empty UMA path.
++        Self::put_u64(&mut bytes, p + 0x170, input.hwmetrics_fwva);
++        bytes[p + 0x178] = input.accelerator_654_bit7 as u8;
++
++        let region0 = input.channel_command_region_base_fwva;
++        let region1 = Self::add_addr(region0, G15_J615_CL_SKU_REGION_STRIDE)?;
++        let region2 = Self::add_addr(region1, G15_J615_CL_SKU_REGION_STRIDE)?;
++        let region3 = Self::add_addr(region2, G15_J615_CL_SKU_MGPU_SPAN)?;
++        Self::put_u64(&mut bytes, p + 0x180, region0);
++        Self::put_u64(&mut bytes, p + 0x188, region1);
++        Self::put_u64(&mut bytes, p + 0x190, region2);
++        Self::put_u64(&mut bytes, p + 0x198, region3);
++        Self::put_u64(&mut bytes, p + 0x1a0, Self::add_addr(input.command_fwva, 0x878)?);
++        Self::put_u64(&mut bytes, p + 0x1a8, input.command_counter);
++        Self::put_u64(&mut bytes, p + 0x1b0, Self::add_addr(input.event_control_fwva, 0xa8)?);
++
++        Self::write_timestamp(&mut bytes, G15_SKU_START_TIMESTAMP_OFFSET, true, &input)?;
++        Self::put_u32(&mut bytes, G15_SKU_WFI_OFFSET, 1);
++        Self::write_timestamp(&mut bytes, G15_SKU_END_TIMESTAMP_OFFSET, false, &input)?;
++
++        // Exact stock-empty type-0xc retirement packet.
++        let c = G15_SKU_TYPE0C_OFFSET;
++        Self::put_u32(&mut bytes, c, 0x0000_000c);
++        Self::put_u64(&mut bytes, c + 0x04, input.firmware_state_fwva);
++        Self::put_u64(&mut bytes, c + 0x0c, input.channel_state_fwva);
++        Self::put_u32(&mut bytes, c + 0x14, input.context_id);
++        Self::put_u64(&mut bytes, c + 0x18, Self::add_addr(input.command_fwva, 0x76c)?);
++        // c+0x20 is zero; c+0x24 is the command UUID.
++        Self::put_u32(&mut bytes, c + 0x24, input.uuid);
++        Self::put_u64(&mut bytes, c + 0x28, input.fw_stamp_fwva);
++        Self::put_u32(&mut bytes, c + 0x30, input.stamp_value);
++        // c+0x34..+0x54 are the absent stock-empty per-counter material.
++        Self::put_u64(&mut bytes, c + 0x58, Self::add_addr(input.stream_fwva, 0x15c)?);
++        // Encoder bookkeeping is the negated packet-start offset. The inactive
++        // stream's type-0xc packet begins at 0x238, yielding -0x238 in u32.
++        Self::put_u32(&mut bytes, c + 0x60, 0xffff_fdc8);
++        // c+0x64 is zero: no counter subrecord and accelerator +0x2464 == 0.
++        Self::put_u64(&mut bytes, c + 0x65, Self::add_addr(input.command_fwva, 0x878)?);
++        Self::put_u64(&mut bytes, c + 0x6d, Self::add_addr(input.command_fwva, 0x860)?);
++        // c+0x75..+0x7b remain exact zero tail bytes.
++
++        Self::put_u32(&mut bytes, G15_SKU_FINISH_OFFSET, 0x4000_0002);
++        // 0x2b8..0x2bf is report-size alignment padding and remains zero.
++        Ok(Self { bytes })
++    }
++
++    pub(crate) fn as_bytes(&self) -> &[u8; G15_STOCK_EMPTY_SKU_STREAM_SIZE] {
++        &self.bytes
++    }
++}
++
+ #[versions(AGX)]
+ #[derive(Debug)]
+ pub(crate) struct RunCompute {
+-- 
+2.53.0
+
