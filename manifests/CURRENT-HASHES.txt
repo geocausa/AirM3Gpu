@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  139b745dbf0092825cad3c65bc18fb03385f2305
-linux current checkpoint    b21300a1ad4db8df298c493c98f014803d33ad5b
-linux current tree          66a6a838a94275fe6352471b7c9c12804920ddba
+linux previous public head  252ded3b63533ab89b45e965546f2f0b9d2e57a2
+linux current checkpoint    98d829e05a896cd7b2fa05c626aaef84128c2c9e
+linux current tree          3be13579f13cdc311255cc86a2588446c516ff71
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -449,3 +449,13 @@ private evidence checkpoint E119  2a00074
 E119 private result sha256  69111c7a08b5bf85e2bad3d192b4cb28d148a136baedcd6e2f5d78cf2bbc9de9
 E119 public CL constructor-priority note sha256  98f802d23db66fe6a32904d99c7caf8d6810022e0aa673b227bee2d08347d167
 E119 closure  first CL evctl_index=0 / subsequent index exact; J615 second channel integer=0x50; priority tuple derives from effective IOGPU priority/QoS with integer arg 2; no Linux source/install/RunCompute
+
+private evidence checkpoint E120  0748095
+E120 Linux checkpoint  98d829e05a896cd7b2fa05c626aaef84128c2c9e
+E120 Linux tree  3be13579f13cdc311255cc86a2588446c516ff71
+E120 module sha256  7bb1fbc5efdb135b1d72a5c31342689dc0381991629b28031ef4c3e060b672f0
+E120 patch 0038 sha256  121ba441698ce9ffaad418ff60e3d39553d5d6e2bf228b3085e2e475b5e66f1d
+E120 private result sha256  8e697518ea22661ff664cd26022f4271e26375743275b716c89d849717e3129c
+E120 layout audit sha256  8be2238ba246da5c996c65f1c9fbd67dfc7b80ef6bbb43328d971690dc91927c
+E120 public selected-state note sha256  09b9ecfdd1750c8b8ce4dc00b36b29da658560d64c8c66b04d779ed41c8e3b62
+E120 closure  exact selected channel-state reset/priority image modeled compile-only; slot index kept distinct from evctl_index; no SKU/RunCompute conversion/install/RunCompute

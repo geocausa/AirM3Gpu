@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-SELECTED-CHANNEL-STATE.md` — E118-E120 exact selected `_AGFIChannelState` reset/priority model; private prepared-state token only, no SKU/RunCompute conversion.
 - `G15-CL-CONSTRUCTOR-PRIORITY.md` — E119 exact CL constructor/priority source chain; first `evctl_index=0`, J615 second integer `0x50`, runtime effective priority/QoS remain explicit.
 - `G15-CHANNEL-STATE-RESET-PRIORITY.md` — E118 exact selected `_AGFIChannelState` reset/priority ABI; normal CL constructor/priority inputs remain gated.
 - `G15-CHANNEL-STATE-BACKING.md` — E116 exact 0x24c0/0x8000 special-range-8 channel-state backing and E117 unreachable compile-only block owner; selected FWVA remains gated.

@@ -1,0 +1,216 @@
+From 98d829e05a896cd7b2fa05c626aaef84128c2c9e Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 18:19:28 +0100
+Subject: [PATCH] drm: asahi: model G15 selected channel state
+
+---
+ drivers/gpu/drm/asahi/fw/workqueue.rs |  62 +++++++++++++++
+ drivers/gpu/drm/asahi/queue/mod.rs    | 105 +++++++++++++++++++++++++-
+ 2 files changed, 165 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/fw/workqueue.rs b/drivers/gpu/drm/asahi/fw/workqueue.rs
+index ad0e7fdaf977..3c9e73858dca 100644
+--- a/drivers/gpu/drm/asahi/fw/workqueue.rs
++++ b/drivers/gpu/drm/asahi/fw/workqueue.rs
+@@ -248,6 +248,68 @@ pub(crate) struct QueueInfo<'a> {
+ const _: [(); 3] = [(); G15_CHANNEL_STATE_SLOTS_PER_BACKING];
+ const _: [(); 0x11c0] = [(); G15_CHANNEL_STATE_BACKING_SLACK_BYTES];
+ 
++/// Exact normal-J615 CL-channel constructor values closed by E119.
++#[allow(dead_code)]
++pub(crate) const G15_J615_FIRST_CL_EVCTL_INDEX: u32 = 0;
++#[allow(dead_code)]
++pub(crate) const G15_J615_CL_SECOND_CONSTRUCTOR_INTEGER: u32 = 0x50;
++pub(crate) const G15_J615_CL_PRIORITY_INTEGER_ARGUMENT: u32 = 2;
++pub(crate) const G15_J615_CDM_BACKOFF_TIMEOUT: u8 = 4;
++
++/// Exact six-field priority image written by
++/// AGXArmFirmware::setChannelPriority() into selected `_AGFIChannelState`
++/// QueueInfo +0x30..+0x4b. This is deliberately separate from the inherited
++/// `raw::PRIORITY` table: E118 proves that table is not a direct G15 mapping.
++#[derive(Clone, Copy, Debug)]
++pub(crate) struct G15ClChannelPriorityImage {
++    pub(crate) class_30: u32,
++    pub(crate) mask_38: u64,
++    pub(crate) control_40: u32,
++    pub(crate) integer_arg_44: u32,
++    pub(crate) qos_value_48: u32,
++}
++
++/// Resolve the exact normal-J615 CL priority image from IOGPU-owned runtime
++/// priority/QoS state. E119 proves the integer argument is always 2 here and
++/// that effective priority is normally 1 (foreground branch) or 2 (alternate
++/// branch). Other values are rejected instead of inheriting guessed tables.
++pub(crate) const fn g15_j615_cl_priority_image(
++    effective_priority: u32,
++    queue_qos: u32,
++) -> Option<G15ClChannelPriorityImage> {
++    if queue_qos > 4 {
++        return None;
++    }
++
++    match effective_priority {
++        1 => {
++            let (class_30, mask_38, qos_value_48) = match queue_qos {
++                0 => (2, 0xffff_ffff_0000_0000, 0),
++                1 => (2, 0xffff_0000_0000_0000, 1),
++                2 => (2, 0xffff_0000_0000_0000, 2),
++                3 => (2, 0xffff_0000_0000_0000, 3),
++                4 => (3, 0x0000_0000_0000_0000, 4),
++                _ => return None,
++            };
++            Some(G15ClChannelPriorityImage {
++                class_30,
++                mask_38,
++                control_40: 0,
++                integer_arg_44: G15_J615_CL_PRIORITY_INTEGER_ARGUMENT,
++                qos_value_48,
++            })
++        }
++        2 => Some(G15ClChannelPriorityImage {
++            class_30: 3,
++            mask_38: 0,
++            control_40: 0,
++            integer_arg_44: G15_J615_CL_PRIORITY_INTEGER_ARGUMENT,
++            qos_value_48: 0,
++        }),
++        _ => None,
++    }
++}
++
+ trivial_gpustruct!(RingState);
+ 
+ #[versions(AGX)]
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index c5b161bc5cde..728454cea846 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -192,7 +192,33 @@ fn take_record_fwva(&mut self) -> Result<u64> {
+ /// are separate channel-lifetime gates.
+ #[allow(dead_code)]
+ struct G15ChannelStateBackingBlock {
+-    _block: alloc::G15SharedGpuArray<u8>,
++    block: alloc::G15SharedGpuArray<u8>,
++}
++
++/// Exact host inputs for rebuilding the first 0xb0 bytes of one selected G15
++/// `_AGFIChannelState` after Apple's full 0x24c0 reset. These are deliberately
++/// FW addresses/runtime values, not borrowed Linux QueueInfo objects: E118/E119
++/// close the byte image while the eventual live owner bridges remain gated.
++#[derive(Clone, Copy, Debug)]
++#[allow(dead_code)]
++struct G15ChannelStateResetInputs {
++    state_fwva: u64,
++    ring_fwva: u64,
++    notifier_list_fwva: u64,
++    gpu_buf_fwva: u64,
++    channel_4c_value: u32,
++    gpu_context_fwva: u64,
++    effective_priority: u32,
++    queue_qos: u32,
++}
++
++/// Private proof token for one reset/prioritized channel-state slot. It has no
++/// conversion to a SKU input or RunCompute field and no external call site.
++#[derive(Debug)]
++#[allow(dead_code)]
++struct G15PreparedChannelState {
++    slot_index: usize,
++    fwva: u64,
+ }
+ 
+ #[allow(dead_code)]
+@@ -220,7 +246,7 @@ fn new(
+         {
+             return Err(EIO);
+         }
+-        Ok(Self { _block: block })
++        Ok(Self { block })
+     }
+ 
+     /// Pure geometry only: no FWVA is returned from the owner.
+@@ -231,6 +257,81 @@ const fn slot_offset(index: usize) -> Option<usize> {
+             None
+         }
+     }
++
++    fn put_u32(slot: &mut [u8], offset: usize, value: u32) -> Result {
++        let end = offset.checked_add(4).ok_or(EOVERFLOW)?;
++        let dst = slot.get_mut(offset..end).ok_or(EINVAL)?;
++        dst.copy_from_slice(&value.to_le_bytes());
++        Ok(())
++    }
++
++    fn put_u64(slot: &mut [u8], offset: usize, value: u64) -> Result {
++        let end = offset.checked_add(8).ok_or(EOVERFLOW)?;
++        let dst = slot.get_mut(offset..end).ok_or(EINVAL)?;
++        dst.copy_from_slice(&value.to_le_bytes());
++        Ok(())
++    }
++
++    /// Rebuild one already-selected channel state at the exact E118/E119 host
++    /// boundary. This models neither resource-stack allocation/release nor a
++    /// live channel. It clears exactly one 0x24c0 slot, writes Apple's reset
++    /// QueueInfo image, then applies the exact normal-J615 priority mutation.
++    fn reset_selected_j615_cl(
++        &mut self,
++        slot_index: usize,
++        input: G15ChannelStateResetInputs,
++    ) -> Result<G15PreparedChannelState> {
++        if input.state_fwva == 0
++            || input.ring_fwva == 0
++            || input.notifier_list_fwva == 0
++            || input.gpu_buf_fwva == 0
++            || input.gpu_context_fwva == 0
++        {
++            return Err(EINVAL);
++        }
++        let priority = fw::workqueue::g15_j615_cl_priority_image(
++            input.effective_priority,
++            input.queue_qos,
++        )
++        .ok_or(EINVAL)?;
++        let offset = Self::slot_offset(slot_index).ok_or(EINVAL)?;
++        let end = offset
++            .checked_add(fw::workqueue::G15_CHANNEL_STATE_BYTES)
++            .ok_or(EOVERFLOW)?;
++        let slot = self.block.as_mut_slice().get_mut(offset..end).ok_or(EIO)?;
++
++        // Exact resetChannelState(): bulk zero selected 0x24c0 state first.
++        for byte in slot.iter_mut() {
++            *byte = 0;
++        }
++        Self::put_u64(slot, 0x00, input.state_fwva)?;
++        Self::put_u64(slot, 0x08, input.ring_fwva)?;
++        Self::put_u64(slot, 0x10, input.notifier_list_fwva)?;
++        Self::put_u64(slot, 0x18, input.gpu_buf_fwva)?;
++        Self::put_u32(slot, 0x2c, u32::MAX)?;
++        Self::put_u32(slot, 0x30, 4)?;
++        Self::put_u32(slot, 0x4c, u32::MAX)?;
++        Self::put_u32(slot, 0x50, input.channel_4c_value)?;
++        Self::put_u64(slot, 0xa4, input.gpu_context_fwva)?;
++        slot[0xac] = fw::workqueue::G15_J615_CDM_BACKOFF_TIMEOUT;
++
++        // Exact later setChannelPriority() mutation. +0x30/+0x34 carry the
++        // same class; +0x44 is the E119 constant 2. All other reset bytes stay
++        // untouched/zero unless explicitly written here.
++        Self::put_u32(slot, 0x30, priority.class_30)?;
++        Self::put_u32(slot, 0x34, priority.class_30)?;
++        Self::put_u64(slot, 0x38, priority.mask_38)?;
++        Self::put_u32(slot, 0x40, priority.control_40)?;
++        Self::put_u32(slot, 0x44, priority.integer_arg_44)?;
++        Self::put_u32(slot, 0x48, priority.qos_value_48)?;
++
++        let base: u64 = self.block.weak_pointer().into();
++        let fwva = base.checked_add(offset as u64).ok_or(EOVERFLOW)?;
++        if fwva == 0 {
++            return Err(EIO);
++        }
++        Ok(G15PreparedChannelState { slot_index, fwva })
++    }
+ }
+ 
+ const _: [(); 0x0000] = [(); G15ChannelStateBackingBlock::slot_offset(0).unwrap()];
+-- 
+2.53.0
+
