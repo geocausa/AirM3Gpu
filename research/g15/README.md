@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-STOCK-EMPTY-GART-SOFT-FAULT.md` — E129 exact ordinary type-5 IOGPU chain proves normal-J615 `gart_soft_fault_enabled=false`; target finalize input removed, generic serializer still parameterized.
 - `G15-STOCK-EMPTY-FIXED-SKU-INPUTS.md` — E128 exact first-CL `evctl_index=0` and normal-J615 accelerator packed-feature bit 39 = 0; dormant finalize inputs narrowed, live RunCompute unchanged.
 - `G15-CHANNEL-OWNER-GRAPH.md` — E127 coherent unreachable timestamp/scheduler/channel-state/cached/uncached owner integration with independent indices; external SKU `channel_state_fwva` removed.
 - `G15-SCHEDULER-STATE-BACKING.md` — E126 exact `_AGFISchedulerState` range-8 0x4000/0x40 backing, QueueInfo `+0xa4` provenance and private selected reset; live generic GpuContext unchanged.

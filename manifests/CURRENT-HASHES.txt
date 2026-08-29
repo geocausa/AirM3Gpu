@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  8f6bd394ceb5bdcd62bfa2ca3817c85bd7cabf9d
-linux current checkpoint    ccc976c598ab40f9cd8ef24837af1139979bbc09
-linux current tree          b02f2c4472e65afee9c404759da93622e3840db6
+linux previous public head  ccc976c598ab40f9cd8ef24837af1139979bbc09
+linux current checkpoint    65451e3d5cc8ebc582433abf874811c7eada79b9
+linux current tree          7d9dce6e7d31964e1510a989be75b410f25575ad
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -526,3 +526,12 @@ E128 patch 0045 sha256  d00b74399fec6bc6b8e14880ffa9b8a5261f9001ac79b732c2d82935
 E128 private result sha256  5e8b7bc2fe8e5171d686b90c35294aa1362c65e5792af2b9fc0d6a449f8eb798
 E128 public fixed-SKU-input note sha256  67d7624eddd8f915c9a6fb5308b694dcb6f5bfdafbebdf3c6e05fb9d56c09d79
 E128 closure  first normal J615 CL evctl_index=0 and accelerator packed-feature bit39=0 fixed at dormant owner graph; generic serializer parameterization and all live RunCompute producers unchanged
+
+private evidence checkpoint E129  89944d6112e834a0751e97a224d46255e37e5c58
+E129 Linux checkpoint  65451e3d5cc8ebc582433abf874811c7eada79b9
+E129 Linux tree  7d9dce6e7d31964e1510a989be75b410f25575ad
+E129 module sha256  2e0b960a2d69686696888523c03053693b3c20cc6f4af80d45c1d5fe736f7358
+E129 patch 0046 sha256  5a25d57ee310108032636fa8cca8b6f53f92043660ad68151b089da570846741
+E129 private result sha256  32d78f330dcef8125efa6e4bcc7ee8031aac4ec16aaccc7f7e647c78bd21bca2
+E129 public GART soft-fault note sha256  67da714c00c0936fe96baa42e9b2da5ebec7503b7f43deb89de4f3476e62c116
+E129 closure  ordinary IOGPU type-5 options=0 chain fixes J615 gart_soft_fault_enabled=false at dormant owner graph; generic serializer remains parameterized; no live Queue/RunCompute producer

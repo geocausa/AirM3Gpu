@@ -571,3 +571,16 @@ Patch 0045 validation performed on 2026-08-29:
 - exact first-CL index / accelerator packed-feature bit-39 audit: PASS
 - reachability: fixed values consumed only by the dormant owner-graph finalizer; generic serializer still parameterized; no live Queue call site or RunCompute writer
 - runtime: not installed/not executed; no RunCompute
+
+Patch 0046 validation performed on 2026-08-29:
+
+- base: `ccc976c598ab40f9cd8ef24837af1139979bbc09`
+- expected commit tree: `7d9dce6e7d31964e1510a989be75b410f25575ad`
+- patch SHA-256: `5a25d57ee310108032636fa8cca8b6f53f92043660ad68151b089da570846741`
+- exact-tree reconstruction: PASS
+- strict checkpatch: 0 errors, 0 warnings, 0 checks
+- Asahi module build: PASS at the established 24-individual-warning bring-up baseline
+- module SHA-256: `2e0b960a2d69686696888523c03053693b3c20cc6f4af80d45c1d5fe736f7358`
+- exact ordinary type-5 IOGPU / J615 GART HW-soft-fault audit: PASS (`isHWSoftFaultEnabled() = false`)
+- reachability: target finalize boolean removed; generic serializer remains parameterized; dormant owner/wrapper only; no live Queue call site or RunCompute writer
+- runtime: not installed/not executed; no RunCompute

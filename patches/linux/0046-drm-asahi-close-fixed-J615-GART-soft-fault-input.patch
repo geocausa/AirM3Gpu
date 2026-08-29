@@ -1,0 +1,50 @@
+From 65451e3d5cc8ebc582433abf874811c7eada79b9 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 23:07:37 +0100
+Subject: [PATCH] drm: asahi: close fixed J615 GART soft-fault input
+
+---
+ drivers/gpu/drm/asahi/queue/mod.rs | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index 66e2d189af7a..449041aaf541 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -799,8 +799,9 @@ struct G15UnpublishedStockEmptyPrepare {
+ /// finalize boundary. E115 removes the CL command-resource base from this list
+ /// after closing its persistent range-5 owner; the remaining values stay
+ /// explicit rather than being guessed from the dormant Linux constructor.
+-/// E128 removes the first-CL evctl index and accelerator packed-feature bit 39:
+-/// both are now exact constants for the normal J615 target.
++/// E128 removes the first-CL evctl index and accelerator packed-feature bit 39;
++/// E129 also removes the GART HW-soft-fault state. All three are exact constants
++/// for the ordinary stock J615 device/Compute context.
+ #[derive(Clone, Copy, Debug)]
+ #[allow(dead_code)]
+ struct G15StockEmptySkuFinalizeInputs {
+@@ -813,7 +814,6 @@ struct G15StockEmptySkuFinalizeInputs {
+     queue_event_sequence: u32,
+     uuid: u32,
+     stamp_value: u32,
+-    gart_soft_fault_enabled: bool,
+ }
+ 
+ /// Fully materialized stock-empty command assets that are still deliberately
+@@ -1089,7 +1089,12 @@ fn finalize_unpublished(
+             evctl_index: fw::workqueue::G15_J615_FIRST_CL_EVCTL_INDEX,
+             uuid: input.uuid,
+             stamp_value: input.stamp_value,
+-            gart_soft_fault_enabled: input.gart_soft_fault_enabled,
++            // E129 exact ordinary IOGPU device chain: userspace passes options=0,
++            // so IOServiceOpen type 5 propagates zero through IOGPUDeviceUserClient,
++            // IOGPU::createDevice(), AGXShared and AGXSecureGart. Together with the
++            // normal J615 accelerator soft-fault feature byte staying zero,
++            // AGXGart::isHWSoftFaultEnabled() is false for this target.
++            gart_soft_fault_enabled: false,
+             // E128 exact 23J220 configure chain: the base configure mask
+             // 0xf4840fffffff7f clears packed feature bit 39 (halfword +0x654
+             // bit 7); G15 and G15G preserve that bit. Stock J615 is false.
+-- 
+2.53.0
+
