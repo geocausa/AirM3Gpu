@@ -584,3 +584,16 @@ Patch 0046 validation performed on 2026-08-29:
 - exact ordinary type-5 IOGPU / J615 GART HW-soft-fault audit: PASS (`isHWSoftFaultEnabled() = false`)
 - reachability: target finalize boolean removed; generic serializer remains parameterized; dormant owner/wrapper only; no live Queue call site or RunCompute writer
 - runtime: not installed/not executed; no RunCompute
+
+Patch 0047 validation performed on 2026-08-29:
+
+- base: `65451e3d5cc8ebc582433abf874811c7eada79b9`
+- expected commit tree: `7ffe7e70a303ccefc7e46d9595fb33de09d6b1d4`
+- patch SHA-256: `c92763d73d9587e0e7c4116e5721c8238c94e6e4c1acb35f4b00690b1b790796`
+- exact-tree reconstruction: PASS
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks
+- Asahi module build: PASS at the established 24-individual-warning bring-up baseline
+- module SHA-256: `f58313ed791123de197c9094199867cd50e5e3fc4c04d96eb8f00a67f5732039`
+- exact AGXFirmware `+0x228/+0x268` / 0xe10 Compute-statistics ownership and zero-initialization audit: PASS
+- reachability: raw target finalize FWVA removed; typed `G15StatsComp` owner pointer consumed only by dormant owner graph; generic serializer remains parameterized; no live Queue call site or RunCompute writer
+- runtime: not installed/not executed; no RunCompute

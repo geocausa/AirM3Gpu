@@ -1,0 +1,76 @@
+From 635fca8e84b3d6ba27f6f7dd760275c635cd3495 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 23:29:30 +0100
+Subject: [PATCH] drm: asahi: own J615 compute statistics SKU input
+
+---
+ drivers/gpu/drm/asahi/queue/mod.rs | 18 ++++++++++++++----
+ 1 file changed, 14 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index 449041aaf541..32381e605726 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -800,12 +800,11 @@ struct G15UnpublishedStockEmptyPrepare {
+ /// after closing its persistent range-5 owner; the remaining values stay
+ /// explicit rather than being guessed from the dormant Linux constructor.
+ /// E128 removes the first-CL evctl index and accelerator packed-feature bit 39;
+-/// E129 also removes the GART HW-soft-fault state. All three are exact constants
+-/// for the ordinary stock J615 device/Compute context.
++/// E129 also removes the GART HW-soft-fault state. E130 closes the firmware-state
++/// source as the manager-owned G15 Compute statistics object.
+ #[derive(Clone, Copy, Debug)]
+ #[allow(dead_code)]
+ struct G15StockEmptySkuFinalizeInputs {
+-    firmware_state_fwva: u64,
+     fw_stamp_fwva: u64,
+     user_timestamp_start: u64,
+     user_timestamp_end: u64,
+@@ -881,6 +880,10 @@ fn from_assets(assets: G15UnpublishedStockEmptyCommandAssets) -> Self {
+ /// event/SKU assets; all live producers stay fail-closed.
+ #[allow(dead_code)]
+ struct G15StockEmptyComputeOwnerGraph {
++    // E130: exact Apple AGXFirmware +0x268 source is the 0xe10-byte Compute
++    // statistics slice. Linux already owns the equivalent object under the
++    // manager-global RuntimePointers lifetime; keep a typed weak FW pointer.
++    _compute_stats: GpuWeakPointer<fw::initdata::G15StatsComp>,
+     _event_control: G15EventControlBacking,
+     _hwmetrics: G15HWMetricsBacking,
+     _timestamp_queue: G15TimestampQueueBackingBlock,
+@@ -898,6 +901,7 @@ impl G15StockEmptyComputeOwnerGraph {
+     #[allow(clippy::too_many_arguments)]
+     fn new_unpublished(
+         dev: &AsahiDevice,
++        compute_stats: GpuWeakPointer<fw::initdata::G15StatsComp>,
+         hardware_buffer_ids: buffer::G15HardwareBufferIdManager,
+         flist_owner_cookie: u64,
+         pool_id: u64,
+@@ -906,6 +910,9 @@ fn new_unpublished(
+         bank1: mmu::G15SharedBank1,
+         mapping_notifier: Arc<Mutex<mmu::G15MappingNotifier>>,
+     ) -> Result<Self> {
++        // E130 keeps this boundary typed instead of accepting an arbitrary raw
++        // FWVA. The proven future producer is the manager-owned
++        // InitData/RuntimePointers g15_stats_comp weak pointer.
+         // Keep one shared bank-1/q22 lifetime for every exact shared resource.
+         let event_control = G15EventControlBacking::new(
+             dev,
+@@ -955,6 +962,7 @@ fn new_unpublished(
+         let sku = fw::compute::G15SkuBacking::new(dev, bank1, mapping_notifier)?;
+
+         Ok(Self {
++            _compute_stats: compute_stats,
+             _event_control: event_control,
+             _hwmetrics: hwmetrics,
+             _timestamp_queue: timestamp_queue,
+@@ -1071,7 +1079,9 @@ fn finalize_unpublished(
+         let sku_input = fw::compute::G15StockEmptySkuInputs {
+             command_fwva,
+             stream_fwva: prepared.sku.fwva(),
+-            firmware_state_fwva: input.firmware_state_fwva,
++            // E130: manager-owned G15StatsComp is the exact Linux counterpart
++            // of Apple AGXFirmware +0x268 used by the stock-empty SKU stream.
++            firmware_state_fwva: self._compute_stats.into(),
+             channel_state_fwva: prepared.channel_state.fwva,
+             channel_command_region_base_fwva,
+             event_control_fwva: prepared.event_control_fwva,

@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  ccc976c598ab40f9cd8ef24837af1139979bbc09
-linux current checkpoint    65451e3d5cc8ebc582433abf874811c7eada79b9
-linux current tree          7d9dce6e7d31964e1510a989be75b410f25575ad
+linux previous public head  65451e3d5cc8ebc582433abf874811c7eada79b9
+linux current checkpoint    635fca8e84b3d6ba27f6f7dd760275c635cd3495
+linux current tree          7ffe7e70a303ccefc7e46d9595fb33de09d6b1d4
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -535,3 +535,12 @@ E129 patch 0046 sha256  5a25d57ee310108032636fa8cca8b6f53f92043660ad68151b089da5
 E129 private result sha256  32d78f330dcef8125efa6e4bcc7ee8031aac4ec16aaccc7f7e647c78bd21bca2
 E129 public GART soft-fault note sha256  67da714c00c0936fe96baa42e9b2da5ebec7503b7f43deb89de4f3476e62c116
 E129 closure  ordinary IOGPU type-5 options=0 chain fixes J615 gart_soft_fault_enabled=false at dormant owner graph; generic serializer remains parameterized; no live Queue/RunCompute producer
+
+private evidence checkpoint E130  5da3af454bbd19a3290e39f8a6c656dae18b0791
+E130 Linux checkpoint  635fca8e84b3d6ba27f6f7dd760275c635cd3495
+E130 Linux tree  7ffe7e70a303ccefc7e46d9595fb33de09d6b1d4
+E130 module sha256  f58313ed791123de197c9094199867cd50e5e3fc4c04d96eb8f00a67f5732039
+E130 patch 0047 sha256  c92763d73d9587e0e7c4116e5721c8238c94e6e4c1acb35f4b00690b1b790796
+E130 private result sha256  7aee7971b4712788e02f066e0c2e0f7be4f9fdd071a6764870c7f76076353104
+E130 public Compute-stats owner note sha256  1be374e8aad43e7fb02522f303fcaef9add941efbf5d27b87a26f0186b60c778
+E130 closure  AGXFirmware +0x228/+0x268 exact 0xe10 zero-initialized Compute statistics object maps to manager-owned Linux G15StatsComp; raw target firmware_state_fwva removed; generic serializer remains parameterized; no live Queue/RunCompute producer
