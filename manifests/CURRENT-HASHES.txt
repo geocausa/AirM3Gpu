@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  bd95b9c01004eeb8b35f6c7d06224bac635d2cfa
-linux current checkpoint    897d3ae4189603b58438131724e8d481f03b6917
-linux current tree          2bc3de6ea13b5115594305bb597f10df92a735bc
+linux previous public head  897d3ae4189603b58438131724e8d481f03b6917
+linux current checkpoint    d54dfc78d0592e2b8bb239aac61b9bc0489e3a78
+linux current tree          16d86879298422b44475805f6cbcc2a1502579e1
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -324,3 +324,16 @@ E102 private result sha256  e02f2d42433ba55a75065e8dab8ea5c8e0e2924c9f3b4ba4fdc6
 E102 layout audit sha256  bc5a7b842224c81fb4e671d944ddbef87c9e988ca90c376f6b264503572c13b5
 E101-E102 public SKU note sha256  792be8bdc02307094251d128939714acf2a595e96fdccc3ee57cf4189824389c
 E102 closure  exact stock-empty 0x2c0 SKU serializer compile-only/unreachable; no GPU backing, +0x760 integration, install or RunCompute
+
+private evidence checkpoint E103  e513fe821754891ea631db1fa523bcc7f0c8f862
+E103 exact oracle result sha256  81487a025ee612d300afc4bfad4871128fd1035afb19239899673584ba424667
+E103 private result sha256  021c73155f856e0cf822822bd12e95cf89b3068158721daafb9ed8332c39c0ea
+E103 closure  exact Compute SKU backing=0x30000 range8, 0xf0 slots x 0x300, host event storage 0x3c00, encoder-lifetime mapping; no RunCompute
+private evidence checkpoint E104  83d9e328b7c71adc0fe1707612b9df1369e34ad6
+E104 Linux checkpoint  d54dfc78d0592e2b8bb239aac61b9bc0489e3a78
+E104 Linux tree  16d86879298422b44475805f6cbcc2a1502579e1
+E104 module sha256  4ca508de93085f783563ce7dbf0c8043dd7bdd759ba8cbeaf221aea37fd71215
+E104 patch 0028 sha256  f39e59e9138a406f9459799417856f64e5568e9a9d701d978094dca99d4550ee
+E104 private result sha256  337364ce13d5aed97e5e9d89f30c8d22f4b0337de5c98002c26a70b0eae14983
+E103-E104 public SKU backing note sha256  b821e016d6b1f922563157861f5821c028c2afae5a15d54d6befba24b015d184
+E104 closure  exact zero-filled page-base 0x30000 range8 SKU backing owned compile-only/unreachable; no selected FWVA, +0x760 integration, install or RunCompute
