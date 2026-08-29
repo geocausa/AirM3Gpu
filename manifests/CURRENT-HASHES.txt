@@ -245,3 +245,9 @@ E091 module sha256  fe09dd7d5471c73a1febdeb31a1d7e6c185c216036a1a6cd975b72d621f2
 E091 patch 0020 sha256  4b9bf4d04c067000317257cc3e1cddf79451b714d249a907b315a204a439bb4f
 E091 closure  exact 36x0xc0 event-control rotation geometry modeled compile-only; no mapping class/allocator/+0x14 publication or RunCompute
 E091 public event-control-pool note sha256  ca62962381fef60a677e9965d440db71ebd2798413e879a0017e833e258a8f5f
+
+private evidence checkpoint E092  4045774
+E092 exact oracle result sha256  4e1db24bfdd16eee280ef4f539275c415e5374066fddac630127e01df912bb9c
+E092 private result sha256  4e1db24bfdd16eee280ef4f539275c415e5374066fddac630127e01df912bb9c
+E092 closure  exact contiguous stamp pool=0x90 range7 outer 0x700000007 leaf 0x...0447; event-control pool=0x1b00 range8 outer 0x20800000007 leaf 0x...0443; construction links stamp FWVA at +0; rotation +0x10 config still gated; no Linux source change or RunCompute
+E092 public event-control-backing note sha256  fa66055d96ca49a07f54e16fb90abc887d73064b38cc56df9c6d2041bf1cd6a5
