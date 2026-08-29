@@ -1,0 +1,166 @@
+From 059d34701e480252829c6b397dad5ee2eb8881dc Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 16:57:14 +0100
+Subject: [PATCH] drm: asahi: own G15 CL command-resource backing
+
+---
+ drivers/gpu/drm/asahi/fw/compute.rs | 13 +++++-
+ drivers/gpu/drm/asahi/queue/mod.rs  | 62 ++++++++++++++++++++++++++---
+ 2 files changed, 67 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/fw/compute.rs b/drivers/gpu/drm/asahi/fw/compute.rs
+index 003d46bcdc04..533634c8a83d 100644
+--- a/drivers/gpu/drm/asahi/fw/compute.rs
++++ b/drivers/gpu/drm/asahi/fw/compute.rs
+@@ -307,8 +307,17 @@ pub(crate) struct RunCompute<'a> {
+ // Exact J615 CL-channel resource geometry from AGXCLChannel::init():
+ // aligned `(num_cores * 0x1800 + num_mgpus * 0x40)` with 10 cores / 1 MGPU,
+ // then one 0x800-byte MGPU span.
+-const G15_J615_CL_SKU_REGION_STRIDE: u64 = 0xf400;
+-const G15_J615_CL_SKU_MGPU_SPAN: u64 = 0x800;
++pub(crate) const G15_J615_CL_SKU_REGION_STRIDE: u64 = 0xf400;
++pub(crate) const G15_J615_CL_SKU_MGPU_SPAN: u64 = 0x800;
++/// Exact logical size of the persistent J615 CL-channel command-resource
++/// backing: two 0xf400 regions, one 0x800 MGPU span, and Apple's fixed 0x400
++/// low-bit term. E114 independently recovers the same geometry from 23J220.
++pub(crate) const G15_J615_CL_COMMAND_RESOURCE_BYTES: usize = 0x1f400;
++
++const _: [(); 0x1f400] = [();
++    ((2 * G15_J615_CL_SKU_REGION_STRIDE + G15_J615_CL_SKU_MGPU_SPAN) as usize) | 0x400
++];
++const _: [(); G15_J615_CL_COMMAND_RESOURCE_BYTES] = [(); 0x1f400];
+ 
+ const _: [(); G15_STOCK_EMPTY_SKU_PRE_ROUND_SIZE] = [();
+     G15_SKU_TYPE0B_PACKET_SIZE
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index f6b85b08a1ac..621b0be03373 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -183,6 +183,45 @@ fn take_record_fwva(&mut self) -> Result<u64> {
+ 
+ const _: [(); 0x100] = [(); G15HWMetricsBacking::RECORD_COUNT];
+ 
++/// Persistent exact 23J220 CL-channel command-resource backing used by the
++/// stock-empty Compute SKU stream. E114 proves J615 owns one normal option-3
++/// eGartRange-5 resource of logical size 0x1f400. The already-proven range-5
++/// option-3 class is Linux's dedicated uncached range-5 allocator.
++///
++/// This owner is reachable only through the definition-only stock-empty owner
++/// graph below. It does not publish its FWVA to a live command.
++#[derive(Debug)]
++#[allow(dead_code)]
++struct G15ClCommandResourceBacking {
++    backing: GpuArray<u8>,
++}
++
++#[allow(dead_code)]
++impl G15ClCommandResourceBacking {
++    fn new(range5_uncached_alloc: &mut alloc::DefaultAllocator) -> Result<Self> {
++        let backing = range5_uncached_alloc.array_empty_tagged::<u8>(
++            fw::compute::G15_J615_CL_COMMAND_RESOURCE_BYTES,
++            b"CLCR",
++        )?;
++        let base: u64 = backing.weak_pointer().into();
++        if backing.len() != fw::compute::G15_J615_CL_COMMAND_RESOURCE_BYTES
++            || base == 0
++            || base & 0x3ff != 0
++        {
++            return Err(EIO);
++        }
++        Ok(Self { backing })
++    }
++
++    fn base_fwva(&self) -> Result<u64> {
++        let base: u64 = self.backing.weak_pointer().into();
++        if base == 0 || base & 0x3ff != 0 {
++            return Err(EIO);
++        }
++        Ok(base)
++    }
++}
++
+ /// First phase of the E112 two-phase transaction. The rotating slots and
+ /// command-independent UMA/HWMetrics assets are known, but the SKU bytes have
+ /// not been serialized or written because the RunCompute FWVA is not known yet.
+@@ -199,14 +238,14 @@ struct G15UnpublishedStockEmptyPrepare {
+ }
+ 
+ /// Still-unclosed runtime sources required only at the command-aware SKU
+-/// finalize boundary. E113 deliberately keeps them explicit rather than
+-/// deriving guessed constants from the dormant Linux constructor.
++/// finalize boundary. E115 removes the CL command-resource base from this list
++/// after closing its persistent range-5 owner; the remaining values stay
++/// explicit rather than being guessed from the dormant Linux constructor.
+ #[derive(Clone, Copy, Debug)]
+ #[allow(dead_code)]
+ struct G15StockEmptySkuFinalizeInputs {
+     firmware_state_fwva: u64,
+     channel_state_fwva: u64,
+-    channel_command_region_base_fwva: u64,
+     fw_stamp_fwva: u64,
+     user_timestamp_start: u64,
+     user_timestamp_end: u64,
+@@ -282,12 +321,13 @@ fn from_assets(assets: G15UnpublishedStockEmptyCommandAssets) -> Self {
+ /// select/copy a SKU slot, advance HWMetrics, or expose any FWVA. The existing
+ /// E096/E106 retirement guards also remain separate. That preserves the exact
+ /// lifetime boundaries while proving the shared bank-1/q22 resources and the
+-/// per-VM range-5 FList resources can be owned together without a submission
+-/// path.
++/// per-VM range-5 FList/CL command resources can be owned together without a
++/// submission path.
+ #[allow(dead_code)]
+ struct G15StockEmptyComputeOwnerGraph {
+     _event_control: G15EventControlBacking,
+     _hwmetrics: G15HWMetricsBacking,
++    _cl_command_resource: G15ClCommandResourceBacking,
+     _flist: buffer::G15FListResourceOwner,
+     _sku: fw::compute::G15SkuBacking,
+ }
+@@ -301,6 +341,7 @@ fn new_unpublished(
+         flist_owner_cookie: u64,
+         pool_id: u64,
+         range5_list_alloc: &mut alloc::DefaultAllocator,
++        range5_uncached_alloc: &mut alloc::DefaultAllocator,
+         bank1: mmu::G15SharedBank1,
+         mapping_notifier: Arc<Mutex<mmu::G15MappingNotifier>>,
+     ) -> Result<Self> {
+@@ -315,6 +356,7 @@ fn new_unpublished(
+             bank1.clone(),
+             mapping_notifier.clone(),
+         )?;
++        let cl_command_resource = G15ClCommandResourceBacking::new(range5_uncached_alloc)?;
+         let flist = buffer::G15FListResourceOwner::new_j615_unprepared(
+             dev,
+             hardware_buffer_ids,
+@@ -329,6 +371,7 @@ fn new_unpublished(
+         Ok(Self {
+             _event_control: event_control,
+             _hwmetrics: hwmetrics,
++            _cl_command_resource: cl_command_resource,
+             _flist: flist,
+             _sku: sku,
+         })
+@@ -399,12 +442,19 @@ fn finalize_unpublished(
+             return Err(EINVAL);
+         }
+ 
++        let channel_command_region_base_fwva = match self._cl_command_resource.base_fwva() {
++            Ok(fwva) => fwva,
++            Err(err) => {
++                let _ = self._flist.complete_reference(prepared.hardware_buffer_id);
++                return Err(err);
++            }
++        };
+         let sku_input = fw::compute::G15StockEmptySkuInputs {
+             command_fwva,
+             stream_fwva: prepared.sku.fwva(),
+             firmware_state_fwva: input.firmware_state_fwva,
+             channel_state_fwva: input.channel_state_fwva,
+-            channel_command_region_base_fwva: input.channel_command_region_base_fwva,
++            channel_command_region_base_fwva,
+             event_control_fwva: prepared.event_control_fwva,
+             page_pool_state_fwva: prepared.page_pool_state_fwva,
+             hwmetrics_fwva: prepared.hwmetrics_fwva,
+-- 
+2.53.0
+

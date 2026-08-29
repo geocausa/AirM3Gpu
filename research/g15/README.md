@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-CL-COMMAND-RESOURCE.md` — E114 exact J615 CL command-resource geometry/source audit and E115 unreachable range-5 owner; no RunCompute publication.
 - `G15-TWO-PHASE-COMPUTE-ASSETS.md` — E113 definition-only two-phase reservation/finalization fixing the command/SKU address dependency without a RunCompute writer.
 - `G15-RUNCOMPUTE-INTEGRATION-GAPS.md` — E112 static audit blocking direct E111 → RunCompute mutation and defining the required two-phase integration boundary.
 - `G15-RUNCOMPUTE-FIELD-STAGE.md` — E111 host-only staging of exact stock-empty RunCompute-facing asset fields with no firmware-command writer.

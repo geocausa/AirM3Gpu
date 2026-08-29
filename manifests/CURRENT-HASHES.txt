@@ -411,3 +411,16 @@ E113 private result sha256  90c71bf812e0b8d5490be5d1f8e7f9463c9c16c29fbd6d0d6a68
 E113 two-phase audit sha256  c2328e3d55ea7462845d85dde5beb3974f8e6fd32bfd4ec608f8972bb80d8a69
 E113 public two-phase note sha256  7f8bbb579b073536b4c58bd06ca4c6898dd6af49c96fc37408c3be34ef1c5ca4
 E113 closure  two-phase dormant select/prepare then command-aware SKU finalize; unresolved runtime inputs remain explicit; no RunCompute writer/call site/install/RunCompute
+
+private evidence checkpoint E114  206fca7
+E114 exact oracle/private result sha256  85e14474309be16d9ebfc70ab0cb3c74840c4bbdc066a0eb1417b69797ea8fa1
+E114 closure  exact J615 CL command resource stride=0xf400 MGPU span=0x800 logical bytes=0x1f400 option-3 range5; evctl_index=channel+0x38; flush_stamps=(descriptor+0x48!=0); no Linux source/install/RunCompute
+
+private evidence checkpoint E115  8e2facb
+E115 Linux checkpoint  059d34701e480252829c6b397dad5ee2eb8881dc
+E115 Linux tree  9ae728e61b03d505b5c9f06e0f3d38eb056fc640
+E115 module sha256  e9c75081c07cf34d0234ec929d1a22ef7f34d393a660c66b1110c865b6df3ec4
+E115 patch 0036 sha256  54bd94f69309e5e87ce9326eae90d8e82ac2ea809993d935468e38b502796e7d
+E115 private result sha256  fb80eab8ec36d022f355f5679ab19182d231e65e80707dc4e9aa3e1779c0381e
+E114-E115 public CL command-resource note sha256  1ddfd48301da0b96611958309d2ea342f53f86c42654a4b7927b6cd9bfea6489
+E115 closure  exact CL command-region base now owned/derived inside unreachable graph; no Queue/submission call site; live +0x14/+0x83e/+0x857 zero and +0x760 unchanged; no install/RunCompute
