@@ -14,7 +14,7 @@ Previous public checkpoint head:
 
 Current clean checkpoint head:
 
-`b88369c26ffe82ce73765b8bbba64b2db771ef76`
+`9b21157497bb`
 
 Local checkpoint tags:
 
@@ -41,8 +41,9 @@ Series:
 14. `patches/linux/0014-drm-asahi-plan-G15-FList-persistent-resources.patch`
 15. `patches/linux/0015-drm-asahi-model-G15-FList-range-5-list-class.patch`
 16. `patches/linux/0016-drm-asahi-pin-J615-G15-UMA-pool-geometry.patch`
+17. `patches/linux/0017-drm-asahi-encode-G15-range-8-mapping-notifications.patch`
 
-Patch 0004 is intentionally a squashed checkpoint delta from `1b57b289af96` to `2f08f68bb2ef`. Patch 0005 is the focused compile-only delta from `2f08f68bb2ef` to `1d264651a204`, adding the exact E068 stock empty-Compute G15 RegisterArray while leaving ordinary G15 submission fail-closed. Patch 0006 is the focused E071 delta from `1d264651a204` to `f73b9e551658`, changing only RunCompute `+0x846` to the exact prepared-state value `1`. Patch 0007 is the focused E073 delta from `f73b9e551658` to `03fdbb86230f`, adding the exact managed G15 context-generation lifetime and exporting it at RunCompute `+0x85f`. Patch 0008 is the focused E074 diagnostic delta from `03fdbb86230f` to `4e26fc089860`: it performs only a read-only range-8 shared-parent ownership check and then fails closed before persistent G15 runtime. Patch 0009 is the focused E075 delta from `4e26fc089860` to `e9f50fcc17d5`: it live-validates the exact range-8 leaf class and reversible eight-parent bank-1 teardown. Patch 0010 is the focused E076 compile-only delta from `e9f50fcc17d5` to `6e3850dcdd51`: it splits bank-1 VA allocation into disjoint range-7/range-8 arenas and hard-wires the range-8 constructor. Patch 0011 is the focused E078 compile-only delta from `6e3850dcdd51` to `886820e1f460`: it adds the exact FList FW-Uncached range-7 leaf class, fixed 8-byte ABI and hard aperture/protection pairing without creating a persistent FList object. Patch 0012 is the focused E079 compile-only delta from `886820e1f460` to `865f24f2a9fc`: it reconstructs the 256-ID HardwareBuffer manager state machine but deliberately leaves synchronization/runtime ownership unwired. Patch 0013 is the focused E080 compile-only delta from `865f24f2a9fc` to `ed17ac035ad2`: it adds the synchronized manager wrapper and FList sticky owner without instantiating either at runtime. Patch 0014 is the focused E081 compile-only delta from `ed17ac035ad2` to `affdd1fba79d`: it adds exact symbolic FList geometry and a no-allocation resource plan. Patch 0015 is the focused E082 compile-only delta from `affdd1fba79d` to `724674ad034e`: it pins the exact FList Page/Backup List compact-`0x300` range-5 class under a dedicated semantic protection constant while preserving the no-allocation resource plan. Patch 0016 is the focused E083 compile-only delta from `724674ad034e` to `b88369c26ffe`: it pins exact J615 M/B/P defaults and resolves the checked 4-MiB/32-KiB list geometry without creating GPU resources. The local development history between those revisions contains many staged bring-up commits; publishing the validated end-state delta keeps this repository reproducible without presenting every one-shot experiment as an upstream-ready commit series.
+Patch 0004 is intentionally a squashed checkpoint delta from `1b57b289af96` to `2f08f68bb2ef`. Patch 0005 is the focused compile-only delta from `2f08f68bb2ef` to `1d264651a204`, adding the exact E068 stock empty-Compute G15 RegisterArray while leaving ordinary G15 submission fail-closed. Patch 0006 is the focused E071 delta from `1d264651a204` to `f73b9e551658`, changing only RunCompute `+0x846` to the exact prepared-state value `1`. Patch 0007 is the focused E073 delta from `f73b9e551658` to `03fdbb86230f`, adding the exact managed G15 context-generation lifetime and exporting it at RunCompute `+0x85f`. Patch 0008 is the focused E074 diagnostic delta from `03fdbb86230f` to `4e26fc089860`: it performs only a read-only range-8 shared-parent ownership check and then fails closed before persistent G15 runtime. Patch 0009 is the focused E075 delta from `4e26fc089860` to `e9f50fcc17d5`: it live-validates the exact range-8 leaf class and reversible eight-parent bank-1 teardown. Patch 0010 is the focused E076 compile-only delta from `e9f50fcc17d5` to `6e3850dcdd51`: it splits bank-1 VA allocation into disjoint range-7/range-8 arenas and hard-wires the range-8 constructor. Patch 0011 is the focused E078 compile-only delta from `6e3850dcdd51` to `886820e1f460`: it adds the exact FList FW-Uncached range-7 leaf class, fixed 8-byte ABI and hard aperture/protection pairing without creating a persistent FList object. Patch 0012 is the focused E079 compile-only delta from `886820e1f460` to `865f24f2a9fc`: it reconstructs the 256-ID HardwareBuffer manager state machine but deliberately leaves synchronization/runtime ownership unwired. Patch 0013 is the focused E080 compile-only delta from `865f24f2a9fc` to `ed17ac035ad2`: it adds the synchronized manager wrapper and FList sticky owner without instantiating either at runtime. Patch 0014 is the focused E081 compile-only delta from `ed17ac035ad2` to `affdd1fba79d`: it adds exact symbolic FList geometry and a no-allocation resource plan. Patch 0015 is the focused E082 compile-only delta from `affdd1fba79d` to `724674ad034e`: it pins the exact FList Page/Backup List compact-`0x300` range-5 class under a dedicated semantic protection constant while preserving the no-allocation resource plan. Patch 0016 is the focused E083 compile-only delta from `724674ad034e` to `b88369c26ffe`: it pins exact J615 M/B/P defaults and resolves the checked 4-MiB/32-KiB list geometry without creating GPU resources. Patch 0017 is the focused E085 compile-only delta from `b88369c26ffe` to `9b21157497bb`, fixing q22 range-8 special-aperture map/unmap flags to exact `3/2` while preserving range-7 `1/0`. The local development history between those revisions contains many staged bring-up commits; publishing the validated end-state delta keeps this repository reproducible without presenting every one-shot experiment as an upstream-ready commit series.
 
 Validation performed on 2026-08-26:
 
@@ -186,3 +187,14 @@ Series:
 3. `d36216e783a3714eca0b734afb0df2301ece8739` — structured G15 EOT state-loader path
 
 These commits are research checkpoints and are not represented here as claims of upstream-ready general G15 support.
+
+Patch 0017 validation performed on 2026-08-29:
+
+- base: `b88369c26ffe82ce73765b8bbba64b2db771ef76`
+- expected commit tree: `dcf3368ccd71d1166d5198cab9dd21b3daa2d6f8`
+- patch SHA-256: `3a93a7f7398e5209ff710ea44f9a142179e070c5d7643d5beafc61383699c707`
+- exact-tree reconstruction: PASS
+- strict checkpatch: 0 errors, 0 warnings, 0 checks
+- Asahi module build: PASS at the established 24-individual-warning bring-up baseline
+- module vermagic: `7.1.6-gc6fa9b794ba9 SMP preempt mod_unload aarch64`
+- runtime: not installed/not executed; no RunCompute

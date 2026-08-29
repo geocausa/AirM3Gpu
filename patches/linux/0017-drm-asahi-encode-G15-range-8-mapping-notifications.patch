@@ -1,0 +1,75 @@
+From 9b21157497bbb1695b9bbdb43d6490c23520504e Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 08:05:53 +0100
+Subject: [PATCH] drm: asahi: encode G15 range-8 mapping notifications
+
+---
+ drivers/gpu/drm/asahi/mmu.rs | 34 ++++++++++++++++++++++++++++++++--
+ 1 file changed, 32 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/mmu.rs b/drivers/gpu/drm/asahi/mmu.rs
+index fe3072f249cb..c30e083c9a21 100644
+--- a/drivers/gpu/drm/asahi/mmu.rs
++++ b/drivers/gpu/drm/asahi/mmu.rs
+@@ -1707,6 +1707,24 @@ impl G15MappingNotifier {
+     const RING_LEN: u32 = 0x100;
+     const PRESSURE_MASK: u32 = 0xc0;
+ 
++    /// Exact 23J220 q22 mapping flags for the bank-1 apertures Linux owns.
++    /// Range 8 is Apple's special 64-MiB aperture: its bit remains set for
++    /// both mapping (flags=3) and unmapping (flags=2) records. Range 7 uses
++    /// the ordinary map/unmap pair 1/0. No current caller carries property bit2.
++    fn mapping_flags(addr: u64, mapping: bool) -> Result<u16> {
++        let mut flags = if mapping {
++            fw::initdata::raw::G15_MAP_FLAG_MAP
++        } else {
++            0
++        };
++        if G15_GART_RANGE8.contains(&addr) {
++            flags |= fw::initdata::raw::G15_MAP_FLAG_SPECIAL_APERTURE;
++        } else if !G15_GART_RANGE7.contains(&addr) {
++            return Err(EINVAL);
++        }
++        Ok(flags)
++    }
++
+     pub(crate) fn new(
+         dev: &driver::AsahiDevice,
+         backing: alloc::G15SharedGpuObject<fw::initdata::G15MappingRingBacking>,
+@@ -1788,12 +1806,13 @@ fn publish_pages(&mut self, base: u64, phys_pages: &[u64], mapping: bool) -> Res
+                     }
+                 }
+ 
++                let addr = base + (i * UAT_PGSZ) as u64;
+                 raw.ring[write as usize] = fw::initdata::raw::G15CacheFlushEntry {
+-                    addr: fw::types::U64(base + (i * UAT_PGSZ) as u64),
++                    addr: fw::types::U64(addr),
+                     phys_page_4k: fw::types::U32((phys >> 12).try_into()?),
+                     secure_context_id: fw::types::U32(if mapping { 0 } else { u32::MAX }),
+                     fw_page_count: 1,
+-                    mapping_flags: if mapping { fw::initdata::raw::G15_MAP_FLAG_MAP } else { 0 },
++                    mapping_flags: Self::mapping_flags(addr, mapping)?,
+                     reserved_14: fw::types::U32(0),
+                 };
+                 // Exact Apple publication order: copy the complete 0x18-byte entry,
+@@ -1815,6 +1834,17 @@ pub(crate) fn preflight_roundtrip(&mut self) -> Result {
+         if !self.is_empty() {
+             return Err(EBUSY);
+         }
++        if Self::mapping_flags(G15_GART_RANGE7.start, true)?
++            != fw::initdata::raw::G15_MAP_FLAG_MAP
++            || Self::mapping_flags(G15_GART_RANGE7.start, false)? != 0
++            || Self::mapping_flags(G15_GART_RANGE8.start, true)?
++                != (fw::initdata::raw::G15_MAP_FLAG_MAP
++                    | fw::initdata::raw::G15_MAP_FLAG_SPECIAL_APERTURE)
++            || Self::mapping_flags(G15_GART_RANGE8.start, false)?
++                != fw::initdata::raw::G15_MAP_FLAG_SPECIAL_APERTURE
++        {
++            return Err(EIO);
++        }
+ 
+         let base = G15_GART_RANGE7.start + 0x0040_0000;
+         let phys = 0x0000_0008_1234_0000u64;
+-- 
+2.53.0
+

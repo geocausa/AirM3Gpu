@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  724674ad034ee3502aa9448324cd0056b7b0c670
-linux current checkpoint    b88369c26ffe82ce73765b8bbba64b2db771ef76
-linux current tree          44e9f3c3c84933d5679dd90a647ebcd377855ee8
+linux previous public head  b88369c26ffe82ce73765b8bbba64b2db771ef76
+linux current checkpoint    9b21157497bbb1695b9bbdb43d6490c23520504e
+linux current tree          dcf3368ccd71d1166d5198cab9dd21b3daa2d6f8
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -200,3 +200,10 @@ E084 public m1n1 gpu-wip  11163540ee025d996f4adf45a40b91d6290ec605
 E084 private semantic result sha256  4aa574519cb1933fb130df275c94e2c08c970a2120cfaacd00a373ff677395bf
 E084 closure  current public m1n1 used as semantic dictionary only; no G15/M3 public layout found; 23J220 remains source of truth; no Linux source change or RunCompute
 E084 public semantic note sha256  dd373757d08ded2aa09dfd0af4449253d7cef01fa93ac38e42a1352957e7d4df
+private evidence checkpoint E085  e29b250
+E085 Linux checkpoint  9b21157497bb
+E085 Linux tree  dcf3368ccd71d1166d5198cab9dd21b3daa2d6f8
+E085 module sha256  a8d3ab97f621da84fd6d345543582fe1f59251ccd3170225ecebc8cbd4789398
+E085 patch 0017 sha256  3a93a7f7398e5209ff710ea44f9a142179e070c5d7643d5beafc61383699c707
+E085 closure  q22 range7 map/unmap=1/0; range8 special aperture=3/2; compile-only, no persistent range8 object or RunCompute
+E085 public q22 note sha256  c4d40a415d5921204ea16517f6af87d3f5e20c607b8113f6d516f47d43de0b5b
