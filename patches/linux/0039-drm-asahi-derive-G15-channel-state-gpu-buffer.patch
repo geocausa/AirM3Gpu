@@ -1,0 +1,96 @@
+From 563b93f4bce3bb8d1ddfb12f9737acf99905fa71 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 20:24:38 +0100
+Subject: [PATCH] drm: asahi: derive G15 channel-state gpu buffer
+
+---
+ drivers/gpu/drm/asahi/fw/workqueue.rs | 10 ++++++++++
+ drivers/gpu/drm/asahi/queue/mod.rs    | 19 +++++++++++--------
+ 2 files changed, 21 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/fw/workqueue.rs b/drivers/gpu/drm/asahi/fw/workqueue.rs
+index 3c9e73858dca..1333869627c5 100644
+--- a/drivers/gpu/drm/asahi/fw/workqueue.rs
++++ b/drivers/gpu/drm/asahi/fw/workqueue.rs
+@@ -243,10 +243,20 @@ pub(crate) struct QueueInfo<'a> {
+     G15_CHANNEL_STATE_BACKING_BYTES
+         - G15_CHANNEL_STATE_SLOTS_PER_BACKING * G15_CHANNEL_STATE_BYTES;
+ 
++/// Exact in-slot pointer used by G15 QueueInfo `gpu_buf`. E121 proves
++/// AGXChannel::init() stores selected-state GPUVA + 0xb0 at channel +0x88,
++/// and resetChannelState() converts that value into QueueInfo +0x18.
++/// This is an offset inside the selected channel-state slot, not a separate
++/// G15 queue allocation.
++pub(crate) const G15_CHANNEL_STATE_GPU_BUF_OFFSET: usize = 0xb0;
++
+ const _: [(); 0x8000] = [(); G15_CHANNEL_STATE_BACKING_BYTES];
+ const _: [(); 0x24c0] = [(); G15_CHANNEL_STATE_BYTES];
+ const _: [(); 3] = [(); G15_CHANNEL_STATE_SLOTS_PER_BACKING];
+ const _: [(); 0x11c0] = [(); G15_CHANNEL_STATE_BACKING_SLACK_BYTES];
++const _: [(); 0xb0] = [(); G15_CHANNEL_STATE_GPU_BUF_OFFSET];
++const _: [(); G15_CHANNEL_STATE_GPU_BUF_OFFSET] =
++    [(); core::mem::size_of::<raw::QueueInfoG15V14_7<'static>>()];
+ 
+ /// Exact normal-J615 CL-channel constructor values closed by E119.
+ #[allow(dead_code)]
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index 728454cea846..e70b4392330d 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -205,7 +205,6 @@ struct G15ChannelStateResetInputs {
+     state_fwva: u64,
+     ring_fwva: u64,
+     notifier_list_fwva: u64,
+-    gpu_buf_fwva: u64,
+     channel_4c_value: u32,
+     gpu_context_fwva: u64,
+     effective_priority: u32,
+@@ -284,7 +283,6 @@ fn reset_selected_j615_cl(
+         if input.state_fwva == 0
+             || input.ring_fwva == 0
+             || input.notifier_list_fwva == 0
+-            || input.gpu_buf_fwva == 0
+             || input.gpu_context_fwva == 0
+         {
+             return Err(EINVAL);
+@@ -295,6 +293,14 @@ fn reset_selected_j615_cl(
+         )
+         .ok_or(EINVAL)?;
+         let offset = Self::slot_offset(slot_index).ok_or(EINVAL)?;
++        let base: u64 = self.block.weak_pointer().into();
++        let fwva = base.checked_add(offset as u64).ok_or(EOVERFLOW)?;
++        let gpu_buf_fwva = fwva
++            .checked_add(fw::workqueue::G15_CHANNEL_STATE_GPU_BUF_OFFSET as u64)
++            .ok_or(EOVERFLOW)?;
++        if fwva == 0 || gpu_buf_fwva == 0 {
++            return Err(EIO);
++        }
+         let end = offset
+             .checked_add(fw::workqueue::G15_CHANNEL_STATE_BYTES)
+             .ok_or(EOVERFLOW)?;
+@@ -307,7 +313,9 @@ fn reset_selected_j615_cl(
+         Self::put_u64(slot, 0x00, input.state_fwva)?;
+         Self::put_u64(slot, 0x08, input.ring_fwva)?;
+         Self::put_u64(slot, 0x10, input.notifier_list_fwva)?;
+-        Self::put_u64(slot, 0x18, input.gpu_buf_fwva)?;
++        // E121: AGXChannel::init() derives channel +0x88 from selected-state
++        // GPUVA +0xb0; resetChannelState() then publishes that value at +0x18.
++        Self::put_u64(slot, 0x18, gpu_buf_fwva)?;
+         Self::put_u32(slot, 0x2c, u32::MAX)?;
+         Self::put_u32(slot, 0x30, 4)?;
+         Self::put_u32(slot, 0x4c, u32::MAX)?;
+@@ -325,11 +333,6 @@ fn reset_selected_j615_cl(
+         Self::put_u32(slot, 0x44, priority.integer_arg_44)?;
+         Self::put_u32(slot, 0x48, priority.qos_value_48)?;
+ 
+-        let base: u64 = self.block.weak_pointer().into();
+-        let fwva = base.checked_add(offset as u64).ok_or(EOVERFLOW)?;
+-        if fwva == 0 {
+-            return Err(EIO);
+-        }
+         Ok(G15PreparedChannelState { slot_index, fwva })
+     }
+ }
+-- 
+2.53.0
+

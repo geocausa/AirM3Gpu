@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  252ded3b63533ab89b45e965546f2f0b9d2e57a2
-linux current checkpoint    98d829e05a896cd7b2fa05c626aaef84128c2c9e
-linux current tree          3be13579f13cdc311255cc86a2588446c516ff71
+linux previous public head  98d829e05a896cd7b2fa05c626aaef84128c2c9e
+linux current checkpoint    563b93f4bce3bb8d1ddfb12f9737acf99905fa71
+linux current tree          b51a0dee9e73cd2f4960a4ac93a3d66f8cbdeeb4
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -459,3 +459,12 @@ E120 private result sha256  8e697518ea22661ff664cd26022f4271e26375743275b716c89d
 E120 layout audit sha256  8be2238ba246da5c996c65f1c9fbd67dfc7b80ef6bbb43328d971690dc91927c
 E120 public selected-state note sha256  09b9ecfdd1750c8b8ce4dc00b36b29da658560d64c8c66b04d779ed41c8e3b62
 E120 closure  exact selected channel-state reset/priority image modeled compile-only; slot index kept distinct from evctl_index; no SKU/RunCompute conversion/install/RunCompute
+
+private evidence checkpoint E121  eae9bdc
+E121 Linux checkpoint  563b93f4bce3bb8d1ddfb12f9737acf99905fa71
+E121 Linux tree  b51a0dee9e73cd2f4960a4ac93a3d66f8cbdeeb4
+E121 module sha256  091ed2873c01ac2ad11df958f5d0e672c61b90dc311ccc22e8d940d0dbc3d9e4
+E121 patch 0039 sha256  6b77ba2e318ce31c2ea1c60e3d76aff593bad617455ca2a3a0443f4b6f1e154f
+E121 private result sha256  52c7ebfc5e0f39b0ea30dd8a92d187b196c63f2d80264b916e95d086d3285a6a
+E121 public gpu-buffer note sha256  39e89f928cf2f215641b1119e9df919ade2a4990d0031ab7f4594975345c731f
+E121 closure  QueueInfo +0x18 derives from selected channel-state +0xb0; external gpu_buf FWVA removed only from private compile-only helper; no live WorkQueue/SKU/RunCompute change
