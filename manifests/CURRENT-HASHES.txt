@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  ea707e8e7726c30da653a026384d097c876db0dc
-linux current checkpoint    a783f835b437e43f019b58b00daa0935b6dacf84
-linux current tree          21c8418854d9c10ac54cebf6b5b60fda24214619
+linux previous public head  a783f835b437e43f019b58b00daa0935b6dacf84
+linux current checkpoint    63bb6ffe4f22abcd86db40b86e349a5aaea99bc2
+linux current tree          3878c44828b1e20edb26d7ce98a3ca9ea8fdd84a
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -377,3 +377,12 @@ E109 patch 0032 sha256  7e845a12e9f06aee6a9ec3180c9ae12944b24dde753b7bfeb7f396f7
 E109 private result sha256  d92fe1a5f301c61453200e193e21c394bbbdf5c864a374e8e2019d64f3bda077
 E109 public unpublished-assets note sha256  0d07ec2d64f0f029676ed8fc51a0835bd1959c36e4d8ec3702fab271350a85b4
 E109 closure  coherent private non-Copy event/SKU/Page-Pool/HWMetrics/HardwareBuffer token with rollback/completion; guards separate; no RunCompute consumer/install/execution
+
+private evidence checkpoint E110  c350815
+E110 Linux checkpoint  63bb6ffe4f22abcd86db40b86e349a5aaea99bc2
+E110 Linux tree  3878c44828b1e20edb26d7ce98a3ca9ea8fdd84a
+E110 module sha256  7482c77f7883530ebb6130baf72173a962c54a07bf77aefe57e6e603e945ce68
+E110 patch 0033 sha256  3c5d7cb4389ac7a33d0dac07e9b0a8e492a6817bedf62d9a08524d868f0f2aa9
+E110 private result sha256  37f92e6464632d46a3400ea94f29bcf29a05cf2c35fb26efe2ba22fb3abb1d3c
+E110 public guarded-assets note sha256  7ca75aa7412332b683fd6a5f583c733931c85af3cb179cb9c3c54875ab55a59b
+E110 closure  exact event/SKU guards bound to armed fence before private asset materialization with failure rollback; no Queue/submission call site or RunCompute integration/execution

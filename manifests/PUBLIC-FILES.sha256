@@ -1,10 +1,10 @@
 a94f4741e619a496034a1cfd0c0149d93cb3f74c33e024d5d7c2023f4494c605  ./.gitignore
-7dea54ff1f6c2e6b20b1c25c999e465d5d807ff0b391e5d342b402dca2bcffa0  ./README.md
-7c43a3164da52f867acb80b1c72a2b1f45fb4b708f6f8c19ea9c0805ad48d2d5  ./docs/CURRENT-STATE.md
-1467fa8ca8f412aeb0f33abe2423f53815ae6ab3b70ac813136926664c23100e  ./docs/PATCHES.md
+bd516c419542c84c3be871a11d99cf07b8ea714e6e4935ceb5d7b248478dfe92  ./README.md
+af06ff2a45e18e73c8e46cb587f710bcb852ed2685f63b75fdb8264f9b15e46c  ./docs/CURRENT-STATE.md
+b7257f3f5840fc53324779984bf9f8fb633669d1bf5adc77f66824325c56924d  ./docs/PATCHES.md
 d61bf1973a6d6b3e840ef7eff94cb497eb57118a711f6891e2b0ee98ca6db461  ./docs/RECOVERY.md
 072edbe867996f268553f3da518769548159145691000f5f6dc7f888dd84cdf7  ./docs/WORKFLOW.md
-798fbd21ff49b062a0ccb2e1d20aa8cfa48e2eb3969491514ff743c6e534e13e  ./manifests/CURRENT-HASHES.txt
+76dfaaf6930feaa7403003bd1a217cc67209c3dd1507f1242f15dc5e7a4e6a25  ./manifests/CURRENT-HASHES.txt
 4f16537a51cf9d1ad18841ec138b5a6090407739af7b69898c933dcafdca8fea  ./patches/linux/0001-drm-asahi-checkpoint-T8122-G15-bring-up-through-RTKi.patch
 258eb0243e41b10800df1daf5671c8003f358efec31caaac405e74fc8c2cc00a  ./patches/linux/0002-drm-asahi-map-G15-RTKit-preallocated-crashlog-memory.patch
 7a0b6374402bc2fb4c75b01ae93645470385f1b671530ea9996b118915c9f961  ./patches/linux/0003-drm-asahi-stage-G15-RTKit-app-endpoint-start.patch
@@ -37,6 +37,7 @@ f39e59e9138a406f9459799417856f64e5568e9a9d701d978094dca99d4550ee  ./patches/linu
 a72416b0cff7b53ce6ab38b038c03162f8c6e62811bf81ee97e9e56e923338e9  ./patches/linux/0030-drm-asahi-prepare-G15-Compute-SKU-slot-payload.patch
 7ace399664a792102f8ea8830d558bc657c3dbfce7f5a03abc721eda8a61453a  ./patches/linux/0031-drm-asahi-group-G15-stock-empty-Compute-owners.patch
 7e845a12e9f06aee6a9ec3180c9ae12944b24dde753b7bfeb7f396f7845f92f4  ./patches/linux/0032-drm-asahi-materialize-unpublished-G15-Compute-assets.patch
+3c5d7cb4389ac7a33d0dac07e9b0a8e492a6817bedf62d9a08524d868f0f2aa9  ./patches/linux/0033-drm-asahi-bind-G15-Compute-asset-retirement-guards.patch
 09f94cf355cb34847caf59bf33f46231748958c10fa37dcde7d35b1a2307ac2d  ./patches/mesa/0001-hk-pass-initial-load-clear-state-to-kernel.patch
 07821063a351d0306dc5cc0689979cf10c537af5a417dc5d97e390ee456ec798  ./patches/mesa/0002-hk-pass-depth-stencil-level-offsets-to-kernel.patch
 bc26f90769b09e298649b0fc8f5f6b0373c7e50c03f0b5926f5d285f562db569  ./patches/mesa/0003-hk-build-G15-EOT-state-loader-for-proven-path.patch
@@ -71,6 +72,7 @@ fb41d73538146ba1dc1add68ec3e41fabf4e87848174c16aa1d79b42a8b98938  ./research/g15
 68b5563f87ce37ae39fa9fb74802147aa41ba1cb87a4d6c61d3a07a00ea80109  ./research/g15/G15-FLIST-RANGE5-LIST-PTE.md
 8c617d80fad9dd6dabc296bbcba673fece4c3c00c9525055ed4873785e53581f  ./research/g15/G15-FLIST-RESOURCE-PLAN.md
 cb7f861f5ae4d1e0560e14f128ce1dc714b74a8e7baa44bd77063ddd7932d6d3  ./research/g15/G15-FRAGMENT-COMMAND.md
+7ca75aa7412332b683fd6a5f583c733931c85af3cb179cb9c3c54875ab55a59b  ./research/g15/G15-GUARDED-COMMAND-ASSETS.md
 256538921fedf73f4a4c39f781fae9079a0d8f079d9615810cebde806e1ec639  ./research/g15/G15-HARDWARE-BUFFER-ID-OWNER.md
 a619697f140977ab3a6f20e37c0122fd623bf081e3b4b9bcf6bf595219e9e1b3  ./research/g15/G15-HARDWARE-BUFFER-ID-STATE.md
 930773477526814543e7824c79dcc506219ac19461f2f00fdc538556bacf8c6b  ./research/g15/G15-HWDATA-LAYOUT.md
@@ -100,5 +102,5 @@ fe60975105242c25cba2d0567a0357dcc1b0294ba0b346a5b9cb015f53acdfc6  ./research/g15
 5be0bb89b4ce13967ff8a1301a4f332dac6267d4b8ead6d87683d5c9bf381e1e  ./research/g15/G15-VERTEX-COMMAND.md
 d531fda1be727de5e510ea5718ef68d3b0172d3ec4f2d3f5b039bb6c7f42e06e  ./research/g15/G15-WRAPPER-LAYOUT.md
 1e42ac959bea3032d870499ed56255d3212aaf1f794b184fc08bbb5d2504dbf4  ./research/g15/J615-POWER-CONFIG.md
-8ac082e0cc8ef8d62dba1e6aae893a4c8a3a9c0888b4bad2e38b2bbc97f98b78  ./research/g15/README.md
+c1410c7c3fd560a23036df78d98d9eaaeca2b346af5ce62f64ed33e289f86fe0  ./research/g15/README.md
 d42da0407a1a8725d538c5438cb402860139b661c347613781a5b0b4226731e6  ./research/g15/build-g15g-c0-dpe-ppt.py
