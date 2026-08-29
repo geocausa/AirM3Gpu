@@ -292,3 +292,11 @@ E098 module sha256  3e4f66140e3c679932d953454505fb7df0a48fe3aa3f525120a21e7d620e
 E098 patch 0024 sha256  674cc741ac89a47d05bcba1e9e8e3e83e5c9e98386cf30dd4cd20526de567584
 E098 closure  exact HWMetrics semantic range-7 class + unreachable page-base owner; +0x857 zero/fail-closed; no install or RunCompute
 E097-E098 public HWMetrics note sha256  02580775b7ecca164c902d7408797d34e61f1ae1e5bd5eeabd6cddc16c4f9549
+private evidence checkpoint E099  bb64054
+E099 Linux checkpoint  47a8c0070a4be796f27ed64f3ca7a7f198b8af1b
+E099 Linux tree  c97331359f2996c1c7d09bedde5b99eaea362079
+E099 module sha256  0fb676474a24d9125df61dad53ed4611ec8bb3838775d7942aa226b4bedc422a
+E099 patch 0025 sha256  3856385c33bdd33ee4556f93511642f6dff8c0b50e779f527b6993a2fa96eb2b
+E099 private result sha256  eaccc02583f5ef38952235c1a6d920bff66d014b3149652d9e6550d11d2b8c55
+E099 public FList population note sha256  99060bcf0acc4bbdb1b957ea2d0b3be0ac7ddb51c8303bb02826ffd087bcf8c0
+E099 closure  exact post-populatePagePool 0x70 firmware-state image modeled unreachable; page-list contents/chained backing mappings and RunCompute +0x83e remain gated; no install or RunCompute

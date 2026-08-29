@@ -1,0 +1,163 @@
+From 47a8c0070a4be796f27ed64f3ca7a7f198b8af1b Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 12:06:56 +0100
+Subject: [PATCH] drm: asahi: model G15 FList firmware-state population
+
+---
+ drivers/gpu/drm/asahi/buffer.rs | 121 +++++++++++++++++++++++++++++---
+ 1 file changed, 111 insertions(+), 10 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/buffer.rs b/drivers/gpu/drm/asahi/buffer.rs
+index dfd1a6624239..137c2b391d36 100644
+--- a/drivers/gpu/drm/asahi/buffer.rs
++++ b/drivers/gpu/drm/asahi/buffer.rs
+@@ -510,19 +510,34 @@ pub(crate) fn complete_reference(&self, hardware_buffer_id: u32) -> Result<bool>
+     }
+ }
+ 
++/// Dynamic host inputs consumed by the first exact FList firmware-state
++/// population. Every field below has a proven 23J220 producer; values that are
++/// workload/pool dependent stay explicit instead of being guessed for J615.
++#[derive(Clone, Copy, Debug)]
++#[allow(dead_code)]
++pub(crate) struct G15FListPopulationInputs {
++    /// AGXUMAPool +0xa2.
++    pub(crate) async_grow_enabled: bool,
++    /// AGXUMAPool +0xa4 (_AGFIUMAPoolPriorityType).
++    pub(crate) priority: u32,
++    /// FList +0x68 before populatePagePool(); must be 4-KiB-page aligned.
++    pub(crate) current_allocated_bytes: u64,
++    /// FList +0xc0 compact Backup Page List entry count, rounded to 8.
++    pub(crate) backup_page_list_entry_count: u32,
++    /// Exact pool+a0 ? pool+a1 : 0 result; nonzero only for shared CL pools.
++    pub(crate) shared_compute_pool: bool,
++}
++
+ /// Persistent backing allocations owned by one exact J615/G15 FList.
+ ///
+-/// E086 deliberately stops at the same boundary as AGXUMAFList::init(): the
+-/// four objects exist and the 0x70-byte state contains only its constructor
+-/// seed (`pool_id`, HardwareBuffer ID = -1). Apple does not publish the list
+-/// pointers/capacity/FW-Uncached mirror until prepareBufferResources() calls
+-/// populateFirmwareState(), so this type does not expose a Page-Pool-State
+-/// command pointer or a prepare method yet.
++/// E086 created the four objects at the AGXUMAFList::init() boundary. E099 adds
++/// only the exact HardwareBuffer-reference and post-populatePagePool firmware-
++/// state population boundary. The object remains compile-only/unreachable and
++/// exposes no Page-Pool-State FWVA to a work command.
+ ///
+-/// This constructor is compile-only and has no caller. In particular it must
+-/// not be wired into queue/GpuManager lifetime until the exact mapping
+-/// prepare/complete callback lifetime is represented rather than approximated
+-/// by the allocator's persistent mappings.
++/// The actual Page Pool List / Backup Page List contents and chained backing
++/// mappings remain a separate activation prerequisite; this type must not be
++/// wired into Queue/GpuManager until that producer is represented exactly.
+ #[allow(dead_code)]
+ pub(crate) struct G15FListResourceOwner {
+     plan: G15FListResourcePlan,
+@@ -530,6 +545,7 @@ pub(crate) struct G15FListResourceOwner {
+     backup_page_list: GpuArray<U64>,
+     fw_uncached_state: alloc::G15SharedGpuArray<buffer::raw::G15UMAFWUncachedState>,
+     page_pool_state: alloc::G15SharedGpuArray<buffer::raw::G15UMAPagePoolState>,
++    firmware_state_initialized: bool,
+ }
+ 
+ #[allow(dead_code)]
+@@ -610,8 +626,93 @@ pub(crate) fn new_j615_unprepared(
+             backup_page_list,
+             fw_uncached_state,
+             page_pool_state,
++            firmware_state_initialized: false,
+         })
+     }
++
++    /// Acquire one exact HardwareBuffer reference. The returned transition bit
++    /// is Apple's prepareBufferResources(bool) argument; this method performs
++    /// no state population or command publication by itself.
++    fn prepare_reference(&mut self) -> Result<G15HardwareBufferLease> {
++        self.plan.prepare_reference()
++    }
++
++    /// Populate the exact 0x70 firmware image after the caller has completed
++    /// the separately-gated populatePagePool() backing-list work for the first
++    /// initialized epoch. This intentionally accepts a previously acquired
++    /// lease instead of allocating an ID internally, so failure cannot hide a
++    /// HardwareBuffer reference transition.
++    fn populate_first_initialized_epoch(
++        &mut self,
++        lease: G15HardwareBufferLease,
++        inputs: G15FListPopulationInputs,
++    ) -> Result {
++        if self.firmware_state_initialized || !lease.first_reference {
++            return Err(EINVAL);
++        }
++        if lease.hardware_buffer_id as usize >= G15_HARDWARE_BUFFER_ID_COUNT
++            || self.plan.sticky_hardware_buffer_id() != Some(lease.hardware_buffer_id)
++        {
++            return Err(EINVAL);
++        }
++        if inputs.current_allocated_bytes & 0xfff != 0
++            || inputs.current_allocated_bytes > self.plan.geometry().max_pool_bytes
++        {
++            return Err(EINVAL);
++        }
++
++        let page_count_u64 = inputs.current_allocated_bytes >> 12;
++        let page_count: u32 = page_count_u64.try_into().map_err(|_| EOVERFLOW)?;
++        let capacity = self.plan.geometry().page_pool_list_entries;
++        if capacity == 0 || page_count > capacity || page_count >= (1 << 22) {
++            return Err(EINVAL);
++        }
++
++        let backup_capacity: u32 = self
++            .backup_page_list
++            .len()
++            .try_into()
++            .map_err(|_| EOVERFLOW)?;
++        if inputs.backup_page_list_entry_count > backup_capacity
++            || inputs.backup_page_list_entry_count & 7 != 0
++        {
++            return Err(EINVAL);
++        }
++
++        let page_pool_list_fwva: u64 = self.page_pool_list.weak_pointer().into();
++        let backup_page_list_fwva: u64 = self.backup_page_list.weak_pointer().into();
++        let fw_uncached_state_fwva: u64 = self.fw_uncached_state.weak_item_pointer(0).into();
++        let fw_uncached_mirror = self.fw_uncached_state[0].coherency_value;
++
++        // Exact populateFirmwareState() host writes. +0x3c remains untouched
++        // and therefore stays construction-zero. The page-list contents are a
++        // separate prerequisite and this helper exposes no Page-Pool-State FWVA.
++        let state = &mut self.page_pool_state.as_mut_slice()[0];
++        state.hardware_buffer_id = U32(lease.hardware_buffer_id);
++        state.async_grow_enabled = U32(inputs.async_grow_enabled as u32);
++        state.priority = U32(inputs.priority);
++        state.page_pool_list_fwva = U64(page_pool_list_fwva);
++        state.page_pool_list_capacity = U32(capacity);
++        state.ring_cursor_20 = U32(0);
++        state.ring_cursor_24 = U32(page_count % capacity);
++        state.ring_state_bit_28 = U32(0);
++        state.page_count = U32(page_count);
++        state.lifecycle_state_30 = U32(0);
++        state.backup_page_list_fwva = U64(backup_page_list_fwva);
++        state.backup_page_list_entry_count = U32(inputs.backup_page_list_entry_count);
++        state.fw_uncached_state_fwva = U64(fw_uncached_state_fwva);
++        state.fw_uncached_state_mirror = fw_uncached_mirror;
++        state.shared_compute_pool = U32(inputs.shared_compute_pool as u32);
++        state.shared_compute_dispatch_seq_5c = U32(0);
++        state.host_zero_60 = U64(0);
++        state.host_zero_68 = U64(0);
++        self.firmware_state_initialized = true;
++        Ok(())
++    }
++
++    fn complete_reference(&self, hardware_buffer_id: u32) -> Result<bool> {
++        self.plan.complete_reference(hardware_buffer_id)
++    }
+ }
+ 
+ /// Apple G15 parameter-management device configuration recovered from
+-- 
+2.53.0
+

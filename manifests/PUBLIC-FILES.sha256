@@ -1,10 +1,10 @@
 a94f4741e619a496034a1cfd0c0149d93cb3f74c33e024d5d7c2023f4494c605  ./.gitignore
-ab39fa34d347bb8000121b45ebcdd4441c8ecc1822246ae22ab154c762cef659  ./README.md
-aed6727ce625e5bb579dd00fb49289ddcbbe425b48840fb3a4897b8587b5891a  ./docs/CURRENT-STATE.md
-b5f4c999010ffaf51de75af391f14c1803e9f9c491b506461aa005dd81f6e63e  ./docs/PATCHES.md
+a1c3a476be4d3e3c3498116a48083eef369ce0c9581dc448c826fee7edba69cd  ./README.md
+c743fcaccba28d4cac2b58e114591cff7554ed7c63623b6915f5a30ea7af5775  ./docs/CURRENT-STATE.md
+4ea61568ec2afda43ff415c59e7b2c57b4b882643d6f798850acf3e8e504b835  ./docs/PATCHES.md
 d61bf1973a6d6b3e840ef7eff94cb497eb57118a711f6891e2b0ee98ca6db461  ./docs/RECOVERY.md
 072edbe867996f268553f3da518769548159145691000f5f6dc7f888dd84cdf7  ./docs/WORKFLOW.md
-a300ef2c316b277ba2152ae801173d6dfcfa6a0dcea13acd96947b69f7e704b2  ./manifests/CURRENT-HASHES.txt
+154dc4474fd38c92874a5fa8cc6b28c4cde2bb20b27ced56292eb6ae16fb63d4  ./manifests/CURRENT-HASHES.txt
 4f16537a51cf9d1ad18841ec138b5a6090407739af7b69898c933dcafdca8fea  ./patches/linux/0001-drm-asahi-checkpoint-T8122-G15-bring-up-through-RTKi.patch
 258eb0243e41b10800df1daf5671c8003f358efec31caaac405e74fc8c2cc00a  ./patches/linux/0002-drm-asahi-map-G15-RTKit-preallocated-crashlog-memory.patch
 7a0b6374402bc2fb4c75b01ae93645470385f1b671530ea9996b118915c9f961  ./patches/linux/0003-drm-asahi-stage-G15-RTKit-app-endpoint-start.patch
@@ -29,6 +29,7 @@ dfb98af1a80f7be36ef623476af27fe3b71db0638d5dc3f8e00d5c8f83bbc8ef  ./patches/linu
 b51f92f11bb18f5b65e0071e043509f7f9a67737aad0df5759bdec0b5d5a5120  ./patches/linux/0022-drm-asahi-seed-G15-event-control-selected-state.patch
 7b7b23b6f787692918b46e659ec598102dbd219a7413f2368e9cb169bd44f80b  ./patches/linux/0023-drm-asahi-guard-G15-event-control-slot-reuse.patch
 674cc741ac89a47d05bcba1e9e8e3e83e5c9e98386cf30dd4cd20526de567584  ./patches/linux/0024-drm-asahi-own-G15-UMA-HWMetrics-backing.patch
+3856385c33bdd33ee4556f93511642f6dff8c0b50e779f527b6993a2fa96eb2b  ./patches/linux/0025-drm-asahi-model-G15-FList-firmware-state-population.patch
 09f94cf355cb34847caf59bf33f46231748958c10fa37dcde7d35b1a2307ac2d  ./patches/mesa/0001-hk-pass-initial-load-clear-state-to-kernel.patch
 07821063a351d0306dc5cc0689979cf10c537af5a417dc5d97e390ee456ec798  ./patches/mesa/0002-hk-pass-depth-stencil-level-offsets-to-kernel.patch
 bc26f90769b09e298649b0fc8f5f6b0373c7e50c03f0b5926f5d285f562db569  ./patches/mesa/0003-hk-build-G15-EOT-state-loader-for-proven-path.patch
@@ -57,6 +58,7 @@ ca62962381fef60a677e9965d440db71ebd2798413e879a0017e833e258a8f5f  ./research/g15
 f0d6d68640898d1b261adbef165c1d7523d0d46445d743acf01d6d754630d664  ./research/g15/G15-EVENT-CONTROL-SELECTED-STATE.md
 e157847ed42e66847094b743ed22261c1819ae3c631647b4e8ad3f267544b45e  ./research/g15/G15-EVENT-SLOT-FINISH-REUSE.md
 fd598dada77e2371ce5b06865b07f88cb570f6e5f4b796ea6969de60ca5dd6e0  ./research/g15/G15-EVENT-SLOT-RETIREMENT-GUARD.md
+99060bcf0acc4bbdb1b957ea2d0b3be0ac7ddb51c8303bb02826ffd087bcf8c0  ./research/g15/G15-FLIST-FIRMWARE-STATE-POPULATION.md
 fb41d73538146ba1dc1add68ec3e41fabf4e87848174c16aa1d79b42a8b98938  ./research/g15/G15-FLIST-PERSISTENT-OWNER.md
 8ca1becb83940b5756844afc518ba6ea569ac85d62af3840581e60ee0f521289  ./research/g15/G15-FLIST-PREPARE-COMPLETE.md
 68b5563f87ce37ae39fa9fb74802147aa41ba1cb87a4d6c61d3a07a00ea80109  ./research/g15/G15-FLIST-RANGE5-LIST-PTE.md
@@ -84,5 +86,5 @@ c0a9643509b7050f0b3c0718a5060fd0c592235250b22f7e47dd18614aef7ddc  ./research/g15
 5be0bb89b4ce13967ff8a1301a4f332dac6267d4b8ead6d87683d5c9bf381e1e  ./research/g15/G15-VERTEX-COMMAND.md
 d531fda1be727de5e510ea5718ef68d3b0172d3ec4f2d3f5b039bb6c7f42e06e  ./research/g15/G15-WRAPPER-LAYOUT.md
 1e42ac959bea3032d870499ed56255d3212aaf1f794b184fc08bbb5d2504dbf4  ./research/g15/J615-POWER-CONFIG.md
-7fccd79dca7e1d3b7234bba7d1b0c94c618fa237acf8ec5c827c51900e423fa2  ./research/g15/README.md
+27421b9a0d877c7bccd4ccc3446f5cb2efd7c1941296bcf9642317794da7f479  ./research/g15/README.md
 d42da0407a1a8725d538c5438cb402860139b661c347613781a5b0b4226731e6  ./research/g15/build-g15g-c0-dpe-ppt.py
