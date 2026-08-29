@@ -1,0 +1,251 @@
+From 293ca63380179cca5bb8c6511a67349f90878b44 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 21:24:18 +0100
+Subject: [PATCH] drm: asahi: model G15 scheduler state backing
+
+---
+ drivers/gpu/drm/asahi/alloc.rs        |  24 ++++++
+ drivers/gpu/drm/asahi/fw/workqueue.rs |  29 ++++++-
+ drivers/gpu/drm/asahi/queue/mod.rs    | 116 +++++++++++++++++++++++++-
+ 3 files changed, 162 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/alloc.rs b/drivers/gpu/drm/asahi/alloc.rs
+index 6c752a535bef..50634ed88362 100644
+--- a/drivers/gpu/drm/asahi/alloc.rs
++++ b/drivers/gpu/drm/asahi/alloc.rs
+@@ -656,6 +656,30 @@ pub(crate) fn new_range8_channel_memory(
+         }
+     }
+ 
++    /// Dedicated exact G15 `_AGFISchedulerState` range-8 allocator. E126
++    /// proves the command-queue scheduler-state resource stack uses ordinary
++    /// special range 8: compact option 0x003 / leaf 0x...0443. Keeping this
++    /// semantic constructor separate prevents accidental use of range 7.
++    #[allow(dead_code)]
++    pub(crate) fn new_range8_scheduler_state(
++        dev: &AsahiDevice,
++        bank1: mmu::G15SharedBank1,
++        min_align: usize,
++        mut cpu_maps: bool,
++        notifier: Option<Arc<Mutex<mmu::G15MappingNotifier>>>,
++    ) -> Self {
++        if debug_enabled(DebugFlags::ForceCPUMaps) { cpu_maps = true; }
++        Self {
++            dev: dev.into(),
++            bank1,
++            aperture: mmu::G15SharedBank1Aperture::Range8,
++            prot: mmu::PROT_G15_RANGE8_FW,
++            min_align,
++            cpu_maps,
++            notifier,
++        }
++    }
++
+     /// Dedicated eGartRange-8 allocator for G15 FList Page-Pool State objects.
+     /// The protection class is fixed by the exact E075 leaf proof rather than
+     /// supplied by callers, keeping PM/range-7 attributes impossible here.
+diff --git a/drivers/gpu/drm/asahi/fw/workqueue.rs b/drivers/gpu/drm/asahi/fw/workqueue.rs
+index 83f063c047d0..4acd05a736e7 100644
+--- a/drivers/gpu/drm/asahi/fw/workqueue.rs
++++ b/drivers/gpu/drm/asahi/fw/workqueue.rs
+@@ -98,10 +98,11 @@ fn default() -> Self {
+     }
+ 
+     impl GpuContextData {
+-        /// Exact G15 scheduler/context resource bootstrap reconstructed from
+-        /// AGXCommandQueue::init(). The G15 firmware-visible object is 0x38
+-        /// bytes; this shared raw type retains the inherited 0x40 allocation
+-        /// size for older generations, but the first 0x38 bytes match Apple.
++        /// Exact G15 selected `_AGFISchedulerState` bootstrap reconstructed
++        /// from AGXCommandQueue::init(). E126 proves the firmware resource-stack
++        /// element is 0x40 bytes while Apple host-reset initializes the first
++        /// 0x38 bytes. This inherited raw type remains the byte-layout carrier;
++        /// the live generic `GpuContext` allocator is not reclassified here.
+         pub(crate) fn g15() -> Self {
+             // Apple zeroes exactly 0x38 bytes, then writes:
+             //   +0x00/+0x01 = 0xff, +0x05 = 1, +0x22 = 0xff,
+@@ -214,6 +215,9 @@ pub(crate) struct QueueInfo<'a> {
+         pub(crate) unk_94: u32,
+         pub(crate) pending: AtomicU32,
+         pub(crate) unk_9c: u32,
++        // Historical inherited name. On exact G15 this is the selected
++        // `_AGFISchedulerState` FWVA sourced from command queue +0x8d8 via
++        // channel +0xf0. The live generic GpuContext path remains gated.
+         pub(crate) gpu_context: GpuPointer<'a, super::GpuContextData>,
+         #[ver(G != G15)]
+         pub(crate) unk_a8: U64,
+@@ -299,6 +303,23 @@ pub(crate) struct QueueInfo<'a> {
+ const _: [(); 0x2aa] = [(); G15_TIMESTAMP_QUEUE_STATES_PER_BACKING];
+ const _: [(); 0x10] = [(); G15_TIMESTAMP_QUEUE_BACKING_SLACK_BYTES];
+ 
++/// Exact 23J220 `_AGFISchedulerState` resource-stack geometry. E126 proves
++/// range 8 with 0x40-byte elements. The generic resource stack page-rounds
++/// its initial two-element request to one 0x4000 J615 page: 0x100 exact slots
++/// and no trailing slack. Apple clears the first 0x38 bytes on command-queue
++/// construction; the final eight bytes are outside that host reset.
++pub(crate) const G15_SCHEDULER_STATE_BYTES: usize = 0x40;
++pub(crate) const G15_SCHEDULER_STATE_HOST_RESET_BYTES: usize = 0x38;
++pub(crate) const G15_SCHEDULER_STATE_BACKING_BYTES: usize = 0x4000;
++pub(crate) const G15_SCHEDULER_STATES_PER_BACKING: usize =
++    G15_SCHEDULER_STATE_BACKING_BYTES / G15_SCHEDULER_STATE_BYTES;
++pub(crate) const G15_J615_SCHEDULER_SHARED_BYTE_27: u8 = 2;
++
++const _: [(); 0x40] = [(); G15_SCHEDULER_STATE_BYTES];
++const _: [(); 0x38] = [(); G15_SCHEDULER_STATE_HOST_RESET_BYTES];
++const _: [(); 0x4000] = [(); G15_SCHEDULER_STATE_BACKING_BYTES];
++const _: [(); 0x100] = [(); G15_SCHEDULER_STATES_PER_BACKING];
++
+ /// Exact normal-J615 CL-channel constructor values closed by E119.
+ #[allow(dead_code)]
+ pub(crate) const G15_J615_FIRST_CL_EVCTL_INDEX: u32 = 0;
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index 27f072e0ab96..015e8d919898 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -289,6 +289,115 @@ fn reset_selected(
+ const _: [(); 0x0018] = [(); G15TimestampQueueBackingBlock::slot_offset(1).unwrap()];
+ const _: [(); 0x3fd8] = [(); G15TimestampQueueBackingBlock::slot_offset(0x2a9).unwrap()];
+ 
++/// One exact 23J220 `_AGFISchedulerState` range-8 backing block.
++///
++/// E126 proves one page-rounded 0x4000 block contains exactly 0x100 complete
++/// 0x40-byte states. The global firmware resource stack owns selection/release;
++/// this compile-only block has no externally reachable selected-state accessor.
++#[allow(dead_code)]
++struct G15SchedulerStateBackingBlock {
++    block: alloc::G15SharedGpuArray<u8>,
++}
++
++/// Private proof token for one caller-selected local scheduler state. The FWVA
++/// is consumed only by definition-only channel-state reconstruction; the local
++/// index is deliberately not claimed to equal Apple's global stack index.
++#[derive(Debug)]
++#[allow(dead_code)]
++struct G15PreparedSchedulerState {
++    slot_index: usize,
++    fwva: u64,
++}
++
++#[allow(dead_code)]
++impl G15SchedulerStateBackingBlock {
++    fn new(
++        dev: &AsahiDevice,
++        bank1: mmu::G15SharedBank1,
++        mapping_notifier: Arc<Mutex<mmu::G15MappingNotifier>>,
++    ) -> Result<Self> {
++        let mut allocator = alloc::G15SharedBank1Allocator::new_range8_scheduler_state(
++            dev,
++            bank1,
++            mmu::UAT_PGSZ,
++            true,
++            Some(mapping_notifier),
++        );
++        let block = allocator.array_empty_shared_data::<u8>(
++            fw::workqueue::G15_SCHEDULER_STATE_BACKING_BYTES,
++        )?;
++        let base: u64 = block.weak_pointer().into();
++        if block.len() != fw::workqueue::G15_SCHEDULER_STATE_BACKING_BYTES
++            || base == 0
++            || base & (mmu::UAT_PGSZ as u64 - 1) != 0
++            || fw::workqueue::G15_SCHEDULER_STATES_PER_BACKING != 0x100
++        {
++            return Err(EIO);
++        }
++        Ok(Self { block })
++    }
++
++    const fn slot_offset(index: usize) -> Option<usize> {
++        if index < fw::workqueue::G15_SCHEDULER_STATES_PER_BACKING {
++            Some(index * fw::workqueue::G15_SCHEDULER_STATE_BYTES)
++        } else {
++            None
++        }
++    }
++
++    fn put_u16(slot: &mut [u8], offset: usize, value: u16) -> Result {
++        let end = offset.checked_add(2).ok_or(EOVERFLOW)?;
++        let dst = slot.get_mut(offset..end).ok_or(EINVAL)?;
++        dst.copy_from_slice(&value.to_le_bytes());
++        Ok(())
++    }
++
++    fn put_u32(slot: &mut [u8], offset: usize, value: u32) -> Result {
++        let end = offset.checked_add(4).ok_or(EOVERFLOW)?;
++        let dst = slot.get_mut(offset..end).ok_or(EINVAL)?;
++        dst.copy_from_slice(&value.to_le_bytes());
++        Ok(())
++    }
++
++    /// Exact normal-J615 `AGXCommandQueue::init()` host reset of one already
++    /// selected scheduler state. Apple clears exactly the first 0x38 bytes,
++    /// then writes +0x00/+0x01=0xff, +0x05=1, +0x22=0xff, zero at +0x23..26,
++    /// and AGXShared+0x100 (=2) at +0x27. Bytes +0x38..0x3f are deliberately
++    /// preserved because the exact host constructor does not clear them.
++    fn reset_selected_j615(
++        &mut self,
++        slot_index: usize,
++    ) -> Result<G15PreparedSchedulerState> {
++        let offset = Self::slot_offset(slot_index).ok_or(EINVAL)?;
++        let end = offset
++            .checked_add(fw::workqueue::G15_SCHEDULER_STATE_BYTES)
++            .ok_or(EOVERFLOW)?;
++        let base: u64 = self.block.weak_pointer().into();
++        let fwva = base.checked_add(offset as u64).ok_or(EOVERFLOW)?;
++        if fwva == 0 {
++            return Err(EIO);
++        }
++        let slot = self.block.as_mut_slice().get_mut(offset..end).ok_or(EIO)?;
++        let reset = slot
++            .get_mut(..fw::workqueue::G15_SCHEDULER_STATE_HOST_RESET_BYTES)
++            .ok_or(EIO)?;
++        for byte in reset.iter_mut() {
++            *byte = 0;
++        }
++        Self::put_u16(slot, 0x00, u16::MAX)?;
++        slot[0x05] = 1;
++        slot[0x22] = 0xff;
++        Self::put_u32(slot, 0x23, 0)?;
++        slot[0x27] = fw::workqueue::G15_J615_SCHEDULER_SHARED_BYTE_27;
++
++        Ok(G15PreparedSchedulerState { slot_index, fwva })
++    }
++}
++
++const _: [(); 0x0000] = [(); G15SchedulerStateBackingBlock::slot_offset(0).unwrap()];
++const _: [(); 0x0040] = [(); G15SchedulerStateBackingBlock::slot_offset(1).unwrap()];
++const _: [(); 0x3fc0] = [(); G15SchedulerStateBackingBlock::slot_offset(0xff).unwrap()];
++
+ /// One exact 23J220 firmware `_AGFIChannelState` backing block.
+ ///
+ /// E116 proves the global firmware resource stack allocates page-base 0x8000
+@@ -312,7 +421,7 @@ struct G15ChannelStateResetInputs {
+     ring_fwva: u64,
+     timestamp_queue_state_fwva: u64,
+     channel_4c_value: u32,
+-    gpu_context_fwva: u64,
++    scheduler_state_fwva: u64,
+     effective_priority: u32,
+     queue_qos: u32,
+ }
+@@ -389,7 +498,7 @@ fn reset_selected_j615_cl(
+         if input.state_fwva == 0
+             || input.ring_fwva == 0
+             || input.timestamp_queue_state_fwva == 0
+-            || input.gpu_context_fwva == 0
++            || input.scheduler_state_fwva == 0
+         {
+             return Err(EINVAL);
+         }
+@@ -428,7 +537,8 @@ fn reset_selected_j615_cl(
+         Self::put_u32(slot, 0x30, 4)?;
+         Self::put_u32(slot, 0x4c, u32::MAX)?;
+         Self::put_u32(slot, 0x50, input.channel_4c_value)?;
+-        Self::put_u64(slot, 0xa4, input.gpu_context_fwva)?;
++        // E126: exact G15 QueueInfo +0xa4 is selected scheduler-state FWVA.
++        Self::put_u64(slot, 0xa4, input.scheduler_state_fwva)?;
+         slot[0xac] = fw::workqueue::G15_J615_CDM_BACKOFF_TIMEOUT;
+ 
+         // Exact later setChannelPriority() mutation. +0x30/+0x34 carry the
+-- 
+2.53.0
+

@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  98d829e05a896cd7b2fa05c626aaef84128c2c9e
-linux current checkpoint    563b93f4bce3bb8d1ddfb12f9737acf99905fa71
-linux current tree          b51a0dee9e73cd2f4960a4ac93a3d66f8cbdeeb4
+linux previous public head  adfbfca2e26565ce974fd6c238c4910abf99533e
+linux current checkpoint    293ca63380179cca5bb8c6511a67349f90878b44
+linux current tree          2a2089948c3d9795ee385d364e70a5c39b162c92
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -499,3 +499,12 @@ E125 patch 0042 sha256  9f609c0a9a06ef5e625072c254b3be52c614cf4161be664e285d4c7b
 E125 private result sha256  444676b10dad52a52542571ed928a96eb20310cc38c762fc1517c5f21cfe095d
 E125 public timestamp-state note sha256  d5cd08c774c3c241ac3e632c44bf4bc6e56e8bc2d7ed1241701f9b934ad0679e
 E125 closure  QueueInfo+0x10=selected AGXTimeStampQueue state FWVA, state=0x18 range7 backing=0x4000 states=0x2aa leaf=0x00c0000000000447; private owner/reset only; live WorkQueue notifier/RunCompute unchanged
+
+private evidence checkpoint E126  fcc5fd43ae30d330b9afde418820f6fd70799320
+E126 Linux checkpoint  293ca63380179cca5bb8c6511a67349f90878b44
+E126 Linux tree  2a2089948c3d9795ee385d364e70a5c39b162c92
+E126 module sha256  a5e31931d40181f8bb2aa2ce1bdc5a7c707b16603df87fd3209014554d817270
+E126 patch 0043 sha256  9b52358b14a67ccccfb4244edf3264b5c9aac14f7d0e479d4ea8b78e3c64ee67
+E126 private result sha256  2d4d56178e6c1ee0914ad5761724d3d273025ca5ea1871112aa37d91a7912ca0
+E126 public scheduler-state note sha256  db57cff80137754ed79635e89fd645e880cd94bccb1949be2c3d61a9d5fc42e9
+E126 closure  exact _AGFISchedulerState range8 element=0x40 backing=0x4000 slots=0x100; selected queue+8d8/channel+f0/QueueInfo+a4 provenance and 0x38-byte host reset modeled private; live GpuContext/RunCompute unchanged
