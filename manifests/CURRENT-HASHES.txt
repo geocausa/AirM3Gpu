@@ -1,11 +1,11 @@
-AirM3Gpu research state: 2026-08-28
+AirM3Gpu research state: 2026-08-29
 Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  f73b9e5516589fde5820ea487911fd830fac958c
-linux current checkpoint    03fdbb86230f1c431bb6958dfa6bc752ad35b1cd
-linux current tree          999f7f6cc80a2e5cfd92c8de88dbc1a05d6c3de3
+linux previous public head  affdd1fba79d333530cac22d069212b6e65ef9d4
+linux current checkpoint    724674ad034ee3502aa9448324cd0056b7b0c670
+linux current tree          8d1327b8eb514abd506e751f578bab40ebe937c1
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -176,3 +176,12 @@ E081 Linux tree  2626c74fdd6b91a09e51a24b187e7510760dd3b3
 E081 module sha256  23fbaeaf602208c1f5aef14ba8f8fb4c14a943a9339dd41c5a0f80a41b82b204
 E081 patch 0014 sha256  b20da8f6d4b4df1d6e58dd5e2eb90449a4da830f17acfa4837f4d78bd4bd9a33
 E081 closure  exact symbolic FList geometry plus fixed-object/HardwareBuffer plan; no GPU allocator or RunCompute
+private evidence checkpoint E082  b4caa6a
+E082 exact oracle result sha256  cf517eefd0a0765670c009f67f07cb263de4f2264c43a87be8c55bfa2fdb9f2d
+E082 private result sha256  7494831928c2878cf9f05b8654e69513e7634368abef5d1877a1e28feb4a7301
+E082 Linux checkpoint  724674ad034ee3502aa9448324cd0056b7b0c670
+E082 Linux tree  8d1327b8eb514abd506e751f578bab40ebe937c1
+E082 module sha256  f2d6d6838511448cd048800eecf8264811f43a54e8713dd6bb73d1fa46f661f7
+E082 patch 0015 sha256  cf5fa4401ec4e31c68df27f62bc470d680f7bcb76255b66da61c36b4be5a61d6
+E082 public range5 note sha256  68b5563f87ce37ae39fa9fb74802147aa41ba1cb87a4d6c61d3a07a00ea80109
+E082 closure  corrected FList caller option 0x20000000003; Page/Backup Lists exact range-5 compact 0x300; semantic class compile-only; no GPU allocation or RunCompute
