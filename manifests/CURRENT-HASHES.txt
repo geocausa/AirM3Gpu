@@ -279,3 +279,16 @@ E096 module sha256  7368ee7ea5959ba0ac47edfcfd1d6bdf12e18859c12d39222d1c8d98f6e9
 E096 patch 0023 sha256  7b7b23b6f787692918b46e659ec598102dbd219a7413f2368e9cb169bd44f80b
 E096 closure  +0x08 corrected to shared state sequence; 36-slot JobFence guard prevents reuse until pending commands retire; owner unreachable; +0x14 zero; no RunCompute
 E096 public retirement-guard note sha256  fd598dada77e2371ce5b06865b07f88cb570f6e5f4b796ea6969de60ca5dd6e0
+private evidence checkpoint E097  7d73f4a
+E097 exact oracle result sha256  9c3ed0b605d2fe0a749bbb31170626ca2ef8170d2f74f23d5373d1b11fca6c8f
+E097 mapping option  0x0001008700000007
+E097 compact UAT option  0x30b
+E097 exact leaf bits  0x00e000000000040b
+E097 closure  one 0x4000-byte HWMetrics page, 0x100x0x40 ring; exact PTE is existing PROT_GPU_FW_SHARED_RW; no Linux source change or RunCompute
+private evidence checkpoint E098  03d4be5
+E098 Linux checkpoint  d18178f018aca2b92249ab72c5c361e19b6f45dc
+E098 Linux tree  69edfedc61b042a086bf1cd82386d3c09d60f18a
+E098 module sha256  3e4f66140e3c679932d953454505fb7df0a48fe3aa3f525120a21e7d620ef42e
+E098 patch 0024 sha256  674cc741ac89a47d05bcba1e9e8e3e83e5c9e98386cf30dd4cd20526de567584
+E098 closure  exact HWMetrics semantic range-7 class + unreachable page-base owner; +0x857 zero/fail-closed; no install or RunCompute
+E097-E098 public HWMetrics note sha256  02580775b7ecca164c902d7408797d34e61f1ae1e5bd5eeabd6cddc16c4f9549

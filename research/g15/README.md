@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-23J220-HWMETRICS.md` — E097 exact one-page/0x40-record HWMetrics mapping class and E098 unreachable compile-only owner; RunCompute `+0x857` remains zero.
 - `G15-EVENT-SLOT-RETIREMENT-GUARD.md` — E096 compile-only JobFence-backed 36-slot reuse guard and corrected `+0x08` shared-state-sequence semantic.
 - `G15-EVENT-SLOT-FINISH-REUSE.md` — E095 exact host-event finish-before-reuse lifetime and `+0x08` semantic correction.
 - `G15-EVENT-CONTROL-SELECTED-STATE.md` — E094 exact normal-J615 selected-state `+0x10=80` seed and still-gated event-slot finish/reuse boundary.
