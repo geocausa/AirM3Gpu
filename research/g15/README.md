@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-TIMESTAMP-QUEUE-STATE.md` — E125 exact QueueInfo `+0x10` timestamp-state provenance, range-7 0x4000/0x18 backing and private reset model; live notifier path unchanged.
 - `G15-UNCACHED-CHANNEL-RESET.md` — E124 exact normal-J615 selected uncached channel-memory six-word reset header; private local-slot token only, no FWVA.
 - `G15-CHANNEL-MEMORY-BACKING.md` — E122 exact cached/uncached J615 channel-memory resource-stack geometry and E123 independent unreachable range-7/range-8 block owners; no selected FWVA or live channel integration.
 - `G15-CHANNEL-STATE-GPU-BUFFER.md` — E121 exact QueueInfo `+0x18 = selected-state +0xb0` source; compile-only private derivation, live WorkQueue unchanged.

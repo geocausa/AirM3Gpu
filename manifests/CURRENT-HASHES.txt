@@ -490,3 +490,12 @@ E124 patch 0041 sha256  fc18ea83ddd0b36e03f5ec968b89e58ce306a486257119bb510046c2
 E124 private result sha256  7de612e06ed4dc5e7484272e5c0e230fd9b2ca5d36822d94396996eef18053fc
 E124 public uncached-reset note sha256  841d73fd131895e31c08c08793c4be7f538cdc77c84637b7d31c9cce59579e08
 E124 closure  normal J615 channel+0x54=0x500; selected uncached element writes +00/+10/+20/+30/+40=0,+50=0x500 only; private slot token no FWVA; no cached/live WorkQueue/RunCompute change
+
+private evidence checkpoint E125  feb69ba
+E125 Linux checkpoint  adfbfca2e26565ce974fd6c238c4910abf99533e
+E125 Linux tree  ca21d51c7c50740e1e925ee6838c3634c06291dc
+E125 module sha256  7630b231b211b6f71ebbc40be7cd3a07f16ef1d333091826761306b02d3aa7d7
+E125 patch 0042 sha256  9f609c0a9a06ef5e625072c254b3be52c614cf4161be664e285d4c7b13ad5dca
+E125 private result sha256  444676b10dad52a52542571ed928a96eb20310cc38c762fc1517c5f21cfe095d
+E125 public timestamp-state note sha256  d5cd08c774c3c241ac3e632c44bf4bc6e56e8bc2d7ed1241701f9b934ad0679e
+E125 closure  QueueInfo+0x10=selected AGXTimeStampQueue state FWVA, state=0x18 range7 backing=0x4000 states=0x2aa leaf=0x00c0000000000447; private owner/reset only; live WorkQueue notifier/RunCompute unchanged
