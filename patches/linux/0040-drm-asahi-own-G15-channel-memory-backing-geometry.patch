@@ -1,0 +1,212 @@
+From 14954ffdd9c5fe47126b1af5cc99bf8a9f6a2140 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 20:43:06 +0100
+Subject: [PATCH] drm: asahi: own G15 channel-memory backing geometry
+
+---
+ drivers/gpu/drm/asahi/alloc.rs        | 48 ++++++++++++++
+ drivers/gpu/drm/asahi/fw/workqueue.rs | 20 ++++++
+ drivers/gpu/drm/asahi/queue/mod.rs    | 90 +++++++++++++++++++++++++++
+ 3 files changed, 158 insertions(+)
+
+diff --git a/drivers/gpu/drm/asahi/alloc.rs b/drivers/gpu/drm/asahi/alloc.rs
+index 0324cdba6540..cd4c1fbecdce 100644
+--- a/drivers/gpu/drm/asahi/alloc.rs
++++ b/drivers/gpu/drm/asahi/alloc.rs
+@@ -539,6 +539,30 @@ pub(crate) fn new_range7_event(
+         }
+     }
+ 
++    /// Dedicated normal eGartRange-7 allocator for exact G15 uncached
++    /// firmware channel-memory resource-stack backings. E122 proves these use
++    /// the same compact-0x007 / 0x...0447 class as ordinary range-7 firmware
++    /// storage; the semantic constructor keeps them distinct from FList/HWMetrics.
++    #[allow(dead_code)]
++    pub(crate) fn new_range7_channel_memory(
++        dev: &AsahiDevice,
++        bank1: mmu::G15SharedBank1,
++        min_align: usize,
++        mut cpu_maps: bool,
++        notifier: Option<Arc<Mutex<mmu::G15MappingNotifier>>>,
++    ) -> Self {
++        if debug_enabled(DebugFlags::ForceCPUMaps) { cpu_maps = true; }
++        Self {
++            dev: dev.into(),
++            bank1,
++            aperture: mmu::G15SharedBank1Aperture::Range7,
++            prot: mmu::PROT_G15_RANGE7_FW,
++            min_align,
++            cpu_maps,
++            notifier,
++        }
++    }
++
+     /// Dedicated eGartRange-7 allocator for the exact 8-byte AGXUMAFList
+     /// FW-Uncached-State object. It shares the collision-safe range-7 VA arena
+     /// with PM/q22 but fixes the distinct compact-0x00b protection class.
+@@ -585,6 +609,30 @@ pub(crate) fn new_range7_hwmetrics(
+         }
+     }
+ 
++    /// Dedicated special eGartRange-8 allocator for exact G15 cached
++    /// firmware channel-memory resource-stack backings. E122 proves compact
++    /// option 0x003 / leaf 0x...0443, identical to the established range-8
++    /// protection shape but with a separate semantic ownership boundary.
++    #[allow(dead_code)]
++    pub(crate) fn new_range8_channel_memory(
++        dev: &AsahiDevice,
++        bank1: mmu::G15SharedBank1,
++        min_align: usize,
++        mut cpu_maps: bool,
++        notifier: Option<Arc<Mutex<mmu::G15MappingNotifier>>>,
++    ) -> Self {
++        if debug_enabled(DebugFlags::ForceCPUMaps) { cpu_maps = true; }
++        Self {
++            dev: dev.into(),
++            bank1,
++            aperture: mmu::G15SharedBank1Aperture::Range8,
++            prot: mmu::PROT_G15_RANGE8_FW,
++            min_align,
++            cpu_maps,
++            notifier,
++        }
++    }
++
+     /// Dedicated eGartRange-8 allocator for G15 FList Page-Pool State objects.
+     /// The protection class is fixed by the exact E075 leaf proof rather than
+     /// supplied by callers, keeping PM/range-7 attributes impossible here.
+diff --git a/drivers/gpu/drm/asahi/fw/workqueue.rs b/drivers/gpu/drm/asahi/fw/workqueue.rs
+index 1333869627c5..b11cdeec30de 100644
+--- a/drivers/gpu/drm/asahi/fw/workqueue.rs
++++ b/drivers/gpu/drm/asahi/fw/workqueue.rs
+@@ -258,6 +258,26 @@ pub(crate) struct QueueInfo<'a> {
+ const _: [(); G15_CHANNEL_STATE_GPU_BUF_OFFSET] =
+     [(); core::mem::size_of::<raw::QueueInfoG15V14_7<'static>>()];
+ 
++/// Exact 23J220 normal-J615 cached/uncached firmware channel-memory stack
++/// geometry closed by E122. Both stacks use the same element size, derived
++/// from the exact firmware queue count 0x50, but they live in distinct normal
++/// range-7 / special range-8 mapping classes. Allocation blocks are page
++/// rounded to 0x8000 and contain three complete 0x2860-byte elements.
++pub(crate) const G15_J615_FW_QUEUE_COUNT: usize = 0x50;
++pub(crate) const G15_J615_CHANNEL_MEMORY_BYTES: usize =
++    0x60 | ((G15_J615_FW_QUEUE_COUNT & 0x0fff_ffff) << 7);
++pub(crate) const G15_J615_CHANNEL_MEMORY_BACKING_BYTES: usize = 0x8000;
++pub(crate) const G15_J615_CHANNEL_MEMORY_SLOTS_PER_BACKING: usize = 3;
++pub(crate) const G15_J615_CHANNEL_MEMORY_BACKING_SLACK_BYTES: usize =
++    G15_J615_CHANNEL_MEMORY_BACKING_BYTES
++        - G15_J615_CHANNEL_MEMORY_SLOTS_PER_BACKING * G15_J615_CHANNEL_MEMORY_BYTES;
++
++const _: [(); 0x50] = [(); G15_J615_FW_QUEUE_COUNT];
++const _: [(); 0x2860] = [(); G15_J615_CHANNEL_MEMORY_BYTES];
++const _: [(); 0x8000] = [(); G15_J615_CHANNEL_MEMORY_BACKING_BYTES];
++const _: [(); 3] = [(); G15_J615_CHANNEL_MEMORY_SLOTS_PER_BACKING];
++const _: [(); 0x6e0] = [(); G15_J615_CHANNEL_MEMORY_BACKING_SLACK_BYTES];
++
+ /// Exact normal-J615 CL-channel constructor values closed by E119.
+ #[allow(dead_code)]
+ pub(crate) const G15_J615_FIRST_CL_EVCTL_INDEX: u32 = 0;
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index e70b4392330d..ce339170df4f 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -341,6 +341,96 @@ fn reset_selected_j615_cl(
+ const _: [(); 0x24c0] = [(); G15ChannelStateBackingBlock::slot_offset(1).unwrap()];
+ const _: [(); 0x4980] = [(); G15ChannelStateBackingBlock::slot_offset(2).unwrap()];
+ 
++/// One exact 23J220 `AGXUncachedFWChannelMem` resource-stack backing block.
++/// E122 proves this is a normal range-7 0x8000-byte allocation containing
++/// three 0x2860-byte elements. Selection/index lifetime is deliberately not
++/// modeled here and no element FWVA accessor exists.
++#[allow(dead_code)]
++struct G15UncachedChannelMemoryBackingBlock {
++    block: alloc::G15SharedGpuArray<u8>,
++}
++
++#[allow(dead_code)]
++impl G15UncachedChannelMemoryBackingBlock {
++    fn new(
++        dev: &AsahiDevice,
++        bank1: mmu::G15SharedBank1,
++        mapping_notifier: Arc<Mutex<mmu::G15MappingNotifier>>,
++    ) -> Result<Self> {
++        let mut allocator = alloc::G15SharedBank1Allocator::new_range7_channel_memory(
++            dev,
++            bank1,
++            mmu::UAT_PGSZ,
++            true,
++            Some(mapping_notifier),
++        );
++        let block = allocator.array_empty_shared_data::<u8>(
++            fw::workqueue::G15_J615_CHANNEL_MEMORY_BACKING_BYTES,
++        )?;
++        let base: u64 = block.weak_pointer().into();
++        if block.len() != fw::workqueue::G15_J615_CHANNEL_MEMORY_BACKING_BYTES
++            || base == 0
++            || base & (mmu::UAT_PGSZ as u64 - 1) != 0
++            || fw::workqueue::G15_J615_CHANNEL_MEMORY_SLOTS_PER_BACKING != 3
++        {
++            return Err(EIO);
++        }
++        Ok(Self { block })
++    }
++}
++
++/// One exact 23J220 `AGXCachedFWChannelMem` resource-stack backing block.
++/// It has the same element/block geometry as the uncached stack but uses the
++/// independently proven special range-8 class. Selection and publication stay
++/// outside this definition-only owner.
++#[allow(dead_code)]
++struct G15CachedChannelMemoryBackingBlock {
++    block: alloc::G15SharedGpuArray<u8>,
++}
++
++#[allow(dead_code)]
++impl G15CachedChannelMemoryBackingBlock {
++    fn new(
++        dev: &AsahiDevice,
++        bank1: mmu::G15SharedBank1,
++        mapping_notifier: Arc<Mutex<mmu::G15MappingNotifier>>,
++    ) -> Result<Self> {
++        let mut allocator = alloc::G15SharedBank1Allocator::new_range8_channel_memory(
++            dev,
++            bank1,
++            mmu::UAT_PGSZ,
++            true,
++            Some(mapping_notifier),
++        );
++        let block = allocator.array_empty_shared_data::<u8>(
++            fw::workqueue::G15_J615_CHANNEL_MEMORY_BACKING_BYTES,
++        )?;
++        let base: u64 = block.weak_pointer().into();
++        if block.len() != fw::workqueue::G15_J615_CHANNEL_MEMORY_BACKING_BYTES
++            || base == 0
++            || base & (mmu::UAT_PGSZ as u64 - 1) != 0
++            || fw::workqueue::G15_J615_CHANNEL_MEMORY_SLOTS_PER_BACKING != 3
++        {
++            return Err(EIO);
++        }
++        Ok(Self { block })
++    }
++}
++
++/// Pure E122 geometry helper used only by compile-time assertions. It does not
++/// expose an address from either backing owner.
++const fn g15_j615_channel_memory_slot_offset(index: usize) -> Option<usize> {
++    if index < fw::workqueue::G15_J615_CHANNEL_MEMORY_SLOTS_PER_BACKING {
++        Some(index * fw::workqueue::G15_J615_CHANNEL_MEMORY_BYTES)
++    } else {
++        None
++    }
++}
++
++const _: [(); 0x0000] = [(); g15_j615_channel_memory_slot_offset(0).unwrap()];
++const _: [(); 0x2860] = [(); g15_j615_channel_memory_slot_offset(1).unwrap()];
++const _: [(); 0x50c0] = [(); g15_j615_channel_memory_slot_offset(2).unwrap()];
++
+ /// Persistent exact 23J220 CL-channel command-resource backing used by the
+ /// stock-empty Compute SKU stream. E114 proves J615 owns one normal option-3
+ /// eGartRange-5 resource of logical size 0x1f400. The already-proven range-5
+-- 
+2.53.0
+
