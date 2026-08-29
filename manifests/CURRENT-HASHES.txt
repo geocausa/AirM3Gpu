@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  d54dfc78d0592e2b8bb239aac61b9bc0489e3a78
-linux current checkpoint    69af01482ad8fbcba160559c308b8905598e3c6e
-linux current tree          d9b6b43aec68a22ea9b84728dc410c418fca65f0
+linux previous public head  69af01482ad8fbcba160559c308b8905598e3c6e
+linux current checkpoint    f3464e7ec21633631df5e942303146069a62737e
+linux current tree          5a6003c16ef70d8539cc948f03e949bf5c83458f
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -350,3 +350,12 @@ E106 patch 0029 sha256  3fcc1da7175d5c620af0da495df655cb6120a1293b448fcf47995481
 E106 private result sha256  a11b0c86c07ed8786713f4fac5124a12c23450782ca08478373665d0f7956be3
 E105-E106 public SKU retirement note sha256  fe60975105242c25cba2d0567a0357dcc1b0294ba0b346a5b9cb015f53acdfc6
 E106 closure  exact next-slot scan modeled with conservative JobFence guard compile-only/unreachable; no SKU backing writes, +0x760 integration, install or RunCompute
+
+private evidence checkpoint E107  4d32d00
+E107 Linux checkpoint  f3464e7ec21633631df5e942303146069a62737e
+E107 Linux tree  5a6003c16ef70d8539cc948f03e949bf5c83458f
+E107 module sha256  0a8797840a9b64d40d62cbc8c302f463fd812283d55a0df92202b1e5716387c6
+E107 patch 0030 sha256  a72416b0cff7b53ce6ab38b038c03162f8c6e62811bf81ee97e9e56e923338e9
+E107 private result sha256  1507761947f76da8faa779b20b7fb595224c66e21ed50000490707a9f1f0c0ca
+E107 public prepared-slot note sha256  9f0316e0979974ecf5fb18866e0c66a516ec3154dbe07f0b507ea0c40551b762
+E107 closure  exact stock-empty bytes copied into caller-retired 0x300 slot and returned as unreachable prepared token; no +0x760 integration/install/RunCompute
