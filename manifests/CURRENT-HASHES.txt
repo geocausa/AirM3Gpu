@@ -214,3 +214,8 @@ E086 module sha256  ab9ea1342170bea6526b440d245a0bb4a88831db09018e0773d9673894db
 E086 patch 0018 sha256  0d123511937dd9f185cab93a4cc397a87ce16984a1dc2137ab8d92c360bc8bf7
 E086 closure  exact four persistent FList backings owned compile-only; state stops at constructor seed; no +0x83e publication or RunCompute
 E086 public FList owner note sha256  fb41d73538146ba1dc1add68ec3e41fabf4e87848174c16aa1d79b42a8b98938
+private evidence checkpoint E087  dbbb0f1
+E087 exact oracle result sha256  5fd7b554829a8e53e522bb2369c4796c85b7d85e06f4fd2ed1a75db229090f67
+E087 private result sha256  5fd7b554829a8e53e522bb2369c4796c85b7d85e06f4fd2ed1a75db229090f67
+E087 closure  FList prepare/complete is residency-reference lifetime; first prepare commits PTEs, complete does not release them; no Linux source change or RunCompute
+E087 public residency note sha256  8ca1becb83940b5756844afc518ba6ea569ac85d62af3840581e60ee0f521289

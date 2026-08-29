@@ -214,6 +214,8 @@ E085 resumes exact-target source work and fixes a prerequisite for the future ra
 
 E086 adds the persistent FList backing owner without making it reachable. Linux commit `3cd3f336d9f4` owns the exact 4-MiB Page Pool List, 32-KiB Backup Page List, 8-byte FW-Uncached State and 0x70-byte Page-Pool State through their proven mapping classes. It seeds only `pool_id` and HardwareBuffer ID `0xffffffff`, matching the `AGXUMAFList::init()` boundary; populate/prepare fields remain zero and no Page-Pool-State FWVA accessor exists.
 
+E087 closes the exact prepare/complete residency lifetime beneath that owner. Fresh `AGXUMAFList::prepareBufferResources(true)` prepares Page Pool List, Page-Pool State, FW-Uncached State and Backup Page List in order, then on the first initialized epoch populates page-pool/firmware state. Matching IOGPUFamily proves `prepareMapping()` is a preparation/residency reference: the first nonresident reference commits PTEs, repeated references do not, and `completeMapping()` drops a reference without releasing the PTE. Actual PTE release is a separate mapping teardown. Linux can therefore conservatively retain eventual FList mappings through idle zero-reference periods, but first map/q22 publication must still be tied to HardwareBuffer activation rather than unrelated queue construction. No Linux source change or RunCompute is enabled by E087.
+
 See `research/g15/G15-23J220-COMPUTE-ABI.md`, `research/g15/G15-23J220-COMPUTE-REGISTERARRAY.md`, `research/g15/G15-EMPTY-COMPUTE-REGISTERARRAY.md`, `research/g15/G15-EMPTY-COMPUTE-CONTAINER.md`, and `research/g15/G15-23J220-COMPUTE-SKU-SOURCES.md`.
 
 ## E061 — first real Compute is an execution boundary
