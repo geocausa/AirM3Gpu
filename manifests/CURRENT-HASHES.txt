@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  69af01482ad8fbcba160559c308b8905598e3c6e
-linux current checkpoint    f3464e7ec21633631df5e942303146069a62737e
-linux current tree          5a6003c16ef70d8539cc948f03e949bf5c83458f
+linux previous public head  f3464e7ec21633631df5e942303146069a62737e
+linux current checkpoint    ea707e8e7726c30da653a026384d097c876db0dc
+linux current tree          047a29b09eae77f4956ebe31a2fef1c3abf201a9
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -359,3 +359,12 @@ E107 patch 0030 sha256  a72416b0cff7b53ce6ab38b038c03162f8c6e62811bf81ee97e9e56e
 E107 private result sha256  1507761947f76da8faa779b20b7fb595224c66e21ed50000490707a9f1f0c0ca
 E107 public prepared-slot note sha256  9f0316e0979974ecf5fb18866e0c66a516ec3154dbe07f0b507ea0c40551b762
 E107 closure  exact stock-empty bytes copied into caller-retired 0x300 slot and returned as unreachable prepared token; no +0x760 integration/install/RunCompute
+
+private evidence checkpoint E108  06aa44d
+E108 Linux checkpoint  ea707e8e7726c30da653a026384d097c876db0dc
+E108 Linux tree  047a29b09eae77f4956ebe31a2fef1c3abf201a9
+E108 module sha256  56de872a869d55f785295258c88d43ba51b15639b4742a6bd3d64cc0e1ff41d5
+E108 patch 0031 sha256  7ace399664a792102f8ea8830d558bc657c3dbfce7f5a03abc721eda8a61453a
+E108 private result sha256  6946271c86b43c506516bbaa28c72c30895f3dacc07ee2418a9a54298ae9327b
+E108 public owner-graph note sha256  4332bd27dd12dd603124ebf20aa0f78e502182cecc8c6393f3142a6aed994f9f
+E108 closure  prerequisite owners coexist under unreachable graph; no slots/activation/FWVA publication/RunCompute integration or execution
