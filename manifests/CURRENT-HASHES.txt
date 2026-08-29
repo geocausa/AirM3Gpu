@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  63bb6ffe4f22abcd86db40b86e349a5aaea99bc2
-linux current checkpoint    139b745dbf0092825cad3c65bc18fb03385f2305
-linux current tree          a9dd74c5b7a0acb8b43e120f5e72d7cb0be99894
+linux previous public head  139b745dbf0092825cad3c65bc18fb03385f2305
+linux current checkpoint    b21300a1ad4db8df298c493c98f014803d33ad5b
+linux current tree          66a6a838a94275fe6352471b7c9c12804920ddba
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -401,3 +401,13 @@ E112 private result sha256  af4de75d096791378edef0c96b7e78e1c96e65c2a8d877b2bca0
 E112 audit sha256  f148502308e6d07b92350f7fcaa03233b3007101698a7e4dc29c48959feb55cf
 E112 public integration-gap note sha256  4a9bed0e1c18897748e474066889ce94bcc47002d73fc53e4c2fdcfe4bf96450
 E112 closure  static audit blocks direct E111->RunCompute writer; requires two-phase SKU/command ordering, early fence arm/rollback, missing runtime source bridges, and exact active pre-micro/JobParameters2 producers; no Linux source change/install/RunCompute
+
+private evidence checkpoint E113  ef8bafd8fb50cabf463ecf731630fcf751633642
+E113 Linux checkpoint  b21300a1ad4db8df298c493c98f014803d33ad5b
+E113 Linux tree  66a6a838a94275fe6352471b7c9c12804920ddba
+E113 module sha256  067a3767ed6782a8ae0f22985de1d40f46bc995464e819f9df962c111c3630b6
+E113 patch 0035 sha256  9c7ccea01b1102e6a100817f04d84ac80187cd3750eeaf9069231c47c9237645
+E113 private result sha256  90c71bf812e0b8d5490be5d1f8e7f9463c9c16c29fbd6d0d6a68eb145247eea0
+E113 two-phase audit sha256  c2328e3d55ea7462845d85dde5beb3974f8e6fd32bfd4ec608f8972bb80d8a69
+E113 public two-phase note sha256  7f8bbb579b073536b4c58bd06ca4c6898dd6af49c96fc37408c3be34ef1c5ca4
+E113 closure  two-phase dormant select/prepare then command-aware SKU finalize; unresolved runtime inputs remain explicit; no RunCompute writer/call site/install/RunCompute
