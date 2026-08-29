@@ -424,3 +424,18 @@ E115 patch 0036 sha256  54bd94f69309e5e87ce9326eae90d8e82ac2ea809993d935468e38b5
 E115 private result sha256  fb80eab8ec36d022f355f5679ab19182d231e65e80707dc4e9aa3e1779c0381e
 E114-E115 public CL command-resource note sha256  1ddfd48301da0b96611958309d2ea342f53f86c42654a4b7927b6cd9bfea6489
 E115 closure  exact CL command-region base now owned/derived inside unreachable graph; no Queue/submission call site; live +0x14/+0x83e/+0x857 zero and +0x760 unchanged; no install/RunCompute
+
+
+private evidence checkpoint E116  721fe92
+E116 exact macOS oracle result sha256  508876540bd9945c43f17658edc7a02f1b91cb5471ed38634afd35257c90c60e
+E116 private result sha256  95c088b13fe7afe6749d1a89c440716a4942d19a5eed91e89593745219ff3016
+E116 closure  exact _AGFIChannelState element=0x24c0 backing=0x8000 slots=3 range8 outer=0x20800000007 compact=0x003 leaf=0x00c0000000000443; selected FWVA reset/release lifetime identified; no Linux source/install/RunCompute
+
+private evidence checkpoint E117  e4303ae
+E117 Linux checkpoint  252ded3b63533ab89b45e965546f2f0b9d2e57a2
+E117 Linux tree  e212c71cc52ac68382d3d8dc9a8b022790ae53e8
+E117 module sha256  e33655defa2032facbecd28fc58a61aa14fffe2b3adea61067f0b6c24765386e
+E117 patch 0037 sha256  3e55bb96fd6a6260c2172c51420b763ffed78775d31ab50a8ace2fab2b054821
+E117 private result sha256  f91fcd65998ac7e1b9b1d2ae00e5f918f8b59b5e38d816fb32da7084c09fa8c3
+E116-E117 public channel-state note sha256  4bc35c1ba19f17c6e7181b2df1c3f5242c30c9184a71a79d415cbd2d33cceb2b
+E117 closure  exact channel-state range-8 backing geometry owned compile-only; no selection/reset/FWVA publication/call site; live RunCompute fields unchanged; no install/RunCompute
