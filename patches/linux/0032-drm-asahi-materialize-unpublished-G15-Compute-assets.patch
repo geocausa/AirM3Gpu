@@ -1,0 +1,170 @@
+From a783f835b437e43f019b58b00daa0935b6dacf84 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 15:17:07 +0100
+Subject: [PATCH] drm: asahi: materialize unpublished G15 Compute assets
+
+---
+ drivers/gpu/drm/asahi/buffer.rs    | 36 ++++++++++++-
+ drivers/gpu/drm/asahi/queue/mod.rs | 81 ++++++++++++++++++++++++++++++
+ 2 files changed, 116 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/asahi/buffer.rs b/drivers/gpu/drm/asahi/buffer.rs
+index 74894df6db14..98e162f84e91 100644
+--- a/drivers/gpu/drm/asahi/buffer.rs
++++ b/drivers/gpu/drm/asahi/buffer.rs
+@@ -749,7 +749,41 @@ fn populate_stock_empty_first_epoch(
+         )
+     }
+ 
+-    fn complete_reference(&self, hardware_buffer_id: u32) -> Result<bool> {
++    /// Acquire one stock-empty command reference and initialize the firmware
++    /// state on the first-ever active epoch. If first-epoch population fails,
++    /// drop the just-acquired manager reference before returning the error.
++    pub(crate) fn prepare_stock_empty_reference(
++        &mut self,
++        priority: u32,
++    ) -> Result<G15HardwareBufferLease> {
++        let lease = self.prepare_reference()?;
++        if !self.firmware_state_initialized {
++            if !lease.first_reference {
++                let _ = self.complete_reference(lease.hardware_buffer_id);
++                return Err(EIO);
++            }
++            if let Err(err) = self.populate_stock_empty_first_epoch(lease, priority) {
++                let final_reference = self.complete_reference(lease.hardware_buffer_id)?;
++                if !final_reference {
++                    return Err(EIO);
++                }
++                return Err(err);
++            }
++        }
++        Ok(lease)
++    }
++
++    /// FWVA is usable only after the first exact firmware-state population.
++    /// E109 keeps this accessor definition-only and returns it solely into an
++    /// unpublished command-assets token, never directly to RunCompute.
++    pub(crate) fn initialized_page_pool_state_fwva(&self) -> Result<u64> {
++        if !self.firmware_state_initialized {
++            return Err(EINVAL);
++        }
++        Ok(self.page_pool_state.weak_item_pointer(0).into())
++    }
++
++    pub(crate) fn complete_reference(&self, hardware_buffer_id: u32) -> Result<bool> {
+         self.plan.complete_reference(hardware_buffer_id)
+     }
+ }
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index ad3c23105155..53b5f9683c04 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -173,10 +173,32 @@ fn take_record_offset(&mut self) -> u32 {
+         self.record_offset = (self.record_offset + Self::RECORD_BYTES) % Self::PAGE_BYTES as u32;
+         current
+     }
++
++    fn take_record_fwva(&mut self) -> Result<u64> {
++        let base: u64 = self._page.weak_pointer().into();
++        let offset = self.take_record_offset() as u64;
++        base.checked_add(offset).ok_or(EOVERFLOW)
++    }
+ }
+ 
+ const _: [(); 0x100] = [(); G15HWMetricsBacking::RECORD_COUNT];
+ 
++/// Fully materialized stock-empty command assets that are still deliberately
++/// unpublished. This token is not a firmware structure and has no RunCompute
++/// conversion/consumer. It exists only to prove the exact owner graph can
++/// produce one coherent set of addresses after callers have separately proved
++/// event-control and SKU slots retired.
++#[derive(Debug)]
++#[allow(dead_code)]
++struct G15UnpublishedStockEmptyCommandAssets {
++    event_control_fwva: u64,
++    sku_fwva: u64,
++    sku_size: u32,
++    page_pool_state_fwva: u64,
++    hwmetrics_fwva: u64,
++    hardware_buffer_id: u32,
++}
++
+ /// Unreachable ownership graph for the exact stock-empty G15 Compute
+ /// prerequisites that have independent Apple lifetimes but must coexist before
+ /// a RunCompute command can be published.
+@@ -237,6 +259,58 @@ fn new_unpublished(
+             _sku: sku,
+         })
+     }
++
++    /// Materialize one stock-empty asset set after the caller has separately
++    /// proven both supplied slots retired. This method still cannot create a
++    /// RunCompute command. Event/SKU writes happen before HardwareBuffer
++    /// activation, so an activation failure leaves only unpublished retired
++    /// slots modified and does not leak a manager reference.
++    #[allow(clippy::too_many_arguments)]
++    fn prepare_unpublished_after_retirement(
++        &mut self,
++        event_index: usize,
++        state_sequence: u32,
++        sku_index: usize,
++        sku_stream: &fw::compute::G15StockEmptySkuStream,
++        priority: u32,
++    ) -> Result<G15UnpublishedStockEmptyCommandAssets> {
++        self._event_control
++            .seed_selected_after_event_finish(event_index, state_sequence)?;
++        let event_control_fwva = self._event_control.control_fwva(event_index)?;
++        let sku = self._sku.write_retired_stock_empty_slot(sku_index, sku_stream)?;
++
++        let lease = self._flist.prepare_stock_empty_reference(priority)?;
++        let page_pool_state_fwva = match self._flist.initialized_page_pool_state_fwva() {
++            Ok(fwva) => fwva,
++            Err(err) => {
++                let _ = self._flist.complete_reference(lease.hardware_buffer_id);
++                return Err(err);
++            }
++        };
++        let hwmetrics_fwva = match self._hwmetrics.take_record_fwva() {
++            Ok(fwva) => fwva,
++            Err(err) => {
++                let _ = self._flist.complete_reference(lease.hardware_buffer_id);
++                return Err(err);
++            }
++        };
++
++        Ok(G15UnpublishedStockEmptyCommandAssets {
++            event_control_fwva,
++            sku_fwva: sku.fwva(),
++            sku_size: sku.size(),
++            page_pool_state_fwva,
++            hwmetrics_fwva,
++            hardware_buffer_id: lease.hardware_buffer_id,
++        })
++    }
++
++    fn complete_unpublished(
++        &self,
++        assets: G15UnpublishedStockEmptyCommandAssets,
++    ) -> Result<bool> {
++        self._flist.complete_reference(assets.hardware_buffer_id)
++    }
+ }
+ 
+ /// Compile-only owner for the exact 23J220 G15 command-buffer stamp and
+@@ -327,6 +401,13 @@ fn seed_selected_after_event_finish(
+ 
+         Ok(())
+     }
++
++    fn control_fwva(&self, index: usize) -> Result<u64> {
++        if index >= fw::event::G15_EVENT_CONTROL_STATE_COUNT {
++            return Err(EINVAL);
++        }
++        Ok(self._controls.weak_item_pointer(index).into())
++    }
+ }
+ 
+ #[versions(AGX)]
+-- 
+2.53.0
+

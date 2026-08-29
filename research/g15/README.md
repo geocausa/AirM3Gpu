@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-UNPUBLISHED-COMMAND-ASSETS.md` — E109 private non-Copy coherent event/SKU/Page-Pool/HWMetrics/HardwareBuffer assets token with no RunCompute consumer.
 - `G15-STOCK-EMPTY-OWNER-GRAPH.md` — E108 unreachable construction graph for event-control, HWMetrics, FList/HardwareBuffer and SKU backing owners; no FWVA/RunCompute consumer.
 - `G15-SKU-PREPARED-SLOT.md` — E107 unreachable prepared-slot copy/FWVA token after exact E106 retirement selection; RunCompute `+0x760` remains disconnected.
 - `G15-SKU-SLOT-RETIREMENT.md` — E105 exact SKU host-event slot reuse/selected-FWVA lifetime and E106 conservative unreachable JobFence guard.

@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  f3464e7ec21633631df5e942303146069a62737e
-linux current checkpoint    ea707e8e7726c30da653a026384d097c876db0dc
-linux current tree          047a29b09eae77f4956ebe31a2fef1c3abf201a9
+linux previous public head  ea707e8e7726c30da653a026384d097c876db0dc
+linux current checkpoint    a783f835b437e43f019b58b00daa0935b6dacf84
+linux current tree          21c8418854d9c10ac54cebf6b5b60fda24214619
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -368,3 +368,12 @@ E108 patch 0031 sha256  7ace399664a792102f8ea8830d558bc657c3dbfce7f5a03abc721eda
 E108 private result sha256  6946271c86b43c506516bbaa28c72c30895f3dacc07ee2418a9a54298ae9327b
 E108 public owner-graph note sha256  4332bd27dd12dd603124ebf20aa0f78e502182cecc8c6393f3142a6aed994f9f
 E108 closure  prerequisite owners coexist under unreachable graph; no slots/activation/FWVA publication/RunCompute integration or execution
+
+private evidence checkpoint E109  e172f34
+E109 Linux checkpoint  a783f835b437e43f019b58b00daa0935b6dacf84
+E109 Linux tree  21c8418854d9c10ac54cebf6b5b60fda24214619
+E109 module sha256  edc77c86d83582e57b7aac8f9e372ba279316740b4f04bd646c91fadb1857bc2
+E109 patch 0032 sha256  7e845a12e9f06aee6a9ec3180c9ae12944b24dde753b7bfeb7f396f7845f92f4
+E109 private result sha256  d92fe1a5f301c61453200e193e21c394bbbdf5c864a374e8e2019d64f3bda077
+E109 public unpublished-assets note sha256  0d07ec2d64f0f029676ed8fc51a0835bd1959c36e4d8ec3702fab271350a85b4
+E109 closure  coherent private non-Copy event/SKU/Page-Pool/HWMetrics/HardwareBuffer token with rollback/completion; guards separate; no RunCompute consumer/install/execution
