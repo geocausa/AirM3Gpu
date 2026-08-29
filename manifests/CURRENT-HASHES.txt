@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  3cd3f336d9f4c103f2df7e284b9a517a42e7d90f
-linux current checkpoint    167c037a91a0b85fa10480b90e883de31fa88e0d
-linux current tree          dbb40740b78de201ec0d1facd713628b9a5a5109
+linux previous public head  167c037a91a0b85fa10480b90e883de31fa88e0d
+linux current checkpoint    97bd7129c3f05a22cc604ceb04a9c9bc39893100
+linux current tree          27efe6a7509e5e1ca41a1561e24139644dc6b6c3
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -237,3 +237,11 @@ E090 exact oracle result sha256  28dd918ecabf946333439010ae09a4d11c2d6356bd73266
 E090 private result sha256  28dd918ecabf946333439010ae09a4d11c2d6356bd732665aa54446d072de0c5
 E090 closure  destructive recovery force-completes stamps into normal descriptor retirement then separately drains cached context, async UMA request, sticky FList HardwareBuffer, page-pool and channel state; no Linux source change or RunCompute
 E090 public recovery note sha256  815cd3145a66052462d2d10e2d3377fc68898ff1467b4a7e0d51ce6261d414fb
+private evidence checkpoint E091  86cbfda
+E091 private result sha256  8e70216b55ba4be6a47ae8f0f4a50de785c24238cd7889f3f1dca86ae1069a8d
+E091 Linux checkpoint  97bd7129c3f05a22cc604ceb04a9c9bc39893100
+E091 Linux tree  27efe6a7509e5e1ca41a1561e24139644dc6b6c3
+E091 module sha256  fe09dd7d5471c73a1febdeb31a1d7e6c185c216036a1a6cd975b72d621f268f6
+E091 patch 0020 sha256  4b9bf4d04c067000317257cc3e1cddf79451b714d249a907b315a204a439bb4f
+E091 closure  exact 36x0xc0 event-control rotation geometry modeled compile-only; no mapping class/allocator/+0x14 publication or RunCompute
+E091 public event-control-pool note sha256  ca62962381fef60a677e9965d440db71ebd2798413e879a0017e833e258a8f5f

@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-EVENT-CONTROL-POOL-GEOMETRY.md` — E091 exact 36-state × 0xc0 rotating event-control ownership geometry, compile-only with no allocator/mapping class chosen.
 - `G15-COMPUTE-ERROR-RECOVERY.md` — E090 exact recovery ingress, destructive forced-stamp convergence, and separate context/FList/request/channel reset ownership.
 - `G15-COMPUTE-EVENT-CONTROL.md` — E089 exact G15 RunCompute `+0x14` event-control semantics and fail-closed removal of the legacy queue-wide notifier.
 - `G15-COMPUTE-COMPLETION-STAMPS.md` — E088 exact RunCompute event-control FWVA and normal stamp→scheduler→descriptor-retirement chain.
