@@ -1,0 +1,59 @@
+From bd95b9c01004eeb8b35f6c7d06224bac635d2cfa Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 13:18:02 +0100
+Subject: [PATCH] drm: asahi: model stock-empty G15 FList activation
+
+---
+ drivers/gpu/drm/asahi/buffer.rs | 39 +++++++++++++++++++++++++++++++++
+ 1 file changed, 39 insertions(+)
+
+diff --git a/drivers/gpu/drm/asahi/buffer.rs b/drivers/gpu/drm/asahi/buffer.rs
+index 137c2b391d36..74894df6db14 100644
+--- a/drivers/gpu/drm/asahi/buffer.rs
++++ b/drivers/gpu/drm/asahi/buffer.rs
+@@ -710,6 +710,45 @@ fn populate_first_initialized_epoch(
+         Ok(())
+     }
+ 
++    /// Exact stock-empty 23J220 first-activation image.
++    ///
++    /// E100 correlates the exact prepareLocked() growth path with the stock
++    /// type-5 UMA accounting oracle: a successful empty Compute command leaves
++    /// every pool +0x38/+0x40 accounting qword at zero, so no pool-memory
++    /// growth occurs. populatePagePool() therefore sees no chained allocation,
++    /// leaves both list backings zero, and produces page_count/cursors and
++    /// Backup extent count zero. The CL pool itself is shared/reusable and
++    /// async-grow enabled; priority remains a real queue-derived input.
++    fn populate_stock_empty_first_epoch(
++        &mut self,
++        lease: G15HardwareBufferLease,
++        priority: u32,
++    ) -> Result {
++        if priority > 1 {
++            return Err(EINVAL);
++        }
++
++        // Keep this path mechanically tied to the exact empty-list oracle. If
++        // a future caller mutates either backing before activation, fail closed
++        // instead of silently publishing a non-empty state under empty rules.
++        if self.page_pool_list.as_slice().iter().any(|entry| entry.0 != 0)
++            || self.backup_page_list.as_slice().iter().any(|entry| entry.0 != 0)
++        {
++            return Err(EBUSY);
++        }
++
++        self.populate_first_initialized_epoch(
++            lease,
++            G15FListPopulationInputs {
++                async_grow_enabled: true,
++                priority,
++                current_allocated_bytes: 0,
++                backup_page_list_entry_count: 0,
++                shared_compute_pool: true,
++            },
++        )
++    }
++
+     fn complete_reference(&self, hardware_buffer_id: u32) -> Result<bool> {
+         self.plan.complete_reference(hardware_buffer_id)
+     }

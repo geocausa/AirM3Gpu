@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-STOCK-EMPTY-FLIST-FIRST-ACTIVATION.md` — E100 exact stock-empty zero-page/zero-Backup-extent first activation and unreachable compile-only helper; RunCompute `+0x83e` remains zero.
 - `G15-FLIST-FIRMWARE-STATE-POPULATION.md` — E099 exact compile-only post-`populatePagePool()` 0x70 state population; Page/Backup List contents and RunCompute `+0x83e` remain gated.
 - `G15-23J220-HWMETRICS.md` — E097 exact one-page/0x40-record HWMetrics mapping class and E098 unreachable compile-only owner; RunCompute `+0x857` remains zero.
 - `G15-EVENT-SLOT-RETIREMENT-GUARD.md` — E096 compile-only JobFence-backed 36-slot reuse guard and corrected `+0x08` shared-state-sequence semantic.

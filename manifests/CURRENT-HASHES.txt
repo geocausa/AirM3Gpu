@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  ddcbd85be239fa4db5143826bc3ca0588bacbd34
-linux current checkpoint    42bca8d2e9dcc25682aa0aa87d48521fadd1a828
-linux current tree          a492ce367bee16fab63aa8c80f465b83614655d8
+linux previous public head  47a8c0070a4be796f27ed64f3ca7a7f198b8af1b
+linux current checkpoint    bd95b9c01004eeb8b35f6c7d06224bac635d2cfa
+linux current tree          8f10c024ee2743f91112f920d37567979ef0a07c
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -300,3 +300,13 @@ E099 patch 0025 sha256  3856385c33bdd33ee4556f93511642f6dff8c0b50e779f527b6993a2
 E099 private result sha256  eaccc02583f5ef38952235c1a6d920bff66d014b3149652d9e6550d11d2b8c55
 E099 public FList population note sha256  99060bcf0acc4bbdb1b957ea2d0b3be0ac7ddb51c8303bb02826ffd087bcf8c0
 E099 closure  exact post-populatePagePool 0x70 firmware-state image modeled unreachable; page-list contents/chained backing mappings and RunCompute +0x83e remain gated; no install or RunCompute
+
+private evidence checkpoint E100  422d408
+E100 exact oracle result sha256  c870d66bf0ef752b28fe84bc10e6aa15608fcff352fd1e286e419977ffff6dc3
+E100 Linux checkpoint  bd95b9c01004eeb8b35f6c7d06224bac635d2cfa
+E100 Linux tree  8f10c024ee2743f91112f920d37567979ef0a07c
+E100 module sha256  fc6f5ae8eed0e2d6543ab3a488b94da9ba2cc310d693fab3d49faa1b9a07cd91
+E100 patch 0026 sha256  562c1194867b1d305af3aa8c5f41731385db1d4b1e905bee73e422cfb4bbf18e
+E100 private result sha256  3d9e8114c701be231b3077c43dfb734883f2db78944412461f6bd00ecd7cbe4c
+E100 public stock-empty activation note sha256  9922493704a2c61e256dbdf0e1ddaf6b78454e5a8db13888fb19db35d3235a8c
+E100 closure  stock-empty first activation has zero populated pages and zero Backup extents with real mapped resources/capacity/HardwareBuffer ID; helper unreachable; RunCompute +0x83e zero; no install or RunCompute
