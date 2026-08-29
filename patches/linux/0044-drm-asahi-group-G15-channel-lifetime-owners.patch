@@ -1,0 +1,324 @@
+From 8f6bd394ceb5bdcd62bfa2ca3817c85bd7cabf9d Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 21:35:48 +0100
+Subject: [PATCH] drm: asahi: group G15 channel lifetime owners
+
+---
+ drivers/gpu/drm/asahi/queue/mod.rs | 156 ++++++++++++++++++++++++-----
+ 1 file changed, 133 insertions(+), 23 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index 015e8d919898..66ce0fa435d2 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -417,8 +417,8 @@ struct G15ChannelStateBackingBlock {
+ #[derive(Clone, Copy, Debug)]
+ #[allow(dead_code)]
+ struct G15ChannelStateResetInputs {
+-    state_fwva: u64,
+-    ring_fwva: u64,
++    uncached_channel_fwva: u64,
++    cached_channel_fwva: u64,
+     timestamp_queue_state_fwva: u64,
+     channel_4c_value: u32,
+     scheduler_state_fwva: u64,
+@@ -495,8 +495,8 @@ fn reset_selected_j615_cl(
+         slot_index: usize,
+         input: G15ChannelStateResetInputs,
+     ) -> Result<G15PreparedChannelState> {
+-        if input.state_fwva == 0
+-            || input.ring_fwva == 0
++        if input.uncached_channel_fwva == 0
++            || input.cached_channel_fwva == 0
+             || input.timestamp_queue_state_fwva == 0
+             || input.scheduler_state_fwva == 0
+         {
+@@ -525,8 +525,10 @@ fn reset_selected_j615_cl(
+         for byte in slot.iter_mut() {
+             *byte = 0;
+         }
+-        Self::put_u64(slot, 0x00, input.state_fwva)?;
+-        Self::put_u64(slot, 0x08, input.ring_fwva)?;
++        // E122/E127: QueueInfo +0x00/+0x08 are the selected uncached/cached
++        // channel-memory FWVAs, not independent external QueueInfo objects.
++        Self::put_u64(slot, 0x00, input.uncached_channel_fwva)?;
++        Self::put_u64(slot, 0x08, input.cached_channel_fwva)?;
+         // E125: exact G15 QueueInfo +0x10 is the selected timestamp-queue
+         // state FWVA; the inherited queue-wide notifier semantic is wrong here.
+         Self::put_u64(slot, 0x10, input.timestamp_queue_state_fwva)?;
+@@ -568,13 +570,14 @@ struct G15UncachedChannelMemoryBackingBlock {
+     block: alloc::G15SharedGpuArray<u8>,
+ }
+ 
+-/// Private E124 proof token: one caller-selected local element has received
+-/// the exact CL reset header writes. It deliberately carries no FWVA and does
+-/// not model the global Apple resource-stack index.
++/// Private E127 token for one caller-selected uncached channel-memory element.
++/// It carries the locally derived FWVA only inside the unreachable owner graph;
++/// the local index is not claimed to equal Apple's global resource-stack index.
+ #[derive(Debug)]
+ #[allow(dead_code)]
+ struct G15PreparedUncachedChannelMemory {
+     slot_index: usize,
++    fwva: u64,
+ }
+ 
+ #[allow(dead_code)]
+@@ -615,8 +618,8 @@ fn put_u32(slot: &mut [u8], offset: usize, value: u32) -> Result {
+     /// Apply only the exact E124 `resetChannelState()` writes to one already
+     /// selected local uncached-memory element. Apple does not bulk-clear this
+     /// element in resetChannelState(), so this helper deliberately touches only
+-    /// the six proven u32 header locations. The backing is still definition-only
+-    /// and this method returns no firmware address.
++    /// the six proven u32 header locations. E127 additionally returns the
++    /// locally derived FWVA only to the unreachable combined owner graph.
+     fn reset_selected_j615_cl(
+         &mut self,
+         slot_index: usize,
+@@ -625,6 +628,11 @@ fn reset_selected_j615_cl(
+         let end = offset
+             .checked_add(fw::workqueue::G15_J615_CHANNEL_MEMORY_BYTES)
+             .ok_or(EOVERFLOW)?;
++        let base: u64 = self.block.weak_pointer().into();
++        let fwva = base.checked_add(offset as u64).ok_or(EOVERFLOW)?;
++        if fwva == 0 {
++            return Err(EIO);
++        }
+         let slot = self.block.as_mut_slice().get_mut(offset..end).ok_or(EIO)?;
+ 
+         Self::put_u32(slot, 0x00, 0)?;
+@@ -638,19 +646,29 @@ fn reset_selected_j615_cl(
+             fw::workqueue::G15_J615_CL_UNCACHED_CHANNEL_VALUE_50,
+         )?;
+ 
+-        Ok(G15PreparedUncachedChannelMemory { slot_index })
++        Ok(G15PreparedUncachedChannelMemory { slot_index, fwva })
+     }
+ }
+ 
+ /// One exact 23J220 `AGXCachedFWChannelMem` resource-stack backing block.
+ /// It has the same element/block geometry as the uncached stack but uses the
+-/// independently proven special range-8 class. Selection and publication stay
+-/// outside this definition-only owner.
++/// independently proven special range-8 class. E127 permits only a private
++/// local selection token; live channel publication remains absent.
+ #[allow(dead_code)]
+ struct G15CachedChannelMemoryBackingBlock {
+     block: alloc::G15SharedGpuArray<u8>,
+ }
+ 
++/// Private E127 token for one caller-selected cached channel-memory element.
++/// resetChannelState() does not modify this object; only its exact selected
++/// FWVA is needed for QueueInfo +0x08 inside the dormant channel image.
++#[derive(Debug)]
++#[allow(dead_code)]
++struct G15PreparedCachedChannelMemory {
++    slot_index: usize,
++    fwva: u64,
++}
++
+ #[allow(dead_code)]
+ impl G15CachedChannelMemoryBackingBlock {
+     fn new(
+@@ -678,6 +696,16 @@ fn new(
+         }
+         Ok(Self { block })
+     }
++
++    fn select_local(&self, slot_index: usize) -> Result<G15PreparedCachedChannelMemory> {
++        let offset = g15_j615_channel_memory_slot_offset(slot_index).ok_or(EINVAL)?;
++        let base: u64 = self.block.weak_pointer().into();
++        let fwva = base.checked_add(offset as u64).ok_or(EOVERFLOW)?;
++        if fwva == 0 {
++            return Err(EIO);
++        }
++        Ok(G15PreparedCachedChannelMemory { slot_index, fwva })
++    }
+ }
+ 
+ /// Pure E122 geometry helper used only by compile-time assertions. It does not
+@@ -733,6 +761,24 @@ fn base_fwva(&self) -> Result<u64> {
+     }
+ }
+ 
++/// Definition-only E127 selection inputs for one coherent local CL-channel
++/// image. Every firmware resource stack keeps its own index; callers must pass
++/// them independently. Runtime queue values that are not yet bridged from the
++/// live constructor remain explicit rather than being guessed.
++#[derive(Clone, Copy, Debug)]
++#[allow(dead_code)]
++struct G15ChannelPrepareInputs {
++    timestamp_queue_slot: usize,
++    scheduler_state_slot: usize,
++    channel_state_slot: usize,
++    uncached_channel_slot: usize,
++    cached_channel_slot: usize,
++    timestamp_update_mode_2: bool,
++    channel_4c_value: u32,
++    effective_priority: u32,
++    queue_qos: u32,
++}
++
+ /// First phase of the E112 two-phase transaction. The rotating slots and
+ /// command-independent UMA/HWMetrics assets are known, but the SKU bytes have
+ /// not been serialized or written because the RunCompute FWVA is not known yet.
+@@ -742,6 +788,7 @@ struct G15UnpublishedStockEmptyPrepare {
+     event_index: usize,
+     event_control_fwva: u64,
+     sku: fw::compute::G15ReservedSkuSlot,
++    channel_state: G15PreparedChannelState,
+     page_pool_state_fwva: u64,
+     hwmetrics_fwva: u64,
+     hardware_buffer_id: u32,
+@@ -756,7 +803,6 @@ struct G15UnpublishedStockEmptyPrepare {
+ #[allow(dead_code)]
+ struct G15StockEmptySkuFinalizeInputs {
+     firmware_state_fwva: u64,
+-    channel_state_fwva: u64,
+     fw_stamp_fwva: u64,
+     user_timestamp_start: u64,
+     user_timestamp_end: u64,
+@@ -827,17 +873,21 @@ fn from_assets(assets: G15UnpublishedStockEmptyCommandAssets) -> Self {
+ /// prerequisites that have independent Apple lifetimes but must coexist before
+ /// a RunCompute command can be published.
+ ///
+-/// This graph deliberately stops at construction ownership. It does not select
+-/// an event-control state, acquire/populate an FList HardwareBuffer epoch,
+-/// select/copy a SKU slot, advance HWMetrics, or expose any FWVA. The existing
+-/// E096/E106 retirement guards also remain separate. That preserves the exact
+-/// lifetime boundaries while proving the shared bank-1/q22 resources and the
+-/// per-VM range-5 FList/CL command resources can be owned together without a
+-/// submission path.
++/// Construction owns every exact shared channel prerequisite plus the existing
++/// event/FList/HWMetrics/SKU assets. The definition-only phase-1 method may
++/// select local resource-stack slots and build one coherent private QueueInfo
++/// image, but the object graph has no Queue call site and no RunCompute writer.
++/// E096/E106 retirement guards remain the only entry wrapper for rotating
++/// event/SKU assets; all live producers stay fail-closed.
+ #[allow(dead_code)]
+ struct G15StockEmptyComputeOwnerGraph {
+     _event_control: G15EventControlBacking,
+     _hwmetrics: G15HWMetricsBacking,
++    _timestamp_queue: G15TimestampQueueBackingBlock,
++    _scheduler_state: G15SchedulerStateBackingBlock,
++    _channel_state: G15ChannelStateBackingBlock,
++    _uncached_channel_memory: G15UncachedChannelMemoryBackingBlock,
++    _cached_channel_memory: G15CachedChannelMemoryBackingBlock,
+     _cl_command_resource: G15ClCommandResourceBacking,
+     _flist: buffer::G15FListResourceOwner,
+     _sku: fw::compute::G15SkuBacking,
+@@ -867,6 +917,31 @@ fn new_unpublished(
+             bank1.clone(),
+             mapping_notifier.clone(),
+         )?;
++        let timestamp_queue = G15TimestampQueueBackingBlock::new(
++            dev,
++            bank1.clone(),
++            mapping_notifier.clone(),
++        )?;
++        let scheduler_state = G15SchedulerStateBackingBlock::new(
++            dev,
++            bank1.clone(),
++            mapping_notifier.clone(),
++        )?;
++        let channel_state = G15ChannelStateBackingBlock::new(
++            dev,
++            bank1.clone(),
++            mapping_notifier.clone(),
++        )?;
++        let uncached_channel_memory = G15UncachedChannelMemoryBackingBlock::new(
++            dev,
++            bank1.clone(),
++            mapping_notifier.clone(),
++        )?;
++        let cached_channel_memory = G15CachedChannelMemoryBackingBlock::new(
++            dev,
++            bank1.clone(),
++            mapping_notifier.clone(),
++        )?;
+         let cl_command_resource = G15ClCommandResourceBacking::new(range5_uncached_alloc)?;
+         let flist = buffer::G15FListResourceOwner::new_j615_unprepared(
+             dev,
+@@ -882,6 +957,11 @@ fn new_unpublished(
+         Ok(Self {
+             _event_control: event_control,
+             _hwmetrics: hwmetrics,
++            _timestamp_queue: timestamp_queue,
++            _scheduler_state: scheduler_state,
++            _channel_state: channel_state,
++            _uncached_channel_memory: uncached_channel_memory,
++            _cached_channel_memory: cached_channel_memory,
+             _cl_command_resource: cl_command_resource,
+             _flist: flist,
+             _sku: sku,
+@@ -898,7 +978,34 @@ fn prepare_unpublished_phase1(
+         state_sequence: u32,
+         sku_index: usize,
+         priority: u32,
++        channel: G15ChannelPrepareInputs,
+     ) -> Result<G15UnpublishedStockEmptyPrepare> {
++        let timestamp_queue = self._timestamp_queue.reset_selected(
++            channel.timestamp_queue_slot,
++            channel.timestamp_update_mode_2,
++        )?;
++        let scheduler_state = self
++            ._scheduler_state
++            .reset_selected_j615(channel.scheduler_state_slot)?;
++        let uncached_channel = self
++            ._uncached_channel_memory
++            .reset_selected_j615_cl(channel.uncached_channel_slot)?;
++        let cached_channel = self
++            ._cached_channel_memory
++            .select_local(channel.cached_channel_slot)?;
++        let channel_state = self._channel_state.reset_selected_j615_cl(
++            channel.channel_state_slot,
++            G15ChannelStateResetInputs {
++                uncached_channel_fwva: uncached_channel.fwva,
++                cached_channel_fwva: cached_channel.fwva,
++                timestamp_queue_state_fwva: timestamp_queue.fwva,
++                channel_4c_value: channel.channel_4c_value,
++                scheduler_state_fwva: scheduler_state.fwva,
++                effective_priority: channel.effective_priority,
++                queue_qos: channel.queue_qos,
++            },
++        )?;
++
+         self._event_control
+             .seed_selected_after_event_finish(event_index, state_sequence)?;
+         let event_control_fwva = self._event_control.control_fwva(event_index)?;
+@@ -931,6 +1038,7 @@ fn prepare_unpublished_phase1(
+             event_index,
+             event_control_fwva,
+             sku,
++            channel_state,
+             page_pool_state_fwva,
+             hwmetrics_fwva,
+             hardware_buffer_id: lease.hardware_buffer_id,
+@@ -964,7 +1072,7 @@ fn finalize_unpublished(
+             command_fwva,
+             stream_fwva: prepared.sku.fwva(),
+             firmware_state_fwva: input.firmware_state_fwva,
+-            channel_state_fwva: input.channel_state_fwva,
++            channel_state_fwva: prepared.channel_state.fwva,
+             channel_command_region_base_fwva,
+             event_control_fwva: prepared.event_control_fwva,
+             page_pool_state_fwva: prepared.page_pool_state_fwva,
+@@ -1409,6 +1517,7 @@ fn prepare_unpublished_phase1(
+         fence: &UserFence<JobFence::ver>,
+         state_sequence: u32,
+         priority: u32,
++        channel: G15ChannelPrepareInputs,
+     ) -> Result<G15UnpublishedStockEmptyPrepare> {
+         if fence.pending.load(Ordering::Acquire) == 0 {
+             return Err(EINVAL);
+@@ -1438,6 +1547,7 @@ fn prepare_unpublished_phase1(
+             state_sequence,
+             sku_index,
+             priority,
++            channel,
+         ) {
+             Ok(prepared) => Ok(prepared),
+             Err(err) => {
+-- 
+2.53.0
+
