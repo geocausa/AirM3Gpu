@@ -1,0 +1,113 @@
+From 42bca8d2e9dcc25682aa0aa87d48521fadd1a828 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 10:28:42 +0100
+Subject: [PATCH] drm: asahi: seed G15 event-control selected state
+
+---
+ drivers/gpu/drm/asahi/fw/event.rs  | 19 +++++++++++++------
+ drivers/gpu/drm/asahi/queue/mod.rs | 28 ++++++++++++++++++++++++++--
+ 2 files changed, 39 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/fw/event.rs b/drivers/gpu/drm/asahi/fw/event.rs
+index 9bf3b9622f18..475e91f1c502 100644
+--- a/drivers/gpu/drm/asahi/fw/event.rs
++++ b/drivers/gpu/drm/asahi/fw/event.rs
+@@ -18,6 +18,12 @@
+ pub(crate) const G15_EVENT_CONTROL_STAMP_POOL_SIZE: usize =
+     G15_EVENT_CONTROL_STATE_COUNT * G15_EVENT_CONTROL_STAMP_SIZE;
+ pub(crate) const G15_EVENT_CONTROL_BLOCK_SIZE: usize = 0xc0;
++/// Exact normal-J615 value written at selected event-control +0x10.
++///
++/// 23J220 computes this as `record_count` when accelerator +0x2428 is zero,
++/// otherwise `min(record_count, +0x2428)`. The exact target leaves +0x2428
++/// zero and uses the G15 record-count fallback +0x678 = 0x50.
++pub(crate) const G15_EVENT_CONTROL_J615_EFFECTIVE_RECORD_COUNT: u32 = 0x50;
+ pub(crate) const G15_EVENT_CONTROL_POOL_SIZE: usize =
+     G15_EVENT_CONTROL_STATE_COUNT * G15_EVENT_CONTROL_BLOCK_SIZE;
+ 
+@@ -45,9 +51,9 @@ pub(crate) struct NotifierList {
+     /// Partial exact 23J220 G15 command-buffer event-control state.
+     ///
+     /// E092 closes the construction/rotation writes below while leaving all
+-    /// still-unnamed bytes as padding. In particular, `config_10` is named only
+-    /// by producer/offset until its J615 value and semantic are independently
+-    /// recovered. This must not be confused with the legacy Notifier layout.
++    /// still-unnamed bytes as padding. E094 closes `+0x10` by its exact host
++    /// producer: an effective record-count value, 0x50 on normal J615. This
++    /// must not be confused with the legacy Notifier layout.
+     #[allow(dead_code)]
+     #[derive(Debug, Clone, Copy)]
+     #[repr(C)]
+@@ -55,11 +61,11 @@ pub(crate) struct G15EventControlBlock {
+         pub(crate) stamp_fwva: U64,
+         pub(crate) stamp_index_08: u32,
+         zero_0c: u32,
+-        config_10: u32,
++        pub(crate) effective_record_count_10: u32,
+         zero_14: u32,
+         zero_18: U64,
+         __pad_20: Pad<0x88>,
+-        sentinel_a8: U64,
++        pub(crate) sentinel_a8: U64,
+         __pad_b0: Pad<0x10>,
+     }
+     default_zeroed!(G15EventControlBlock);
+@@ -83,7 +89,8 @@ pub(crate) struct G15EventControlPool {
+     const _: [(); 0x00] = [(); core::mem::offset_of!(G15EventControlBlock, stamp_fwva)];
+     const _: [(); 0x08] = [(); core::mem::offset_of!(G15EventControlBlock, stamp_index_08)];
+     const _: [(); 0x0c] = [(); core::mem::offset_of!(G15EventControlBlock, zero_0c)];
+-    const _: [(); 0x10] = [(); core::mem::offset_of!(G15EventControlBlock, config_10)];
++    const _: [(); 0x10] =
++        [(); core::mem::offset_of!(G15EventControlBlock, effective_record_count_10)];
+     const _: [(); 0x14] = [(); core::mem::offset_of!(G15EventControlBlock, zero_14)];
+     const _: [(); 0x18] = [(); core::mem::offset_of!(G15EventControlBlock, zero_18)];
+     const _: [(); 0xa8] = [(); core::mem::offset_of!(G15EventControlBlock, sentinel_a8)];
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index 06cfc679e91f..2f16258702b6 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -127,8 +127,9 @@ fn can_submit(&self) -> Option<Fence> {
+ ///
+ /// E092 proves two page-based mappings with logical data at page offset zero:
+ /// 36 four-byte stamps in normal range 7 and 36 0xc0-byte controls in range 8.
+-/// This owner remains unreachable and exposes no selected event-control FWVA;
+-/// rotation-time `+0x10` configuration is still an explicit activation gate.
++/// This owner remains unreachable and exposes no selected event-control FWVA.
++/// E094 can seed the exact selected-state image only after its prior event has
++/// been retired; the event-machine reuse/selection lifecycle remains gated.
+ #[allow(dead_code)]
+ struct G15EventControlBacking {
+     _stamps: alloc::G15SharedGpuArray<Stamp>,
+@@ -182,6 +183,29 @@ fn new(
+             _selector: Default::default(),
+         })
+     }
++
++    /// Seed one already-selected state after the previous event occupying that
++    /// slot has been retired. This is deliberately not a complete
++    /// `nextCommandBufferState()` implementation: the exact IOGPU finish-event
++    /// operation must happen before this reset and is not modeled here yet.
++    fn seed_selected_after_event_finish(&mut self, index: usize, stamp_index: u32) -> Result {
++        if index >= fw::event::G15_EVENT_CONTROL_STATE_COUNT {
++            return Err(EINVAL);
++        }
++
++        // Exact 23J220 rotation boundary: clear the selected 0xc0 control and
++        // matching four-byte stamp, then restore the per-state fields.
++        self._stamps[index].0.store(0, Ordering::Relaxed);
++        let stamp_fwva: u64 = self._stamps.weak_item_pointer(index).into();
++        self._controls[index] = Default::default();
++        self._controls[index].stamp_fwva = U64(stamp_fwva);
++        self._controls[index].stamp_index_08 = stamp_index;
++        self._controls[index].effective_record_count_10 =
++            fw::event::G15_EVENT_CONTROL_J615_EFFECTIVE_RECORD_COUNT;
++        self._controls[index].sentinel_a8 = U64(u64::MAX);
++
++        Ok(())
++    }
+ }
+ 
+ #[versions(AGX)]
+-- 
+2.53.0
+

@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-EVENT-CONTROL-SELECTED-STATE.md` — E094 exact normal-J615 selected-state `+0x10=80` seed and still-gated event-slot finish/reuse boundary.
 - `G15-EVENT-CONTROL-BACKING-OWNER.md` — E093 unreachable compile-only owner for the exact range-7 stamp and range-8 event-control shared backings.
 - `G15-EVENT-CONTROL-BACKING.md` — E092 exact 0x90 range-7 stamp backing, 0x1b00 range-8 event-control backing, construction linkage, and still-gated rotation config.
 - `G15-EVENT-CONTROL-POOL-GEOMETRY.md` — E091 exact 36-state × 0xc0 rotating event-control ownership geometry, compile-only with no allocator/mapping class chosen.

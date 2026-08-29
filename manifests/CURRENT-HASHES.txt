@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  97bd7129c3f05a22cc604ceb04a9c9bc39893100
-linux current checkpoint    ddcbd85be239fa4db5143826bc3ca0588bacbd34
-linux current tree          2301c705e7d31892c9e06861aa4eb179e3809c2e
+linux previous public head  ddcbd85be239fa4db5143826bc3ca0588bacbd34
+linux current checkpoint    42bca8d2e9dcc25682aa0aa87d48521fadd1a828
+linux current tree          a492ce367bee16fab63aa8c80f465b83614655d8
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -259,3 +259,12 @@ E093 module sha256  dbb29792369f0a3ee8b66a5abd00501fd4a18d45d503ef701fb59c8e2933
 E093 patch 0021 sha256  83f6ab33b0fe7bfc28a704addeff80ea8881a936581ffc6057b3c67e197ed2cc
 E093 closure  exact range7 0x90 stamp + range8 0x1b00 event-control shared backings owned compile-only at page base with q22 lifetime and +0 construction linkage; owner unreachable; +0x14 zero; no RunCompute
 E093 public event-control-backing-owner note sha256  3e39baa7d17b11d3493f1c433c9062fe74ae090f903919573a1ec9ae746c9679
+private evidence checkpoint E094  af50580
+E094 private result sha256  8ea9bf59a361582abb2be6d477feda1610e449067ee4051031a6d6dd6c537faa
+E094 RTKit type-3 oracle sha256  0f454ef00b7a7cf24af4b25d00e9864f8c839103f096820503c03c2840bd3471
+E094 Linux checkpoint  42bca8d2e9dcc25682aa0aa87d48521fadd1a828
+E094 Linux tree  a492ce367bee16fab63aa8c80f465b83614655d8
+E094 module sha256  617064c5fa58080aa45e03d9d3a5166a4b1554338a3d65d8c94071656f4d5b1e
+E094 patch 0022 sha256  b51f92f11bb18f5b65e0071e043509f7f9a67737aad0df5759bdec0b5d5a5120
+E094 closure  normal J615 event-control +0x10=0x50 effective record count; post-finish seed modeled unreachable; selected FWVA and RunCompute +0x14 remain zero/fail-closed; no RunCompute
+E094 public selected-state note sha256  f0d6d68640898d1b261adbef165c1d7523d0d46445d743acf01d6d754630d664
