@@ -219,3 +219,8 @@ E087 exact oracle result sha256  5fd7b554829a8e53e522bb2369c4796c85b7d85e06f4fd2
 E087 private result sha256  5fd7b554829a8e53e522bb2369c4796c85b7d85e06f4fd2ed1a75db229090f67
 E087 closure  FList prepare/complete is residency-reference lifetime; first prepare commits PTEs, complete does not release them; no Linux source change or RunCompute
 E087 public residency note sha256  8ca1becb83940b5756844afc518ba6ea569ac85d62af3840581e60ee0f521289
+private evidence checkpoint E088  29e0335
+E088 exact oracle result sha256  7bcfb2ee3fbdae976d2258a05b8675d8acd8765bd8109d4530a19d080bb776df
+E088 private result sha256  7bcfb2ee3fbdae976d2258a05b8675d8acd8765bd8109d4530a19d080bb776df
+E088 closure  RunCompute +0x14 is rotating event-control FWVA; normal stamp update kicks scheduler, submit-event test gates descriptor/context/UMA retirement; no Linux source change or RunCompute
+E088 public completion note sha256  36515732c03dd1be6ec734d054b6797010314f4f4c88ffd53ca23a977db8d684

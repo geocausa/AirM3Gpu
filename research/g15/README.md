@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-COMPUTE-COMPLETION-STAMPS.md` — E088 exact RunCompute event-control FWVA and normal stamp→scheduler→descriptor-retirement chain.
 - `G15-FLIST-PREPARE-COMPLETE.md` — E087 exact FList HardwareBuffer prepare/complete residency lifetime and separate PTE teardown boundary.
 - `G15-FLIST-PERSISTENT-OWNER.md` — E086 unreachable compile-only owner for all four exact persistent FList backings.
 - `G15-Q22-RANGE8-SPECIAL.md` — E085 exact range-8 q22 special-aperture flags (`3/2`) with range-7 `1/0` preserved, compile-only.
