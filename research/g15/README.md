@@ -8,6 +8,8 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-EVENT-SLOT-RETIREMENT-GUARD.md` — E096 compile-only JobFence-backed 36-slot reuse guard and corrected `+0x08` shared-state-sequence semantic.
+- `G15-EVENT-SLOT-FINISH-REUSE.md` — E095 exact host-event finish-before-reuse lifetime and `+0x08` semantic correction.
 - `G15-EVENT-CONTROL-SELECTED-STATE.md` — E094 exact normal-J615 selected-state `+0x10=80` seed and still-gated event-slot finish/reuse boundary.
 - `G15-EVENT-CONTROL-BACKING-OWNER.md` — E093 unreachable compile-only owner for the exact range-7 stamp and range-8 event-control shared backings.
 - `G15-EVENT-CONTROL-BACKING.md` — E092 exact 0x90 range-7 stamp backing, 0x1b00 range-8 event-control backing, construction linkage, and still-gated rotation config.

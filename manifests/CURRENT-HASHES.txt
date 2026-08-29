@@ -268,3 +268,14 @@ E094 module sha256  617064c5fa58080aa45e03d9d3a5166a4b1554338a3d65d8c94071656f4d
 E094 patch 0022 sha256  b51f92f11bb18f5b65e0071e043509f7f9a67737aad0df5759bdec0b5d5a5120
 E094 closure  normal J615 event-control +0x10=0x50 effective record count; post-finish seed modeled unreachable; selected FWVA and RunCompute +0x14 remain zero/fail-closed; no RunCompute
 E094 public selected-state note sha256  f0d6d68640898d1b261adbef165c1d7523d0d46445d743acf01d6d754630d664
+private evidence checkpoint E095  83ee8ff
+E095 private result sha256  c933b156abad1958bf7fd882454203e6cceaca061b1f14050bb5eda3ea632c51
+E095 closure  exact finishEvent dependency barrier before 36-slot reuse; +0x08 is unmasked shared state sequence, not stamp index; no Linux source change or RunCompute
+E095 public finish/reuse note sha256  e157847ed42e66847094b743ed22261c1819ae3c631647b4e8ad3f267544b45e
+private evidence checkpoint E096  a5320f7
+E096 Linux checkpoint  4ff63937d4fcc1c4afc9b52c4e5cf1240f049716
+E096 Linux tree  7174c9d766c79ed6679ff5d32eb0eb8f85dbc0a5
+E096 module sha256  7368ee7ea5959ba0ac47edfcfd1d6bdf12e18859c12d39222d1c8d98f6e99391
+E096 patch 0023 sha256  7b7b23b6f787692918b46e659ec598102dbd219a7413f2368e9cb169bd44f80b
+E096 closure  +0x08 corrected to shared state sequence; 36-slot JobFence guard prevents reuse until pending commands retire; owner unreachable; +0x14 zero; no RunCompute
+E096 public retirement-guard note sha256  fd598dada77e2371ce5b06865b07f88cb570f6e5f4b796ea6969de60ca5dd6e0

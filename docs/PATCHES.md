@@ -14,7 +14,7 @@ Previous public checkpoint head:
 
 Current clean checkpoint head:
 
-`42bca8d2e9dcc25682aa0aa87d48521fadd1a828`
+`4ff63937d4fcc1c4afc9b52c4e5cf1240f049716`
 
 Local checkpoint tags:
 
@@ -47,6 +47,7 @@ Series:
 20. `patches/linux/0020-drm-asahi-model-G15-event-control-pool-geometry.patch`
 21. `patches/linux/0021-drm-asahi-own-G15-event-control-shared-backings.patch`
 22. `patches/linux/0022-drm-asahi-seed-G15-event-control-selected-state.patch`
+23. `patches/linux/0023-drm-asahi-guard-G15-event-control-slot-reuse.patch`
 
 Patch 0004 is intentionally a squashed checkpoint delta from `1b57b289af96` to `2f08f68bb2ef`. Patch 0005 is the focused compile-only delta from `2f08f68bb2ef` to `1d264651a204`, adding the exact E068 stock empty-Compute G15 RegisterArray while leaving ordinary G15 submission fail-closed. Patch 0006 is the focused E071 delta from `1d264651a204` to `f73b9e551658`, changing only RunCompute `+0x846` to the exact prepared-state value `1`. Patch 0007 is the focused E073 delta from `f73b9e551658` to `03fdbb86230f`, adding the exact managed G15 context-generation lifetime and exporting it at RunCompute `+0x85f`. Patch 0008 is the focused E074 diagnostic delta from `03fdbb86230f` to `4e26fc089860`: it performs only a read-only range-8 shared-parent ownership check and then fails closed before persistent G15 runtime. Patch 0009 is the focused E075 delta from `4e26fc089860` to `e9f50fcc17d5`: it live-validates the exact range-8 leaf class and reversible eight-parent bank-1 teardown. Patch 0010 is the focused E076 compile-only delta from `e9f50fcc17d5` to `6e3850dcdd51`: it splits bank-1 VA allocation into disjoint range-7/range-8 arenas and hard-wires the range-8 constructor. Patch 0011 is the focused E078 compile-only delta from `6e3850dcdd51` to `886820e1f460`: it adds the exact FList FW-Uncached range-7 leaf class, fixed 8-byte ABI and hard aperture/protection pairing without creating a persistent FList object. Patch 0012 is the focused E079 compile-only delta from `886820e1f460` to `865f24f2a9fc`: it reconstructs the 256-ID HardwareBuffer manager state machine but deliberately leaves synchronization/runtime ownership unwired. Patch 0013 is the focused E080 compile-only delta from `865f24f2a9fc` to `ed17ac035ad2`: it adds the synchronized manager wrapper and FList sticky owner without instantiating either at runtime. Patch 0014 is the focused E081 compile-only delta from `ed17ac035ad2` to `affdd1fba79d`: it adds exact symbolic FList geometry and a no-allocation resource plan. Patch 0015 is the focused E082 compile-only delta from `affdd1fba79d` to `724674ad034e`: it pins the exact FList Page/Backup List compact-`0x300` range-5 class under a dedicated semantic protection constant while preserving the no-allocation resource plan. Patch 0016 is the focused E083 compile-only delta from `724674ad034e` to `b88369c26ffe`: it pins exact J615 M/B/P defaults and resolves the checked 4-MiB/32-KiB list geometry without creating GPU resources. Patch 0017 is the focused E085 compile-only delta from `b88369c26ffe` to `9b21157497bb`, fixing q22 range-8 special-aperture map/unmap flags to exact `3/2` while preserving range-7 `1/0`. Patch 0018 is the focused E086 compile-only delta from `9b21157497bb` to `3cd3f336d9f4`, owning the exact four FList persistent backings but leaving prepare/populate and command publication unreachable. Patch 0019 is the focused E089 compile-only delta from `3cd3f336d9f4` to `167c037a91a0`, replacing the inherited G15 queue-wide notifier export at RunCompute `+0x14` with an exact event-control FWVA field that remains zero/fail-closed until the 36-state owner is reconstructed. Patch 0020 is the focused E091 compile-only geometry delta from `167c037a91a0` to `97bd7129c3f0`. Patch 0021 is the focused E093 compile-only backing-owner delta from `97bd7129c3f0` to `ddcbd85be239`. Patch 0022 is the focused E094 compile-only selected-state delta from `ddcbd85be239` to `42bca8d2e9dc`, pinning the exact J615 effective-record-count value and post-finish reset/seed boundary while leaving selected FWVA publication unreachable. The local development history between those revisions contains many staged bring-up commits; publishing the validated end-state delta keeps this repository reproducible without presenting every one-shot experiment as an upstream-ready commit series.
 
@@ -261,4 +262,14 @@ Patch 0022 validation performed on 2026-08-29:
 - module SHA-256: `617064c5fa58080aa45e03d9d3a5166a4b1554338a3d65d8c94071656f4d5b1e`
 - module vermagic: `7.1.6-gc6fa9b794ba9 SMP preempt mod_unload aarch64`
 - reachability: selected-state seed definition only; backing owner constructor has zero call sites; RunCompute `+0x14` remains zero
+- runtime: not installed/not executed; no RunCompute
+
+Patch 0023 validation performed on 2026-08-29:
+
+- base: `42bca8d2e9dcc25682aa0aa87d48521fadd1a828`
+- expected commit tree: `7174c9d766c79ed6679ff5d32eb0eb8f85dbc0a5`
+- patch SHA-256: `7b7b23b6f787692918b46e659ec598102dbd219a7413f2368e9cb169bd44f80b`
+- exact-tree reconstruction: PASS
+- strict checkpatch: 0 errors, 0 warnings, 0 checks
+- module SHA-256: `7368ee7ea5959ba0ac47edfcfd1d6bdf12e18859c12d39222d1c8d98f6e99391`
 - runtime: not installed/not executed; no RunCompute

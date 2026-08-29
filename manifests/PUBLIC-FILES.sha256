@@ -1,10 +1,10 @@
 a94f4741e619a496034a1cfd0c0149d93cb3f74c33e024d5d7c2023f4494c605  ./.gitignore
-020e1ba6cbc30906611ee4db5414076cff7e9523053fd8bb2d2902f8261fd36a  ./README.md
-5b0cd03c09fb6967549ce6f85b43e89245376cc62b3c1538cd2d91007e442142  ./docs/CURRENT-STATE.md
-ddd98dbf764f14493d309e3f873d8da87dac6a47908ea1640817631c71268aa9  ./docs/PATCHES.md
+e91c88a99d7129d8d5ff5f7654ff4e1ee7d5dd269f0da32def3d49ca06cca836  ./README.md
+70cc7d9bc3c8c19c3c9b2f494d91fb71da1ee02d25788a839aaa0f0153ae927f  ./docs/CURRENT-STATE.md
+50fbc5829b662d6e5422669c1b72377fb3935f2e4e91463ae5951d457123e32a  ./docs/PATCHES.md
 d61bf1973a6d6b3e840ef7eff94cb497eb57118a711f6891e2b0ee98ca6db461  ./docs/RECOVERY.md
 072edbe867996f268553f3da518769548159145691000f5f6dc7f888dd84cdf7  ./docs/WORKFLOW.md
-124c48e260a64315ede8706f020c350d9c78686d590f7a39794ea7669030513c  ./manifests/CURRENT-HASHES.txt
+6e9b957ddb4a9528e5a3d8bf3753b0f1d75fb37ae818341a7b4727cbcd967db2  ./manifests/CURRENT-HASHES.txt
 4f16537a51cf9d1ad18841ec138b5a6090407739af7b69898c933dcafdca8fea  ./patches/linux/0001-drm-asahi-checkpoint-T8122-G15-bring-up-through-RTKi.patch
 258eb0243e41b10800df1daf5671c8003f358efec31caaac405e74fc8c2cc00a  ./patches/linux/0002-drm-asahi-map-G15-RTKit-preallocated-crashlog-memory.patch
 7a0b6374402bc2fb4c75b01ae93645470385f1b671530ea9996b118915c9f961  ./patches/linux/0003-drm-asahi-stage-G15-RTKit-app-endpoint-start.patch
@@ -27,6 +27,7 @@ dfb98af1a80f7be36ef623476af27fe3b71db0638d5dc3f8e00d5c8f83bbc8ef  ./patches/linu
 4b9bf4d04c067000317257cc3e1cddf79451b714d249a907b315a204a439bb4f  ./patches/linux/0020-drm-asahi-model-G15-event-control-pool-geometry.patch
 83f6ab33b0fe7bfc28a704addeff80ea8881a936581ffc6057b3c67e197ed2cc  ./patches/linux/0021-drm-asahi-own-G15-event-control-shared-backings.patch
 b51f92f11bb18f5b65e0071e043509f7f9a67737aad0df5759bdec0b5d5a5120  ./patches/linux/0022-drm-asahi-seed-G15-event-control-selected-state.patch
+7b7b23b6f787692918b46e659ec598102dbd219a7413f2368e9cb169bd44f80b  ./patches/linux/0023-drm-asahi-guard-G15-event-control-slot-reuse.patch
 09f94cf355cb34847caf59bf33f46231748958c10fa37dcde7d35b1a2307ac2d  ./patches/mesa/0001-hk-pass-initial-load-clear-state-to-kernel.patch
 07821063a351d0306dc5cc0689979cf10c537af5a417dc5d97e390ee456ec798  ./patches/mesa/0002-hk-pass-depth-stencil-level-offsets-to-kernel.patch
 bc26f90769b09e298649b0fc8f5f6b0373c7e50c03f0b5926f5d285f562db569  ./patches/mesa/0003-hk-build-G15-EOT-state-loader-for-proven-path.patch
@@ -52,6 +53,8 @@ d3c7b33009bd8c43cafd2ed69d4a138efede6f99090da5d7e08f36a333237c8a  ./research/g15
 fa66055d96ca49a07f54e16fb90abc887d73064b38cc56df9c6d2041bf1cd6a5  ./research/g15/G15-EVENT-CONTROL-BACKING.md
 ca62962381fef60a677e9965d440db71ebd2798413e879a0017e833e258a8f5f  ./research/g15/G15-EVENT-CONTROL-POOL-GEOMETRY.md
 f0d6d68640898d1b261adbef165c1d7523d0d46445d743acf01d6d754630d664  ./research/g15/G15-EVENT-CONTROL-SELECTED-STATE.md
+e157847ed42e66847094b743ed22261c1819ae3c631647b4e8ad3f267544b45e  ./research/g15/G15-EVENT-SLOT-FINISH-REUSE.md
+fd598dada77e2371ce5b06865b07f88cb570f6e5f4b796ea6969de60ca5dd6e0  ./research/g15/G15-EVENT-SLOT-RETIREMENT-GUARD.md
 fb41d73538146ba1dc1add68ec3e41fabf4e87848174c16aa1d79b42a8b98938  ./research/g15/G15-FLIST-PERSISTENT-OWNER.md
 8ca1becb83940b5756844afc518ba6ea569ac85d62af3840581e60ee0f521289  ./research/g15/G15-FLIST-PREPARE-COMPLETE.md
 68b5563f87ce37ae39fa9fb74802147aa41ba1cb87a4d6c61d3a07a00ea80109  ./research/g15/G15-FLIST-RANGE5-LIST-PTE.md
@@ -79,5 +82,5 @@ c0a9643509b7050f0b3c0718a5060fd0c592235250b22f7e47dd18614aef7ddc  ./research/g15
 5be0bb89b4ce13967ff8a1301a4f332dac6267d4b8ead6d87683d5c9bf381e1e  ./research/g15/G15-VERTEX-COMMAND.md
 d531fda1be727de5e510ea5718ef68d3b0172d3ec4f2d3f5b039bb6c7f42e06e  ./research/g15/G15-WRAPPER-LAYOUT.md
 1e42ac959bea3032d870499ed56255d3212aaf1f794b184fc08bbb5d2504dbf4  ./research/g15/J615-POWER-CONFIG.md
-ae54890de0a238f40a6379aca88b78a7d3678d9b4060fa26278f15be1099afa4  ./research/g15/README.md
+f1d9441cf8fae5717d7dec0050d165c18fc4ce0a9547e2f78cb743e00eaa3d9a  ./research/g15/README.md
 d42da0407a1a8725d538c5438cb402860139b661c347613781a5b0b4226731e6  ./research/g15/build-g15g-c0-dpe-ppt.py
