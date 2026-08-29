@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  167c037a91a0b85fa10480b90e883de31fa88e0d
-linux current checkpoint    97bd7129c3f05a22cc604ceb04a9c9bc39893100
-linux current tree          27efe6a7509e5e1ca41a1561e24139644dc6b6c3
+linux previous public head  97bd7129c3f05a22cc604ceb04a9c9bc39893100
+linux current checkpoint    ddcbd85be239fa4db5143826bc3ca0588bacbd34
+linux current tree          2301c705e7d31892c9e06861aa4eb179e3809c2e
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -251,3 +251,11 @@ E092 exact oracle result sha256  4e1db24bfdd16eee280ef4f539275c415e5374066fddac6
 E092 private result sha256  4e1db24bfdd16eee280ef4f539275c415e5374066fddac630127e01df912bb9c
 E092 closure  exact contiguous stamp pool=0x90 range7 outer 0x700000007 leaf 0x...0447; event-control pool=0x1b00 range8 outer 0x20800000007 leaf 0x...0443; construction links stamp FWVA at +0; rotation +0x10 config still gated; no Linux source change or RunCompute
 E092 public event-control-backing note sha256  fa66055d96ca49a07f54e16fb90abc887d73064b38cc56df9c6d2041bf1cd6a5
+private evidence checkpoint E093  517c0dc
+E093 private result sha256  022490015b4fe017c75fa3ae8598b15f370f482a645c98f0121083cc4a0aefc1
+E093 Linux checkpoint  ddcbd85be239fa4db5143826bc3ca0588bacbd34
+E093 Linux tree  2301c705e7d31892c9e06861aa4eb179e3809c2e
+E093 module sha256  dbb29792369f0a3ee8b66a5abd00501fd4a18d45d503ef701fb59c8e293319b4
+E093 patch 0021 sha256  83f6ab33b0fe7bfc28a704addeff80ea8881a936581ffc6057b3c67e197ed2cc
+E093 closure  exact range7 0x90 stamp + range8 0x1b00 event-control shared backings owned compile-only at page base with q22 lifetime and +0 construction linkage; owner unreachable; +0x14 zero; no RunCompute
+E093 public event-control-backing-owner note sha256  3e39baa7d17b11d3493f1c433c9062fe74ae090f903919573a1ec9ae746c9679

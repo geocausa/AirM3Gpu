@@ -1,0 +1,247 @@
+From ddcbd85be239fa4db5143826bc3ca0588bacbd34 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 10:04:53 +0100
+Subject: [PATCH] drm: asahi: own G15 event-control shared backings
+
+---
+ drivers/gpu/drm/asahi/alloc.rs     | 58 ++++++++++++++++++++++++++++
+ drivers/gpu/drm/asahi/fw/event.rs  | 44 +++++++++++++++------
+ drivers/gpu/drm/asahi/queue/mod.rs | 62 ++++++++++++++++++++++++++++++
+ 3 files changed, 153 insertions(+), 11 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/alloc.rs b/drivers/gpu/drm/asahi/alloc.rs
+index 7c58cc2c5bfa..764a8d131e15 100644
+--- a/drivers/gpu/drm/asahi/alloc.rs
++++ b/drivers/gpu/drm/asahi/alloc.rs
+@@ -461,6 +461,41 @@ pub(crate) struct G15SharedBank1Allocator {
+ }
+ 
+ impl G15SharedBank1Allocator {
++    /// Allocate one exact Apple-style shared-data array at the mapping page
++    /// base. Unlike the generic allocator helpers this deliberately omits debug
++    /// headers/trailing overflow padding, because either would change the FWVA
++    /// of the ABI object. The complete rounded backing is zeroed, matching
++    /// AGXFirmware::allocateSharedData().
++    #[allow(dead_code)]
++    pub(crate) fn array_empty_shared_data<T: Sized + Default>(
++        &mut self,
++        count: usize,
++    ) -> Result<G15SharedGpuArray<T>> {
++        let size = mem::size_of::<T>() * count;
++        let rounded = (size + mmu::UAT_PGSZ - 1) & !mmu::UAT_PGMSK;
++        let raw = self.alloc(size, mmu::UAT_PGSZ)?;
++
++        if let Some(p) = raw.ptr() {
++            // SAFETY: G15SharedBank1Allocator::alloc() rounds the backing to
++            // `rounded` bytes and page alignment above forces its logical
++            // offset to zero, so the whole mapped backing is writable here.
++            unsafe { p.as_ptr().write_bytes(0, rounded) };
++        } else {
++            return Err(EINVAL);
++        }
++
++        let alloc = GenericAlloc {
++            alloc: raw,
++            alloc_size: size,
++            debug_offset: 0,
++            padding: 0,
++            tag: 0,
++            pad_word: GUARD_MARKER | 0x81818181,
++            _p: PhantomData,
++        };
++        GpuArray::<T, GenericAlloc<T, G15SharedBank1Allocation>>::empty(alloc, count)
++    }
++
+     pub(crate) fn new(
+         dev: &AsahiDevice,
+         bank1: mmu::G15SharedBank1,
+@@ -481,6 +516,29 @@ pub(crate) fn new(
+         }
+     }
+ 
++    /// Dedicated normal eGartRange-7 allocator for exact G15 command-buffer
++    /// stamp/shared-event storage. E092 proves this is the compact-0x007 /
++    /// 0x...0447 class, distinct from the FList FW-Uncached 0x...044b class.
++    #[allow(dead_code)]
++    pub(crate) fn new_range7_event(
++        dev: &AsahiDevice,
++        bank1: mmu::G15SharedBank1,
++        min_align: usize,
++        mut cpu_maps: bool,
++        notifier: Option<Arc<Mutex<mmu::G15MappingNotifier>>>,
++    ) -> Self {
++        if debug_enabled(DebugFlags::ForceCPUMaps) { cpu_maps = true; }
++        Self {
++            dev: dev.into(),
++            bank1,
++            aperture: mmu::G15SharedBank1Aperture::Range7,
++            prot: mmu::PROT_G15_RANGE7_FW,
++            min_align,
++            cpu_maps,
++            notifier,
++        }
++    }
++
+     /// Dedicated eGartRange-7 allocator for the exact 8-byte AGXUMAFList
+     /// FW-Uncached-State object. It shares the collision-safe range-7 VA arena
+     /// with PM/q22 but fixes the distinct compact-0x00b protection class.
+diff --git a/drivers/gpu/drm/asahi/fw/event.rs b/drivers/gpu/drm/asahi/fw/event.rs
+index b85cc24d6dcf..9bf3b9622f18 100644
+--- a/drivers/gpu/drm/asahi/fw/event.rs
++++ b/drivers/gpu/drm/asahi/fw/event.rs
+@@ -9,15 +9,21 @@
+ };
+ use core::sync::atomic::Ordering;
+ 
+-/// Exact 23J220 AGXCommandBuffer event-control geometry for G15.
++/// Exact 23J220 AGXCommandBuffer stamp/event-control geometry for G15.
+ ///
+-/// The backing mapping class is intentionally not modeled yet. E088 proves only
+-/// the contiguous 36-state/0xc0-byte ownership and selection contract.
++/// E092 closes two contiguous shared-data backings: 36 four-byte stamps in
++/// normal eGartRange 7 and 36 0xc0-byte event-control states in eGartRange 8.
+ pub(crate) const G15_EVENT_CONTROL_STATE_COUNT: usize = 36;
++pub(crate) const G15_EVENT_CONTROL_STAMP_SIZE: usize = core::mem::size_of::<Stamp>();
++pub(crate) const G15_EVENT_CONTROL_STAMP_POOL_SIZE: usize =
++    G15_EVENT_CONTROL_STATE_COUNT * G15_EVENT_CONTROL_STAMP_SIZE;
+ pub(crate) const G15_EVENT_CONTROL_BLOCK_SIZE: usize = 0xc0;
+ pub(crate) const G15_EVENT_CONTROL_POOL_SIZE: usize =
+     G15_EVENT_CONTROL_STATE_COUNT * G15_EVENT_CONTROL_BLOCK_SIZE;
+ 
++const _: [(); 0x90] = [(); G15_EVENT_CONTROL_STAMP_POOL_SIZE];
++const _: [(); 0x1b00] = [(); G15_EVENT_CONTROL_POOL_SIZE];
++
+ pub(crate) mod raw {
+     use super::*;
+ 
+@@ -36,23 +42,32 @@ pub(crate) struct NotifierList {
+     }
+     default_zeroed!(NotifierList);
+ 
+-    /// Opaque exact-size G15 command-buffer event-control state.
++    /// Partial exact 23J220 G15 command-buffer event-control state.
+     ///
+-    /// E088 closes the 0xc0-byte stride and CPU/GPU paired ownership, but not
+-    /// the complete field semantics or mapping class. Keep the bytes opaque so
+-    /// no inherited Notifier layout can be accidentally imposed on G15.
++    /// E092 closes the construction/rotation writes below while leaving all
++    /// still-unnamed bytes as padding. In particular, `config_10` is named only
++    /// by producer/offset until its J615 value and semantic are independently
++    /// recovered. This must not be confused with the legacy Notifier layout.
+     #[allow(dead_code)]
+     #[derive(Debug, Clone, Copy)]
+     #[repr(C)]
+     pub(crate) struct G15EventControlBlock {
+-        opaque: Pad<G15_EVENT_CONTROL_BLOCK_SIZE>,
++        pub(crate) stamp_fwva: U64,
++        pub(crate) stamp_index_08: u32,
++        zero_0c: u32,
++        config_10: u32,
++        zero_14: u32,
++        zero_18: U64,
++        __pad_20: Pad<0x88>,
++        sentinel_a8: U64,
++        __pad_b0: Pad<0x10>,
+     }
+     default_zeroed!(G15EventControlBlock);
+ 
+     /// Exact contiguous 36-state command-buffer event-control pool layout.
+-    /// This deliberately does not implement `GpuStruct`: E091 models geometry
+-    /// only and cannot allocate or publish this pool before its mapping class is
+-    /// independently recovered.
++    /// E092 proves the pool maps through shared eGartRange 8, but the compile-
++    /// only E093 owner uses `GpuArray<G15EventControlBlock>` directly rather
++    /// than imposing an unrelated inherited Notifier `GpuStruct`.
+     #[allow(dead_code)]
+     #[derive(Debug, Clone, Copy)]
+     #[repr(C)]
+@@ -65,6 +80,13 @@ pub(crate) struct G15EventControlPool {
+         [(); core::mem::size_of::<G15EventControlBlock>()];
+     const _: [(); G15_EVENT_CONTROL_POOL_SIZE] =
+         [(); core::mem::size_of::<G15EventControlPool>()];
++    const _: [(); 0x00] = [(); core::mem::offset_of!(G15EventControlBlock, stamp_fwva)];
++    const _: [(); 0x08] = [(); core::mem::offset_of!(G15EventControlBlock, stamp_index_08)];
++    const _: [(); 0x0c] = [(); core::mem::offset_of!(G15EventControlBlock, zero_0c)];
++    const _: [(); 0x10] = [(); core::mem::offset_of!(G15EventControlBlock, config_10)];
++    const _: [(); 0x14] = [(); core::mem::offset_of!(G15EventControlBlock, zero_14)];
++    const _: [(); 0x18] = [(); core::mem::offset_of!(G15EventControlBlock, zero_18)];
++    const _: [(); 0xa8] = [(); core::mem::offset_of!(G15EventControlBlock, sentinel_a8)];
+ 
+     #[versions(AGX)]
+     #[derive(Debug, Clone, Copy)]
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index 4ffe17148b66..06cfc679e91f 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -122,6 +122,68 @@ fn can_submit(&self) -> Option<Fence> {
+     }
+ }
+ 
++/// Compile-only owner for the exact 23J220 G15 command-buffer stamp and
++/// event-control shared-data backings.
++///
++/// E092 proves two page-based mappings with logical data at page offset zero:
++/// 36 four-byte stamps in normal range 7 and 36 0xc0-byte controls in range 8.
++/// This owner remains unreachable and exposes no selected event-control FWVA;
++/// rotation-time `+0x10` configuration is still an explicit activation gate.
++#[allow(dead_code)]
++struct G15EventControlBacking {
++    _stamps: alloc::G15SharedGpuArray<Stamp>,
++    _controls: alloc::G15SharedGpuArray<fw::event::raw::G15EventControlBlock>,
++    _selector: fw::event::G15EventControlSelector,
++}
++
++#[allow(dead_code)]
++impl G15EventControlBacking {
++    fn new(
++        dev: &AsahiDevice,
++        bank1: mmu::G15SharedBank1,
++        mapping_notifier: Arc<Mutex<mmu::G15MappingNotifier>>,
++    ) -> Result<Self> {
++        // Apple shared-data logical addresses are page-base addresses. A page
++        // minimum alignment forces G15SharedBank1Allocator's sub-page offset to
++        // zero instead of packing these small objects at the end of a page.
++        let mut stamp_alloc = alloc::G15SharedBank1Allocator::new_range7_event(
++            dev,
++            bank1.clone(),
++            mmu::UAT_PGSZ,
++            true,
++            Some(mapping_notifier.clone()),
++        );
++        let stamps = stamp_alloc.array_empty_shared_data::<Stamp>(
++            fw::event::G15_EVENT_CONTROL_STATE_COUNT,
++        )?;
++
++        let mut control_alloc = alloc::G15SharedBank1Allocator::new_range8(
++            dev,
++            bank1,
++            mmu::UAT_PGSZ,
++            true,
++            Some(mapping_notifier),
++        );
++        let mut controls = control_alloc
++            .array_empty_shared_data::<fw::event::raw::G15EventControlBlock>(
++                fw::event::G15_EVENT_CONTROL_STATE_COUNT,
++            )?;
++
++        // Exact AGXCommandBuffer::init() construction boundary: all controls
++        // are zero except +0x00, which points at the corresponding stamp FWVA.
++        // G15 GPUVA->FWVA conversion is identity on the exact target.
++        for index in 0..fw::event::G15_EVENT_CONTROL_STATE_COUNT {
++            controls[index].stamp_fwva = U64(stamps.weak_item_pointer(index).into());
++        }
++
++        Ok(Self {
++            _stamps: stamps,
++            _controls: controls,
++            _selector: Default::default(),
++        })
++    }
++}
++
+ #[versions(AGX)]
+ pub(crate) struct Queue {
+     dev: AsahiDevRef,
+-- 
+2.53.0
+
