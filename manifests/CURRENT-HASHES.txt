@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  affdd1fba79d333530cac22d069212b6e65ef9d4
-linux current checkpoint    724674ad034ee3502aa9448324cd0056b7b0c670
-linux current tree          8d1327b8eb514abd506e751f578bab40ebe937c1
+linux previous public head  724674ad034ee3502aa9448324cd0056b7b0c670
+linux current checkpoint    b88369c26ffe82ce73765b8bbba64b2db771ef76
+linux current tree          44e9f3c3c84933d5679dd90a647ebcd377855ee8
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -185,3 +185,12 @@ E082 module sha256  f2d6d6838511448cd048800eecf8264811f43a54e8713dd6bb73d1fa46f6
 E082 patch 0015 sha256  cf5fa4401ec4e31c68df27f62bc470d680f7bcb76255b66da61c36b4be5a61d6
 E082 public range5 note sha256  68b5563f87ce37ae39fa9fb74802147aa41ba1cb87a4d6c61d3a07a00ea80109
 E082 closure  corrected FList caller option 0x20000000003; Page/Backup Lists exact range-5 compact 0x300; semantic class compile-only; no GPU allocation or RunCompute
+private evidence checkpoint E083  cd9bd35
+E083 exact oracle result sha256  689873e26adcfd5c4015992c203217d46e8be59c91a61332b16e5a899f78703b
+E083 private result sha256  8daa4f95575c181596a2d57133c8360c0d1221549201d63a8d2e422cb9e030d9
+E083 Linux checkpoint  b88369c26ffe82ce73765b8bbba64b2db771ef76
+E083 Linux tree  44e9f3c3c84933d5679dd90a647ebcd377855ee8
+E083 module sha256  c1259bd681ac030e38b75a4df2b77066423af48bb1f205f15be21acf609c3632
+E083 patch 0016 sha256  dfb98af1a80f7be36ef623476af27fe3b71db0638d5dc3f8e00d5c8f83bbc8ef
+E083 public geometry note sha256  b2b599517e0a9c78637cdeb71670a683e92e975287b16aa136505f9298818bde
+E083 closure  J615 exact M=2GiB B=4MiB P=16KiB; Page Pool List=4MiB/0x80000 entries; Backup List=32KiB; no GPU allocation or RunCompute

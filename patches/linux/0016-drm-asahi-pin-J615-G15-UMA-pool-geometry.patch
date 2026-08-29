@@ -1,0 +1,102 @@
+From b88369c26ffe82ce73765b8bbba64b2db771ef76 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 07:43:11 +0100
+Subject: [PATCH] drm: asahi: pin J615 G15 UMA pool geometry
+
+---
+ drivers/gpu/drm/asahi/buffer.rs | 52 +++++++++++++++++++++++++++++----
+ 1 file changed, 47 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/buffer.rs b/drivers/gpu/drm/asahi/buffer.rs
+index 990e01a34bf6..263e2332d120 100644
+--- a/drivers/gpu/drm/asahi/buffer.rs
++++ b/drivers/gpu/drm/asahi/buffer.rs
+@@ -352,6 +352,16 @@ pub(crate) struct G15FListGeometry {
+ 
+ #[allow(dead_code)]
+ impl G15FListGeometry {
++    /// Exact 23J220 J615 defaults. E083 proves the accelerator override fields
++    /// +0x1e80/+0x1e78 remain allocation-zero, so the G15G getters return
++    /// these fallback values on the target machine.
++    pub(crate) const J615_MAX_POOL_BYTES: u64 = 0x8000_0000;
++    pub(crate) const J615_BLOCK_BYTES: u64 = 0x0040_0000;
++    pub(crate) const J615_HOST_PAGE_BYTES: u64 = mmu::UAT_PGSZ as u64;
++    pub(crate) const J615_PAGE_POOL_LIST_BYTES: u64 = 0x0040_0000;
++    pub(crate) const J615_PAGE_POOL_LIST_ENTRIES: u32 = 0x0008_0000;
++    pub(crate) const J615_BACKUP_PAGE_LIST_BYTES: u64 = 0x0000_8000;
++
+     pub(crate) const PAGE_POOL_LIST_ENTRY_BYTES: u64 = 8;
+     pub(crate) const BACKUP_PAGE_LIST_ENTRY_BYTES: u64 = 8;
+     pub(crate) const PAGE_POOL_STATE_BYTES: usize =
+@@ -369,6 +379,22 @@ fn align_up(value: u64, align: u64) -> Result<u64> {
+             & !(align - 1))
+     }
+ 
++    /// Exact target geometry for J615 / G15G on 23J220.
++    pub(crate) fn j615() -> Result<Self> {
++        let geometry = Self::new(
++            Self::J615_MAX_POOL_BYTES,
++            Self::J615_BLOCK_BYTES,
++            Self::J615_HOST_PAGE_BYTES,
++        )?;
++        if geometry.page_pool_list_bytes != Self::J615_PAGE_POOL_LIST_BYTES
++            || geometry.page_pool_list_entries != Self::J615_PAGE_POOL_LIST_ENTRIES
++            || geometry.backup_page_list_bytes != Self::J615_BACKUP_PAGE_LIST_BYTES
++        {
++            return Err(EIO);
++        }
++        Ok(geometry)
++    }
++
+     pub(crate) fn new(max_pool_bytes: u64, block_bytes: u64, host_page_bytes: u64) -> Result<Self> {
+         if max_pool_bytes == 0 || block_bytes == 0 {
+             return Err(EINVAL);
+@@ -414,17 +440,22 @@ pub(crate) fn new(max_pool_bytes: u64, block_bytes: u64, host_page_bytes: u64) -
+ const _: [(); 0x70] = [(); G15FListGeometry::PAGE_POOL_STATE_BYTES];
+ const _: [(); 0x08] = [(); G15FListGeometry::FW_UNCACHED_STATE_BYTES];
+ const _: [(); G15_HARDWARE_BUFFER_ID_COUNT] = [(); 0x100];
++const _: [(); 0x4000] = [(); G15FListGeometry::J615_HOST_PAGE_BYTES as usize];
++const _: [(); 0x400000] = [(); (G15FListGeometry::J615_MAX_POOL_BYTES >> 9) as usize];
++const _: [(); 0x80000] = [(); (G15FListGeometry::J615_PAGE_POOL_LIST_BYTES
++    / G15FListGeometry::PAGE_POOL_LIST_ENTRY_BYTES) as usize];
++const _: [(); 0x8000] = [(); ((G15FListGeometry::J615_MAX_POOL_BYTES
++    / G15FListGeometry::J615_BLOCK_BYTES) * 64) as usize];
+ 
+ /// Complete host-side *plan* for one G15 FList's persistent ownership. This
+ /// combines the exact symbolic resource geometry with the synchronized sticky
+ /// HardwareBuffer owner but deliberately owns no GPU allocation object.
+ ///
+ /// E082 closes the Page/Backup List mapping class as exact range-5 compact
+-/// option 0x300 (`PROT_G15_RANGE5_FLIST_LIST`). The plan still owns no
+-/// allocator/GPU object, does not call any range allocator, and cannot publish
+-/// Page-Pool State to RunCompute. A future resource constructor may consume
+-/// this plan only after the remaining M/B producer values are mechanically
+-/// closed.
++/// option 0x300 (`PROT_G15_RANGE5_FLIST_LIST`). E083 closes J615's exact M/B/P
++/// producers and therefore the 4-MiB / 32-KiB list geometry. The plan still
++/// owns no allocator/GPU object, does not call any range allocator, and cannot
++/// publish Page-Pool State to RunCompute.
+ #[allow(dead_code)]
+ pub(crate) struct G15FListResourcePlan {
+     geometry: G15FListGeometry,
+@@ -433,6 +464,17 @@ pub(crate) struct G15FListResourcePlan {
+ 
+ #[allow(dead_code)]
+ impl G15FListResourcePlan {
++    /// Side-effect-free exact J615 plan. This still creates no GPU allocation.
++    pub(crate) fn new_j615(
++        manager: G15HardwareBufferIdManager,
++        owner_cookie: u64,
++    ) -> Result<Self> {
++        Ok(Self {
++            geometry: G15FListGeometry::j615()?,
++            hardware: G15FListHardwareBufferOwner::new(manager, owner_cookie)?,
++        })
++    }
++
+     pub(crate) fn new(
+         manager: G15HardwareBufferIdManager,
+         owner_cookie: u64,
+-- 
+2.53.0
+
