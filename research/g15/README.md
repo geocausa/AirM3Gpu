@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-COMPUTE-EVENT-CONTROL.md` — E089 exact G15 RunCompute `+0x14` event-control semantics and fail-closed removal of the legacy queue-wide notifier.
 - `G15-COMPUTE-COMPLETION-STAMPS.md` — E088 exact RunCompute event-control FWVA and normal stamp→scheduler→descriptor-retirement chain.
 - `G15-FLIST-PREPARE-COMPLETE.md` — E087 exact FList HardwareBuffer prepare/complete residency lifetime and separate PTE teardown boundary.
 - `G15-FLIST-PERSISTENT-OWNER.md` — E086 unreachable compile-only owner for all four exact persistent FList backings.

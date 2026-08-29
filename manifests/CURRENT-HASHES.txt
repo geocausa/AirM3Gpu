@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  9b21157497bbb1695b9bbdb43d6490c23520504e
-linux current checkpoint    3cd3f336d9f4c103f2df7e284b9a517a42e7d90f
-linux current tree          65804f29fac725207b173f8e71f2f79f64fcf3f4
+linux previous public head  3cd3f336d9f4c103f2df7e284b9a517a42e7d90f
+linux current checkpoint    167c037a91a0b85fa10480b90e883de31fa88e0d
+linux current tree          dbb40740b78de201ec0d1facd713628b9a5a5109
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -224,3 +224,11 @@ E088 exact oracle result sha256  7bcfb2ee3fbdae976d2258a05b8675d8acd8765bd8109d4
 E088 private result sha256  7bcfb2ee3fbdae976d2258a05b8675d8acd8765bd8109d4530a19d080bb776df
 E088 closure  RunCompute +0x14 is rotating event-control FWVA; normal stamp update kicks scheduler, submit-event test gates descriptor/context/UMA retirement; no Linux source change or RunCompute
 E088 public completion note sha256  36515732c03dd1be6ec734d054b6797010314f4f4c88ffd53ca23a977db8d684
+private evidence checkpoint E089  0d9d9ab
+E089 private result sha256  abd7964d902692e961df03f960b01b6ba94c824ee4a049adf7a12f9bd80f96c7
+E089 Linux checkpoint  167c037a91a0b85fa10480b90e883de31fa88e0d
+E089 Linux tree  dbb40740b78de201ec0d1facd713628b9a5a5109
+E089 module sha256  0bf6bc2f1329c58a0e048016315c2a0ff509d334bb467b7d3150430fa8bbe3a6
+E089 patch 0019 sha256  7f6c87799aa8c79c4f8dacc8e91e20dd6564733735eb9bc41262a7548690f0ff
+E089 closure  exact G15 RunCompute +0x14 event-control FWVA now zero/fail-closed instead of wrong queue-wide notifier; no install or RunCompute
+E089 public event-control note sha256  0e98ccfbef99140ce80fd7a171b1b2f25e518bb49075b84f6894aa33e95433d4
