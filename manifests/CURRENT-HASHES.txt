@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  65451e3d5cc8ebc582433abf874811c7eada79b9
-linux current checkpoint    635fca8e84b3d6ba27f6f7dd760275c635cd3495
-linux current tree          7ffe7e70a303ccefc7e46d9595fb33de09d6b1d4
+linux previous public head  635fca8e84b3d6ba27f6f7dd760275c635cd3495
+linux current checkpoint    251a60a085f3bb9bfdcb04f1d6fd28f24dbf2cbb
+linux current tree          a54e4d9c9792d286e70607aa388f5c0dc61dbe9a
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -544,3 +544,12 @@ E130 patch 0047 sha256  c92763d73d9587e0e7c4116e5721c8238c94e6e4c1acb35f4b00690b
 E130 private result sha256  7aee7971b4712788e02f066e0c2e0f7be4f9fdd071a6764870c7f76076353104
 E130 public Compute-stats owner note sha256  1be374e8aad43e7fb02522f303fcaef9add941efbf5d27b87a26f0186b60c778
 E130 closure  AGXFirmware +0x228/+0x268 exact 0xe10 zero-initialized Compute statistics object maps to manager-owned Linux G15StatsComp; raw target firmware_state_fwva removed; generic serializer remains parameterized; no live Queue/RunCompute producer
+
+private evidence checkpoint E131  f269b876eeb330263a775b6281f30c1b8837e760
+E131 Linux checkpoint  251a60a085f3bb9bfdcb04f1d6fd28f24dbf2cbb
+E131 Linux tree  a54e4d9c9792d286e70607aa388f5c0dc61dbe9a
+E131 module sha256  affcea840e5e49f362a562c4a20f0933a64741a7f44385b17ae4600ab77aec90
+E131 patch 0048 sha256  6b3d93b5a39003e650fb6ddfe4ce8994358d3e2d9da0e1897d7cf0395a73ed66
+E131 private result sha256  4c88fc22c93b9b39c7451f3b53dcc9679e26a7e9177d9b0b6e84bbf35ad7b171
+E131 public RunCompute-source note sha256  be74351706891bc389ae8e6460b34c6dae4c322aba1408b74c9ad6e98c1bdfcb
+E131 closure  command-local stock-empty SKU inputs derive from typed RunCompute +0x04/+0x10/+0x7f0/+0x7f8/+0x808/+0x80c/+0x828/+0x830; target scalar finalize-input bag removed; no live Queue/RunCompute writer

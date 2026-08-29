@@ -597,3 +597,16 @@ Patch 0047 validation performed on 2026-08-29:
 - exact AGXFirmware `+0x228/+0x268` / 0xe10 Compute-statistics ownership and zero-initialization audit: PASS
 - reachability: raw target finalize FWVA removed; typed `G15StatsComp` owner pointer consumed only by dormant owner graph; generic serializer remains parameterized; no live Queue call site or RunCompute writer
 - runtime: not installed/not executed; no RunCompute
+
+Patch 0048 validation performed on 2026-08-29:
+
+- base: `635fca8e84b3d6ba27f6f7dd760275c635cd3495`
+- expected commit tree: `a54e4d9c9792d286e70607aa388f5c0dc61dbe9a`
+- patch SHA-256: `6b3d93b5a39003e650fb6ddfe4ce8994358d3e2d9da0e1897d7cf0395a73ed66`
+- exact-tree reconstruction: PASS
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks
+- Asahi module build: PASS at the established 24-individual-warning bring-up baseline
+- module SHA-256: `affcea840e5e49f362a562c4a20f0933a64741a7f44385b17ae4600ab77aec90`
+- exact RunCompute source audit: counter/context/FW-stamp/stamp-value/UUID/event-sequence/user-timestamp-presence closure PASS
+- reachability: target scalar finalize-input struct removed; typed RunCompute command consumed only by dormant finalizer; no live Queue caller or RunCompute writer
+- runtime: not installed/not executed; no RunCompute

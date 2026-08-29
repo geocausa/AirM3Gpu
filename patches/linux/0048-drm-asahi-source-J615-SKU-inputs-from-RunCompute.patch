@@ -1,0 +1,231 @@
+From 251a60a085f3bb9bfdcb04f1d6fd28f24dbf2cbb Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 23:43:53 +0100
+Subject: [PATCH] drm: asahi: source J615 SKU inputs from RunCompute
+
+---
+ drivers/gpu/drm/asahi/event.rs         |  5 ++
+ drivers/gpu/drm/asahi/fw/compute.rs    | 33 +++++++++++---
+ drivers/gpu/drm/asahi/queue/compute.rs |  3 ++
+ drivers/gpu/drm/asahi/queue/mod.rs     | 63 +++++++++++---------------
+ 4 files changed, 62 insertions(+), 42 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/event.rs b/drivers/gpu/drm/asahi/event.rs
+index edd7d701e665..b7863d7c728e 100644
+--- a/drivers/gpu/drm/asahi/event.rs
++++ b/drivers/gpu/drm/asahi/event.rs
+@@ -59,6 +59,11 @@ pub(crate) fn next(&self) -> EventValue {
+         EventValue(self.0.wrapping_add(0x100))
+     }
+
++    /// Return the exact firmware-visible stamp word.
++    pub(crate) fn raw(&self) -> u32 {
++        self.0
++    }
++
+     /// Increments this `EventValue` in place.
+     pub(crate) fn increment(&mut self) {
+         self.0 = self.0.wrapping_add(0x100);
+diff --git a/drivers/gpu/drm/asahi/fw/compute.rs b/drivers/gpu/drm/asahi/fw/compute.rs
+index 533634c8a83d..7831f6a41098 100644
+--- a/drivers/gpu/drm/asahi/fw/compute.rs
++++ b/drivers/gpu/drm/asahi/fw/compute.rs
+@@ -119,7 +119,12 @@ pub(crate) struct RunCompute<'a> {
+         pub(crate) counter: U64,
+
+         pub(crate) unk_4: u32,
++        #[ver(G != G15)]
+         pub(crate) vm_slot: u32,
++        // Exact 23J220 submitBuffer() copies the managed context ID acquired by
++        // AGXContextIDManager::alloc() to RunCompute +0x10.
++        #[ver(G == G15)]
++        pub(crate) g15_context_id_10: u32,
+         #[ver(G != G15)]
+         pub(crate) notifier: GpuPointer<'a, event::Notifier::ver>,
+         // Exact 23J220: descriptor +0x148 is the selected GPU address from
+@@ -236,9 +241,11 @@ pub(crate) struct RunCompute<'a> {
+     }
+
+     const _: [(); 0x880] = [(); core::mem::size_of::<RunComputeG15V14_7<'static>>()];
+-    // AGXCLChannelSKU::submitBuffer() writes the G15 context ID at +0x10,
+-    // matching the existing VM-slot field, then the event-control FWVA at +0x14.
+-    const _: [(); 0x10] = [(); core::mem::offset_of!(RunComputeG15V14_7<'static>, vm_slot)];
++    const _: [(); 0x04] = [(); core::mem::offset_of!(RunComputeG15V14_7<'static>, counter)];
++    // AGXCLChannelSKU::submitBuffer() writes the managed G15 context ID at
++    // +0x10, then the event-control FWVA at +0x14.
++    const _: [(); 0x10] =
++        [(); core::mem::offset_of!(RunComputeG15V14_7<'static>, g15_context_id_10)];
+     const _: [(); 0x14] = [(); core::mem::offset_of!(
+         RunComputeG15V14_7<'static>,
+         g15_event_control_fwva_14
+@@ -261,9 +268,23 @@ pub(crate) struct RunCompute<'a> {
+     const _: [(); 0x7d8] = [(); core::mem::offset_of!(RunComputeG15V14_7<'static>, g15_raw_compute_a8_b0_lo_7d8)];
+     const _: [(); 0x7e0] = [(); core::mem::offset_of!(RunComputeG15V14_7<'static>, g15_raw_compute_b0_hi_7e0)];
+     const _: [(); 0x7e4] = [(); core::mem::offset_of!(RunComputeG15V14_7<'static>, meta)];
++    // E131 exact SKU source loads: +0x7f0 fw_stamp, +0x7f8 stamp_value,
++    // +0x808 UUID and +0x80c queue-local event sequence.
++    const _: [(); 0x7f0] = [(); core::mem::offset_of!(RunComputeG15V14_7<'static>, meta)
++        + core::mem::offset_of!(job::raw::G15JobMeta, fw_stamp)];
++    const _: [(); 0x7f8] = [(); core::mem::offset_of!(RunComputeG15V14_7<'static>, meta)
++        + core::mem::offset_of!(job::raw::G15JobMeta, stamp_value)];
++    const _: [(); 0x808] = [(); core::mem::offset_of!(RunComputeG15V14_7<'static>, meta)
++        + core::mem::offset_of!(job::raw::G15JobMeta, uuid)];
++    const _: [(); 0x80c] = [(); core::mem::offset_of!(RunComputeG15V14_7<'static>, meta)
++        + core::mem::offset_of!(job::raw::G15JobMeta, event_seq)];
+     const _: [(); 0x810] = [(); core::mem::offset_of!(RunComputeG15V14_7<'static>, command_time)];
+     const _: [(); 0x818] = [(); core::mem::offset_of!(RunComputeG15V14_7<'static>, timestamp_pointers)];
+     const _: [(); 0x828] = [(); core::mem::offset_of!(RunComputeG15V14_7<'static>, user_timestamp_pointers)];
++    const _: [(); 0x830] = [();
++        core::mem::offset_of!(RunComputeG15V14_7<'static>, user_timestamp_pointers)
++            + core::mem::offset_of!(job::raw::TimestampPointers<'static>, end_addr)
++    ];
+     const _: [(); 0x838] = [(); core::mem::offset_of!(RunComputeG15V14_7<'static>, g15_pad_838)];
+     const _: [(); 0x83e] = [(); core::mem::offset_of!(RunComputeG15V14_7<'static>, g15_uma_page_pool_state_fwva_83e)];
+     const _: [(); 0x846] = [(); core::mem::offset_of!(RunComputeG15V14_7<'static>, g15_uma_prepared_846)];
+@@ -360,8 +381,8 @@ pub(crate) struct G15StockEmptySkuInputs {
+     pub(crate) page_pool_state_fwva: u64,
+     pub(crate) hwmetrics_fwva: u64,
+     pub(crate) fw_stamp_fwva: u64,
+-    pub(crate) user_timestamp_start: u64,
+-    pub(crate) user_timestamp_end: u64,
++    /// Exact encodeTimeStamp() predicate: either command +0x828/+0x830 is present.
++    pub(crate) user_timestamps_present: bool,
+     pub(crate) command_counter: u64,
+     pub(crate) context_id: u32,
+     pub(crate) state_sequence: u32,
+@@ -410,7 +431,7 @@ fn write_timestamp(
+             Self::add_addr(input.command_fwva, if start { 0x818 } else { 0x820 })?,
+         );
+         Self::put_u64(bytes, offset + 0x1c, input.channel_state_fwva);
+-        let user_ts = if input.user_timestamp_start != 0 || input.user_timestamp_end != 0 {
++        let user_ts = if input.user_timestamps_present {
+             Self::add_addr(input.command_fwva, 0x828)?
+         } else {
+             0
+diff --git a/drivers/gpu/drm/asahi/queue/compute.rs b/drivers/gpu/drm/asahi/queue/compute.rs
+index a1a4095b5c5a..4ee2f3dc76df 100644
+--- a/drivers/gpu/drm/asahi/queue/compute.rs
++++ b/drivers/gpu/drm/asahi/queue/compute.rs
+@@ -265,7 +265,10 @@ pub(super) fn submit_compute(
+                     #[ver(V >= V13_0B4)]
+                     counter: U64(count),
+                     unk_4: 0,
++                    #[ver(G != G15)]
+                     vm_slot,
++                    #[ver(G == G15)]
++                    g15_context_id_10: vm_slot,
+                     #[ver(G != G15)]
+                     notifier: inner.notifier.gpu_pointer(),
+                     #[ver(G == G15)]
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index 32381e605726..c2061b6d7137 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -795,25 +795,13 @@ struct G15UnpublishedStockEmptyPrepare {
+     state_sequence: u32,
+ }
+
+-/// Still-unclosed runtime sources required only at the command-aware SKU
+-/// finalize boundary. E115 removes the CL command-resource base from this list
+-/// after closing its persistent range-5 owner; the remaining values stay
+-/// explicit rather than being guessed from the dormant Linux constructor.
+-/// E128 removes the first-CL evctl index and accelerator packed-feature bit 39;
+-/// E129 also removes the GART HW-soft-fault state. E130 closes the firmware-state
+-/// source as the manager-owned G15 Compute statistics object.
+-#[derive(Clone, Copy, Debug)]
+-#[allow(dead_code)]
+-struct G15StockEmptySkuFinalizeInputs {
+-    fw_stamp_fwva: u64,
+-    user_timestamp_start: u64,
+-    user_timestamp_end: u64,
+-    command_counter: u64,
+-    context_id: u32,
+-    queue_event_sequence: u32,
+-    uuid: u32,
+-    stamp_value: u32,
+-}
++/// E131 closes the remaining command-local stock-empty SKU sources at the
++/// dormant finalize boundary. Exact 23J220 encodeCLCommandSKUStream() reads
++/// these values back from the already-initialized RunCompute image: counter
++/// +0x04, context ID +0x10, JobMeta fw-stamp/value/UUID/event-sequence at
++/// +0x7f0/+0x7f8/+0x808/+0x80c, plus user-timestamp presence at +0x828/+0x830.
++/// The finalizer therefore takes that typed command image instead of a parallel
++/// bag of raw values that could drift from the command being serialized.
+
+ /// Fully materialized stock-empty command assets that are still deliberately
+ /// unpublished. This token is not a firmware structure and has no RunCompute
+@@ -1054,15 +1042,15 @@ fn prepare_unpublished_phase1(
+         })
+     }
+
+-    /// Phase 2: after a future caller has allocated the RunCompute backing and
+-    /// therefore knows its FWVA, serialize E102 using the exact selected SKU
+-    /// slot address and explicit still-unclosed runtime sources, then write only
+-    /// that already-retired slot. The result remains a host-only E111 stage.
++    /// Phase 2: after a future caller has initialized the RunCompute backing
++    /// and therefore knows both its typed image and FWVA, serialize E102 from
++    /// that exact command plus the already-owned persistent resources, then
++    /// write only the already-retired SKU slot. The result remains host-only.
+     fn finalize_unpublished(
+         &mut self,
+         prepared: G15UnpublishedStockEmptyPrepare,
+         command_fwva: u64,
+-        input: G15StockEmptySkuFinalizeInputs,
++        command: &fw::compute::raw::RunComputeG15V14_7<'_>,
+     ) -> Result<G15UnpublishedRunComputeFieldStage> {
+         if command_fwva == 0 {
+             let _ = self._flist.complete_reference(prepared.hardware_buffer_id);
+@@ -1087,18 +1075,21 @@ fn finalize_unpublished(
+             event_control_fwva: prepared.event_control_fwva,
+             page_pool_state_fwva: prepared.page_pool_state_fwva,
+             hwmetrics_fwva: prepared.hwmetrics_fwva,
+-            fw_stamp_fwva: input.fw_stamp_fwva,
+-            user_timestamp_start: input.user_timestamp_start,
+-            user_timestamp_end: input.user_timestamp_end,
+-            command_counter: input.command_counter,
+-            context_id: input.context_id,
++            // E131 exact command-local sources. Apple reads these from the
++            // same already-initialized RunCompute image immediately before
++            // serializing the SKU stream, so do not accept duplicate values.
++            fw_stamp_fwva: command.meta.fw_stamp.into(),
++            user_timestamps_present: command.user_timestamp_pointers.start_addr.is_some()
++                || command.user_timestamp_pointers.end_addr.is_some(),
++            command_counter: command.counter.0,
++            context_id: command.g15_context_id_10,
+             state_sequence: prepared.state_sequence,
+-            queue_event_sequence: input.queue_event_sequence,
++            queue_event_sequence: command.meta.event_seq,
+             // E119/E128: this dormant graph models the first normal J615 CL
+             // channel, whose AGXChannel +0x38 / G15JobMeta evctl_index is 0.
+             evctl_index: fw::workqueue::G15_J615_FIRST_CL_EVCTL_INDEX,
+-            uuid: input.uuid,
+-            stamp_value: input.stamp_value,
++            uuid: command.meta.uuid,
++            stamp_value: command.meta.stamp_value.raw(),
+             // E129 exact ordinary IOGPU device chain: userspace passes options=0,
+             // so IOServiceOpen type 5 propagates zero through IOGPUDeviceUserClient,
+             // IOGPU::createDevice(), AGXShared and AGXSecureGart. Together with the
+@@ -1578,19 +1569,19 @@ fn prepare_unpublished_phase1(
+         }
+     }
+
+-    /// Phase 2: once a future caller knows the RunCompute FWVA and has closed
+-    /// all explicit SKU runtime inputs, finalize the reserved slot. This still
++    /// Phase 2: once a future caller has an initialized RunCompute image and
++    /// its FWVA, finalize the reserved slot from that same command. This still
+     /// returns only the host-only E111 stage and has no command writer.
+     fn finalize_unpublished(
+         &mut self,
+         owners: &mut G15StockEmptyComputeOwnerGraph,
+         prepared: G15UnpublishedStockEmptyPrepare,
+         command_fwva: u64,
+-        input: G15StockEmptySkuFinalizeInputs,
++        command: &fw::compute::raw::RunComputeG15V14_7<'_>,
+     ) -> Result<G15UnpublishedRunComputeFieldStage> {
+         let event_index = prepared.event_index;
+         let sku_index = prepared.sku.index();
+-        match owners.finalize_unpublished(prepared, command_fwva, input) {
++        match owners.finalize_unpublished(prepared, command_fwva, command) {
+             Ok(stage) => Ok(stage),
+             Err(err) => {
+                 self.event.rollback_bound(event_index);
