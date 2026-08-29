@@ -276,6 +276,8 @@ E116 closes the next dormant SKU address source on exact 23J220. Firmware initia
 
 E117 promotes only that backing geometry. Linux commit `252ded3b6353` pins the exact element/block/slot/slack constants and adds one unreachable special-range-8 `G15ChannelStateBackingBlock`. It deliberately exposes no selected-slot FWVA, does not model allocation/release or QueueInfo reset, and has no constructor caller. Dormant `channel_state_fwva` therefore remains explicit and live RunCompute is unchanged.
 
+E118 closes the selected-state host reset and priority-mutation boundary without changing Linux source. Exact `resetChannelState()` clears the full 0x24c0 slot and rebuilds QueueInfo with reset priority class 4, `+0x2c/+0x4c=-1`, channel config at `+0x50`, converted GpuContext at `+0xa4`, and J615 CDM backoff byte 4 at `+0xac`. Exact `setPriority()` later rewrites `+0x30/+0x34/+0x38/+0x40/+0x44/+0x48`; the inherited Linux `raw::PRIORITY` table cannot be treated as an exact G15 lookup. The normal CL constructor first integer (SKU `evctl_index`) and priority setter tuple remain open, so E117 stays disconnected.
+
 See `research/g15/G15-23J220-COMPUTE-ABI.md`, `research/g15/G15-23J220-COMPUTE-REGISTERARRAY.md`, `research/g15/G15-EMPTY-COMPUTE-REGISTERARRAY.md`, `research/g15/G15-EMPTY-COMPUTE-CONTAINER.md`, and `research/g15/G15-23J220-COMPUTE-SKU-SOURCES.md`.
 
 ## E061 — first real Compute is an execution boundary

@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-CHANNEL-STATE-RESET-PRIORITY.md` — E118 exact selected `_AGFIChannelState` reset/priority ABI; normal CL constructor/priority inputs remain gated.
 - `G15-CHANNEL-STATE-BACKING.md` — E116 exact 0x24c0/0x8000 special-range-8 channel-state backing and E117 unreachable compile-only block owner; selected FWVA remains gated.
 - `G15-CL-COMMAND-RESOURCE.md` — E114 exact J615 CL command-resource geometry/source audit and E115 unreachable range-5 owner; no RunCompute publication.
 - `G15-TWO-PHASE-COMPUTE-ASSETS.md` — E113 definition-only two-phase reservation/finalization fixing the command/SKU address dependency without a RunCompute writer.
