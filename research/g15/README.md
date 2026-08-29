@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-PUBLIC-M1N1-SEMANTIC-CROSSCHECK.md` — E084 current-public m1n1 concept cross-check; semantic clues only, no old G15 offsets imported.
 - `G15-J615-UMA-POOL-GEOMETRY.md` — E083 exact J615 M/B defaults and resolved 4-MiB/32-KiB FList list geometry, compile-only.
 - `G15-FLIST-RANGE5-LIST-PTE.md` — E082 exact FList Page/Backup List range-5 compact `0x300` class, corrected caller option, and compile-only semantic PTE constant.
 - `G15-FLIST-RESOURCE-PLAN.md` — E081 side-effect-free FList resource geometry/HardwareBuffer ownership plan with no GPU allocator.

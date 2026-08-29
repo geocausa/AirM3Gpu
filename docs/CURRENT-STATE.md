@@ -208,6 +208,8 @@ E082 closes the remaining FList list-mapping class on exact 23J220. The Page Poo
 
 E083 closes the previously conditional J615 UMA geometry. Exact typed OSObject allocation is zero-filled; the complete G15 constructor, configure/start/property paths and whole-kext writer audit leave accelerator `+0x1e80/+0x1e78` untouched, and no hidden offset-table values exist. The exact G15G getters therefore select M=2 GiB and B=4 MiB. With P=16 KiB, Apple's FList formulas yield a 4-MiB Page Pool List with 0x80000 entries and a 32-KiB Backup Page List. Linux commit `b88369c26ffe` pins these constants in a checked J615 geometry constructor while preserving the no-allocation resource plan.
 
+E084 deliberately pauses new G15 naming to cross-check current public Asahi m1n1 AGX semantics. Public m1n1 still exposes only G13/G14/G14X concepts and no public G15/T8122/J615 AGX layout. Concept-level continuity is strong for Start/Finalize-class firmware work, dual host/FW stamps plus event-control state, page-list/manager/grow bookkeeping, command context identity distinct from notifier VM state, multiple timestamp/counter domains, and queue busy/inflight/cursor state. Current public Compute statistics remain opaque. No old offset/opcode is imported: these are hypotheses to target with exact 23J220 writers, and the 23J220 oracle remains the source of truth.
+
 See `research/g15/G15-23J220-COMPUTE-ABI.md`, `research/g15/G15-23J220-COMPUTE-REGISTERARRAY.md`, `research/g15/G15-EMPTY-COMPUTE-REGISTERARRAY.md`, `research/g15/G15-EMPTY-COMPUTE-CONTAINER.md`, and `research/g15/G15-23J220-COMPUTE-SKU-SOURCES.md`.
 
 ## E061 — first real Compute is an execution boundary

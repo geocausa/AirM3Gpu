@@ -194,3 +194,9 @@ E083 module sha256  c1259bd681ac030e38b75a4df2b77066423af48bb1f205f15be21acf609c
 E083 patch 0016 sha256  dfb98af1a80f7be36ef623476af27fe3b71db0638d5dc3f8e00d5c8f83bbc8ef
 E083 public geometry note sha256  b2b599517e0a9c78637cdeb71670a683e92e975287b16aa136505f9298818bde
 E083 closure  J615 exact M=2GiB B=4MiB P=16KiB; Page Pool List=4MiB/0x80000 entries; Backup List=32KiB; no GPU allocation or RunCompute
+private evidence checkpoint E084  63f0edf
+E084 public m1n1 main  d7df51a586a82f8fed9344cb1646ac5a8aee32ed
+E084 public m1n1 gpu-wip  11163540ee025d996f4adf45a40b91d6290ec605
+E084 private semantic result sha256  4aa574519cb1933fb130df275c94e2c08c970a2120cfaacd00a373ff677395bf
+E084 closure  current public m1n1 used as semantic dictionary only; no G15/M3 public layout found; 23J220 remains source of truth; no Linux source change or RunCompute
+E084 public semantic note sha256  dd373757d08ded2aa09dfd0af4449253d7cef01fa93ac38e42a1352957e7d4df
