@@ -444,3 +444,8 @@ private evidence checkpoint E118  b0b9381cee3b4ed1f59b0421261c4d1f356345a9
 E118 private result sha256  14b4e869686bb942e9ef31ad84bf0a1353621cc10c3e8ec715f9f1eb8aa44c0f
 E118 public reset-priority note sha256  88a14baca47269c2c8a4778ac27e13f0494edc839c65a093a122ff99588df353
 E118 closure  exact selected channel-state reset + priority mutation ABI; inherited Linux priority table not direct G15 authority; normal CL constructor/priority tuple remains gated; no Linux source/install/RunCompute
+
+private evidence checkpoint E119  2a00074
+E119 private result sha256  69111c7a08b5bf85e2bad3d192b4cb28d148a136baedcd6e2f5d78cf2bbc9de9
+E119 public CL constructor-priority note sha256  98f802d23db66fe6a32904d99c7caf8d6810022e0aa673b227bee2d08347d167
+E119 closure  first CL evctl_index=0 / subsequent index exact; J615 second channel integer=0x50; priority tuple derives from effective IOGPU priority/QoS with integer arg 2; no Linux source/install/RunCompute
