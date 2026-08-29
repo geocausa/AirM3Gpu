@@ -557,3 +557,17 @@ Patch 0044 validation performed on 2026-08-29:
 - independent distinct-index channel-owner/source audit: PASS
 - reachability: combined owner graph/guard wrapper only; no Queue call site or RunCompute writer
 - runtime: not installed/not executed; no RunCompute
+
+
+Patch 0045 validation performed on 2026-08-29:
+
+- base: `8f6bd394ceb5bdcd62bfa2ca3817c85bd7cabf9d`
+- expected commit tree: `b02f2c4472e65afee9c404759da93622e3840db6`
+- patch SHA-256: `d00b74399fec6bc6b8e14880ffa9b8a5261f9001ac79b732c2d8293582513070`
+- exact-tree reconstruction: PASS
+- strict checkpatch: 0 errors, 0 warnings, 0 checks
+- Asahi module build: PASS at the established 24-individual-warning bring-up baseline
+- module SHA-256: `ced66b40865979c5aa70686673ae939058ea04d4db789428285d87f2f19da66e`
+- exact first-CL index / accelerator packed-feature bit-39 audit: PASS
+- reachability: fixed values consumed only by the dormant owner-graph finalizer; generic serializer still parameterized; no live Queue call site or RunCompute writer
+- runtime: not installed/not executed; no RunCompute

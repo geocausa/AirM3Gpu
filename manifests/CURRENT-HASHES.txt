@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  293ca63380179cca5bb8c6511a67349f90878b44
-linux current checkpoint    8f6bd394ceb5bdcd62bfa2ca3817c85bd7cabf9d
-linux current tree          87431d2ef1ea1a35882d5a499117d73ae295ea30
+linux previous public head  8f6bd394ceb5bdcd62bfa2ca3817c85bd7cabf9d
+linux current checkpoint    ccc976c598ab40f9cd8ef24837af1139979bbc09
+linux current tree          b02f2c4472e65afee9c404759da93622e3840db6
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -517,3 +517,12 @@ E127 patch 0044 sha256  840155573f3adb6104ac1b3f37a150950f23f221befdee627b94d6db
 E127 private result sha256  144823b7136c741acfb162d019da631527aac07fb199d896a888b7f87c038f9b
 E127 public channel-owner note sha256  41df82e47b77ce3fb31e25ec06179443db572b8be907096e476d67680e445518
 E127 closure  timestamp/scheduler/channel-state/uncached/cached resources grouped under dormant owner graph with independent indices; QueueInfo pointer set internally derived and external SKU channel_state_fwva removed; no live Queue/RunCompute consumer
+
+private evidence checkpoint E128  03a626f05ae3b4b2e99bc46bb04a6e027411c909
+E128 Linux checkpoint  ccc976c598ab40f9cd8ef24837af1139979bbc09
+E128 Linux tree  b02f2c4472e65afee9c404759da93622e3840db6
+E128 module sha256  ced66b40865979c5aa70686673ae939058ea04d4db789428285d87f2f19da66e
+E128 patch 0045 sha256  d00b74399fec6bc6b8e14880ffa9b8a5261f9001ac79b732c2d8293582513070
+E128 private result sha256  5e8b7bc2fe8e5171d686b90c35294aa1362c65e5792af2b9fc0d6a449f8eb798
+E128 public fixed-SKU-input note sha256  67d7624eddd8f915c9a6fb5308b694dcb6f5bfdafbebdf3c6e05fb9d56c09d79
+E128 closure  first normal J615 CL evctl_index=0 and accelerator packed-feature bit39=0 fixed at dormant owner graph; generic serializer parameterization and all live RunCompute producers unchanged

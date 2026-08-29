@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-STOCK-EMPTY-FIXED-SKU-INPUTS.md` — E128 exact first-CL `evctl_index=0` and normal-J615 accelerator packed-feature bit 39 = 0; dormant finalize inputs narrowed, live RunCompute unchanged.
 - `G15-CHANNEL-OWNER-GRAPH.md` — E127 coherent unreachable timestamp/scheduler/channel-state/cached/uncached owner integration with independent indices; external SKU `channel_state_fwva` removed.
 - `G15-SCHEDULER-STATE-BACKING.md` — E126 exact `_AGFISchedulerState` range-8 0x4000/0x40 backing, QueueInfo `+0xa4` provenance and private selected reset; live generic GpuContext unchanged.
 - `G15-TIMESTAMP-QUEUE-STATE.md` — E125 exact QueueInfo `+0x10` timestamp-state provenance, range-7 0x4000/0x18 backing and private reset model; live notifier path unchanged.

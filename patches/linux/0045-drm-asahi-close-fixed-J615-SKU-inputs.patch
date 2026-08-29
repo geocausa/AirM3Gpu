@@ -1,0 +1,56 @@
+From ccc976c598ab40f9cd8ef24837af1139979bbc09 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 22:12:50 +0100
+Subject: [PATCH] drm: asahi: close fixed J615 SKU inputs
+
+---
+ drivers/gpu/drm/asahi/queue/mod.rs | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index 66ce0fa435d2..66e2d189af7a 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -799,6 +799,8 @@ struct G15UnpublishedStockEmptyPrepare {
+ /// finalize boundary. E115 removes the CL command-resource base from this list
+ /// after closing its persistent range-5 owner; the remaining values stay
+ /// explicit rather than being guessed from the dormant Linux constructor.
++/// E128 removes the first-CL evctl index and accelerator packed-feature bit 39:
++/// both are now exact constants for the normal J615 target.
+ #[derive(Clone, Copy, Debug)]
+ #[allow(dead_code)]
+ struct G15StockEmptySkuFinalizeInputs {
+@@ -809,11 +811,9 @@ struct G15StockEmptySkuFinalizeInputs {
+     command_counter: u64,
+     context_id: u32,
+     queue_event_sequence: u32,
+-    evctl_index: u32,
+     uuid: u32,
+     stamp_value: u32,
+     gart_soft_fault_enabled: bool,
+-    accelerator_654_bit7: bool,
+ }
+ 
+ /// Fully materialized stock-empty command assets that are still deliberately
+@@ -1084,11 +1084,16 @@ fn finalize_unpublished(
+             context_id: input.context_id,
+             state_sequence: prepared.state_sequence,
+             queue_event_sequence: input.queue_event_sequence,
+-            evctl_index: input.evctl_index,
++            // E119/E128: this dormant graph models the first normal J615 CL
++            // channel, whose AGXChannel +0x38 / G15JobMeta evctl_index is 0.
++            evctl_index: fw::workqueue::G15_J615_FIRST_CL_EVCTL_INDEX,
+             uuid: input.uuid,
+             stamp_value: input.stamp_value,
+             gart_soft_fault_enabled: input.gart_soft_fault_enabled,
+-            accelerator_654_bit7: input.accelerator_654_bit7,
++            // E128 exact 23J220 configure chain: the base configure mask
++            // 0xf4840fffffff7f clears packed feature bit 39 (halfword +0x654
++            // bit 7); G15 and G15G preserve that bit. Stock J615 is false.
++            accelerator_654_bit7: false,
+         };
+         let stream = match fw::compute::G15StockEmptySkuStream::new(sku_input) {
+             Ok(stream) => stream,
+-- 
+2.53.0
+
