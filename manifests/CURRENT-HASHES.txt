@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  897d3ae4189603b58438131724e8d481f03b6917
-linux current checkpoint    d54dfc78d0592e2b8bb239aac61b9bc0489e3a78
-linux current tree          16d86879298422b44475805f6cbcc2a1502579e1
+linux previous public head  d54dfc78d0592e2b8bb239aac61b9bc0489e3a78
+linux current checkpoint    69af01482ad8fbcba160559c308b8905598e3c6e
+linux current tree          d9b6b43aec68a22ea9b84728dc410c418fca65f0
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -337,3 +337,16 @@ E104 patch 0028 sha256  f39e59e9138a406f9459799417856f64e5568e9a9d701d978094dca9
 E104 private result sha256  337364ce13d5aed97e5e9d89f30c8d22f4b0337de5c98002c26a70b0eae14983
 E103-E104 public SKU backing note sha256  b821e016d6b1f922563157861f5821c028c2afae5a15d54d6befba24b015d184
 E104 closure  exact zero-filled page-base 0x30000 range8 SKU backing owned compile-only/unreachable; no selected FWVA, +0x760 integration, install or RunCompute
+
+private evidence checkpoint E105  4e6e01d
+E105 exact oracle result sha256  4c095a82e3f996a6058bf489f81a49811da70f4287313ae6c051789f00d1c58e
+E105 private result sha256  f59a0e088effae86bbdf54f7aa8b3f5ee940e7a36c20b44c8494321463d56397
+E105 closure  exact next-slot testEvent/copyEvent retirement lifetime; finish returns selected backing FWVA; no Linux source change or RunCompute
+private evidence checkpoint E106  f990b4c
+E106 Linux checkpoint  69af01482ad8fbcba160559c308b8905598e3c6e
+E106 Linux tree  d9b6b43aec68a22ea9b84728dc410c418fca65f0
+E106 module sha256  77c7ca7cb034a416c45127c3eeec9822979da6d380f78fffa6740a69d3d5273b
+E106 patch 0029 sha256  3fcc1da7175d5c620af0da495df655cb6120a1293b448fcf47995481af6dbf72
+E106 private result sha256  a11b0c86c07ed8786713f4fac5124a12c23450782ca08478373665d0f7956be3
+E105-E106 public SKU retirement note sha256  fe60975105242c25cba2d0567a0357dcc1b0294ba0b346a5b9cb015f53acdfc6
+E106 closure  exact next-slot scan modeled with conservative JobFence guard compile-only/unreachable; no SKU backing writes, +0x760 integration, install or RunCompute

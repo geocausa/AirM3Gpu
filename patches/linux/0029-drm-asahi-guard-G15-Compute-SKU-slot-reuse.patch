@@ -1,0 +1,91 @@
+From 69af01482ad8fbcba160559c308b8905598e3c6e Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 14:54:58 +0100
+Subject: [PATCH] drm: asahi: guard G15 Compute SKU slot reuse
+
+---
+ drivers/gpu/drm/asahi/queue/mod.rs | 68 ++++++++++++++++++++++++++++++
+ 1 file changed, 68 insertions(+)
+
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index 3ef6610322a6..60d2e8fb81fb 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -427,6 +427,74 @@ fn try_finish(&mut self, index: usize) -> Result<bool> {
+     }
+ }
+ 
++/// Conservative Linux retirement guards for the exact 0xf0 G15 Compute SKU
++/// slots. E105 proves Apple scans from the next slot, tests the per-slot host
++/// event, and copies the new command event into the selected guard before
++/// writing the slot. A whole-submission JobFence is stronger than Apple's
++/// per-command event but cannot permit premature slot overwrite.
++#[versions(AGX)]
++#[allow(dead_code)]
++struct G15SkuRetirementGuards {
++    slots: KVec<Option<UserFence<JobFence::ver>>>,
++    current: u32,
++}
++
++#[versions(AGX)]
++#[allow(dead_code)]
++impl G15SkuRetirementGuards::ver {
++    fn new() -> Result<Self> {
++        let mut slots = KVec::with_capacity(fw::compute::G15_SKU_SLOT_COUNT, GFP_KERNEL)?;
++        for _ in 0..fw::compute::G15_SKU_SLOT_COUNT {
++            slots.push(None, GFP_KERNEL)?;
++        }
++        Ok(Self {
++            slots,
++            // Exact encoder initialization uses -1 so the first candidate is 0.
++            current: u32::MAX,
++        })
++    }
++
++    /// Exact selection order with a conservative Linux completion predicate:
++    /// `(current + 1) % 0xf0`, then scan at most 0xf0 candidates. The selected
++    /// slot is bound to the new fence before being returned to a future writer.
++    fn select_and_bind(&mut self, fence: &UserFence<JobFence::ver>) -> Result<usize> {
++        if fence.pending.load(Ordering::Acquire) == 0 {
++            return Err(EINVAL);
++        }
++
++        let count = fw::compute::G15_SKU_SLOT_COUNT as u32;
++        let mut candidate = self.current.wrapping_add(1) % count;
++        for _ in 0..fw::compute::G15_SKU_SLOT_COUNT {
++            let index = candidate as usize;
++            let reusable = match self.slots[index].as_ref() {
++                Some(prior) => prior.pending.load(Ordering::Acquire) == 0,
++                None => true,
++            };
++            if reusable {
++                self.slots[index] = Some(fence.clone());
++                self.current = candidate;
++                return Ok(index);
++            }
++            candidate = (candidate + 1) % count;
++        }
++        Err(ENOSPC)
++    }
++
++    /// Host-only analogue of AGXSKUEncoder::scrubEvents(): discard completed
++    /// retirement guards without changing the next-slot rotation point.
++    fn scrub_completed(&mut self) {
++        for slot in self.slots.iter_mut() {
++            let complete = slot
++                .as_ref()
++                .map(|fence| fence.pending.load(Ordering::Acquire) == 0)
++                .unwrap_or(false);
++            if complete {
++                *slot = None;
++            }
++        }
++    }
++}
++
+ #[versions(AGX)]
+ pub(crate) struct QueueJob {
+     dev: AsahiDevRef,
+-- 
+2.53.0
+

@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-SKU-SLOT-RETIREMENT.md` — E105 exact SKU host-event slot reuse/selected-FWVA lifetime and E106 conservative unreachable JobFence guard.
 - `G15-SKU-BACKING-OWNER.md` — E103 exact 0xf0 × 0x300 / 0x30000 range-8 SKU backing lifetime and E104 unreachable compile-only owner; no selected FWVA.
 - `G15-STOCK-EMPTY-SKU-SERIALIZER.md` — E101 exact stock-empty 23J220 SKU source map and E102 unreachable byte-exact `0x2c0` serializer; RunCompute `+0x760` remains unwired.
 - `G15-STOCK-EMPTY-FLIST-FIRST-ACTIVATION.md` — E100 exact stock-empty zero-page/zero-Backup-extent first activation and unreachable compile-only helper; RunCompute `+0x83e` remains zero.
