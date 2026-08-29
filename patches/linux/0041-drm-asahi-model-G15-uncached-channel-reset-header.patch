@@ -1,0 +1,94 @@
+From 1d9c455c0c0dfdb6a5b9703bfb44bb6b2877736c Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 20:52:54 +0100
+Subject: [PATCH] drm: asahi: model G15 uncached channel reset header
+
+---
+ drivers/gpu/drm/asahi/fw/workqueue.rs |  7 +++++
+ drivers/gpu/drm/asahi/queue/mod.rs    | 45 +++++++++++++++++++++++++++
+ 2 files changed, 52 insertions(+)
+
+diff --git a/drivers/gpu/drm/asahi/fw/workqueue.rs b/drivers/gpu/drm/asahi/fw/workqueue.rs
+index b11cdeec30de..d3a93fd3e396 100644
+--- a/drivers/gpu/drm/asahi/fw/workqueue.rs
++++ b/drivers/gpu/drm/asahi/fw/workqueue.rs
+@@ -283,6 +283,13 @@ pub(crate) struct QueueInfo<'a> {
+ pub(crate) const G15_J615_FIRST_CL_EVCTL_INDEX: u32 = 0;
+ #[allow(dead_code)]
+ pub(crate) const G15_J615_CL_SECOND_CONSTRUCTOR_INTEGER: u32 = 0x50;
++/// E124 closes AGXChannel::init()'s derived channel +0x54 value for the
++/// normal J615 CL constructor: min(0x50, 0x80) << 4 = 0x500. Exact
++/// resetChannelState() publishes this into selected uncached channel memory
++/// +0x50 while zeroing four sibling header words.
++pub(crate) const G15_J615_CL_UNCACHED_CHANNEL_VALUE_50: u32 =
++    G15_J615_CL_SECOND_CONSTRUCTOR_INTEGER << 4;
++const _: [(); 0x500] = [(); G15_J615_CL_UNCACHED_CHANNEL_VALUE_50 as usize];
+ pub(crate) const G15_J615_CL_PRIORITY_INTEGER_ARGUMENT: u32 = 2;
+ pub(crate) const G15_J615_CDM_BACKOFF_TIMEOUT: u8 = 4;
+ 
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index ce339170df4f..9a858feadf91 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -350,6 +350,15 @@ struct G15UncachedChannelMemoryBackingBlock {
+     block: alloc::G15SharedGpuArray<u8>,
+ }
+ 
++/// Private E124 proof token: one caller-selected local element has received
++/// the exact CL reset header writes. It deliberately carries no FWVA and does
++/// not model the global Apple resource-stack index.
++#[derive(Debug)]
++#[allow(dead_code)]
++struct G15PreparedUncachedChannelMemory {
++    slot_index: usize,
++}
++
+ #[allow(dead_code)]
+ impl G15UncachedChannelMemoryBackingBlock {
+     fn new(
+@@ -377,6 +386,42 @@ fn new(
+         }
+         Ok(Self { block })
+     }
++
++    fn put_u32(slot: &mut [u8], offset: usize, value: u32) -> Result {
++        let end = offset.checked_add(4).ok_or(EOVERFLOW)?;
++        let dst = slot.get_mut(offset..end).ok_or(EINVAL)?;
++        dst.copy_from_slice(&value.to_le_bytes());
++        Ok(())
++    }
++
++    /// Apply only the exact E124 `resetChannelState()` writes to one already
++    /// selected local uncached-memory element. Apple does not bulk-clear this
++    /// element in resetChannelState(), so this helper deliberately touches only
++    /// the six proven u32 header locations. The backing is still definition-only
++    /// and this method returns no firmware address.
++    fn reset_selected_j615_cl(
++        &mut self,
++        slot_index: usize,
++    ) -> Result<G15PreparedUncachedChannelMemory> {
++        let offset = g15_j615_channel_memory_slot_offset(slot_index).ok_or(EINVAL)?;
++        let end = offset
++            .checked_add(fw::workqueue::G15_J615_CHANNEL_MEMORY_BYTES)
++            .ok_or(EOVERFLOW)?;
++        let slot = self.block.as_mut_slice().get_mut(offset..end).ok_or(EIO)?;
++
++        Self::put_u32(slot, 0x00, 0)?;
++        Self::put_u32(slot, 0x10, 0)?;
++        Self::put_u32(slot, 0x20, 0)?;
++        Self::put_u32(slot, 0x30, 0)?;
++        Self::put_u32(slot, 0x40, 0)?;
++        Self::put_u32(
++            slot,
++            0x50,
++            fw::workqueue::G15_J615_CL_UNCACHED_CHANNEL_VALUE_50,
++        )?;
++
++        Ok(G15PreparedUncachedChannelMemory { slot_index })
++    }
+ }
+ 
+ /// One exact 23J220 `AGXCachedFWChannelMem` resource-stack backing block.
+-- 
+2.53.0
+
