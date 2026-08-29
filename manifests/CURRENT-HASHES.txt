@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  b88369c26ffe82ce73765b8bbba64b2db771ef76
-linux current checkpoint    9b21157497bbb1695b9bbdb43d6490c23520504e
-linux current tree          dcf3368ccd71d1166d5198cab9dd21b3daa2d6f8
+linux previous public head  9b21157497bbb1695b9bbdb43d6490c23520504e
+linux current checkpoint    3cd3f336d9f4c103f2df7e284b9a517a42e7d90f
+linux current tree          65804f29fac725207b173f8e71f2f79f64fcf3f4
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -207,3 +207,10 @@ E085 module sha256  a8d3ab97f621da84fd6d345543582fe1f59251ccd3170225ecebc8cbd478
 E085 patch 0017 sha256  3a93a7f7398e5209ff710ea44f9a142179e070c5d7643d5beafc61383699c707
 E085 closure  q22 range7 map/unmap=1/0; range8 special aperture=3/2; compile-only, no persistent range8 object or RunCompute
 E085 public q22 note sha256  c4d40a415d5921204ea16517f6af87d3f5e20c607b8113f6d516f47d43de0b5b
+private evidence checkpoint E086  5e6c06d
+E086 Linux checkpoint  3cd3f336d9f4c103f2df7e284b9a517a42e7d90f
+E086 Linux tree  65804f29fac725207b173f8e71f2f79f64fcf3f4
+E086 module sha256  ab9ea1342170bea6526b440d245a0bb4a88831db09018e0773d9673894dbdcf4
+E086 patch 0018 sha256  0d123511937dd9f185cab93a4cc397a87ce16984a1dc2137ab8d92c360bc8bf7
+E086 closure  exact four persistent FList backings owned compile-only; state stops at constructor seed; no +0x83e publication or RunCompute
+E086 public FList owner note sha256  fb41d73538146ba1dc1add68ec3e41fabf4e87848174c16aa1d79b42a8b98938

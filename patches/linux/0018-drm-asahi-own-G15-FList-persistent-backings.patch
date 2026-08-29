@@ -1,0 +1,127 @@
+From 3cd3f336d9f4c103f2df7e284b9a517a42e7d90f Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 08:13:00 +0100
+Subject: [PATCH] drm: asahi: own G15 FList persistent backings
+
+---
+ drivers/gpu/drm/asahi/buffer.rs | 104 ++++++++++++++++++++++++++++++++
+ 1 file changed, 104 insertions(+)
+
+diff --git a/drivers/gpu/drm/asahi/buffer.rs b/drivers/gpu/drm/asahi/buffer.rs
+index 263e2332d120..dfd1a6624239 100644
+--- a/drivers/gpu/drm/asahi/buffer.rs
++++ b/drivers/gpu/drm/asahi/buffer.rs
+@@ -510,6 +510,110 @@ pub(crate) fn complete_reference(&self, hardware_buffer_id: u32) -> Result<bool>
+     }
+ }
+ 
++/// Persistent backing allocations owned by one exact J615/G15 FList.
++///
++/// E086 deliberately stops at the same boundary as AGXUMAFList::init(): the
++/// four objects exist and the 0x70-byte state contains only its constructor
++/// seed (`pool_id`, HardwareBuffer ID = -1). Apple does not publish the list
++/// pointers/capacity/FW-Uncached mirror until prepareBufferResources() calls
++/// populateFirmwareState(), so this type does not expose a Page-Pool-State
++/// command pointer or a prepare method yet.
++///
++/// This constructor is compile-only and has no caller. In particular it must
++/// not be wired into queue/GpuManager lifetime until the exact mapping
++/// prepare/complete callback lifetime is represented rather than approximated
++/// by the allocator's persistent mappings.
++#[allow(dead_code)]
++pub(crate) struct G15FListResourceOwner {
++    plan: G15FListResourcePlan,
++    page_pool_list: GpuArray<U64>,
++    backup_page_list: GpuArray<U64>,
++    fw_uncached_state: alloc::G15SharedGpuArray<buffer::raw::G15UMAFWUncachedState>,
++    page_pool_state: alloc::G15SharedGpuArray<buffer::raw::G15UMAPagePoolState>,
++}
++
++#[allow(dead_code)]
++impl G15FListResourceOwner {
++    #[allow(clippy::too_many_arguments)]
++    pub(crate) fn new_j615_unprepared(
++        dev: &crate::driver::AsahiDevice,
++        manager: G15HardwareBufferIdManager,
++        owner_cookie: u64,
++        pool_id: u64,
++        range5_list_alloc: &mut alloc::DefaultAllocator,
++        bank1: mmu::G15SharedBank1,
++        notifier: Option<Arc<Mutex<mmu::G15MappingNotifier>>>,
++    ) -> Result<Self> {
++        let plan = G15FListResourcePlan::new_j615(manager, owner_cookie)?;
++        let geometry = plan.geometry();
++
++        // Exact range-5 persistent list backings. The supplied per-VM allocator
++        // must be the cached/FList class (PROT_G15_RANGE5_FLIST_LIST); E082
++        // proves that class is bit-identical to the existing cached range-5
++        // arena while retaining distinct FList semantics here.
++        let page_pool_list = range5_list_alloc.array_empty_tagged::<U64>(
++            geometry.page_pool_list_entries as usize,
++            b"UPPL",
++        )?;
++        let backup_entries: usize = (geometry.backup_page_list_bytes
++            / G15FListGeometry::BACKUP_PAGE_LIST_ENTRY_BYTES)
++            .try_into()
++            .map_err(|_| EOVERFLOW)?;
++        let backup_page_list =
++            range5_list_alloc.array_empty_tagged::<U64>(backup_entries, b"UBPL")?;
++
++        // Exact fixed FList objects in accelerator-shared bank 1. Their
++        // constructors hard-wire the independently proven range-7 FList and
++        // range-8 Page-Pool-State protection classes. E085 makes the shared
++        // q22 notifier encode range-8 map/unmap as special-aperture 3/2.
++        let mut fw_uncached_alloc = alloc::G15SharedBank1Allocator::new_range7_flist(
++            dev,
++            bank1.clone(),
++            mmu::UAT_PGSZ,
++            true,
++            notifier.clone(),
++        );
++        let fw_uncached_state = fw_uncached_alloc
++            .array_empty_tagged::<buffer::raw::G15UMAFWUncachedState>(1, b"UFUS")?;
++
++        let mut page_pool_state_alloc = alloc::G15SharedBank1Allocator::new_range8(
++            dev,
++            bank1,
++            mmu::UAT_PGSZ,
++            true,
++            notifier,
++        );
++        let mut page_pool_state = page_pool_state_alloc
++            .array_empty_tagged::<buffer::raw::G15UMAPagePoolState>(1, b"UPPS")?;
++
++        // Exact AGXUMAFList::init() seed. The rest remains zero until the
++        // future prepareBufferResources()/populateFirmwareState() boundary.
++        let state = &mut page_pool_state.as_mut_slice()[0];
++        state.pool_id = U64(pool_id);
++        state.hardware_buffer_id = U32(u32::MAX);
++
++        // Keep compile-time/resource-size assertions local to the ownership
++        // point so a future ABI edit cannot silently change the allocations.
++        if page_pool_list.len() != G15FListGeometry::J615_PAGE_POOL_LIST_ENTRIES as usize
++            || backup_page_list.len()
++                != (G15FListGeometry::J615_BACKUP_PAGE_LIST_BYTES
++                    / G15FListGeometry::BACKUP_PAGE_LIST_ENTRY_BYTES) as usize
++            || fw_uncached_state.len() != 1
++            || page_pool_state.len() != 1
++        {
++            return Err(EIO);
++        }
++
++        Ok(Self {
++            plan,
++            page_pool_list,
++            backup_page_list,
++            fw_uncached_state,
++            page_pool_state,
++        })
++    }
++}
++
+ /// Apple G15 parameter-management device configuration recovered from
+ /// `AGXAcceleratorG15::halGetPMConfig()`.
+ ///
+-- 
+2.53.0
+

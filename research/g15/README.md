@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-FLIST-PERSISTENT-OWNER.md` — E086 unreachable compile-only owner for all four exact persistent FList backings.
 - `G15-Q22-RANGE8-SPECIAL.md` — E085 exact range-8 q22 special-aperture flags (`3/2`) with range-7 `1/0` preserved, compile-only.
 - `G15-PUBLIC-M1N1-SEMANTIC-CROSSCHECK.md` — E084 current-public m1n1 concept cross-check; semantic clues only, no old G15 offsets imported.
 - `G15-J615-UMA-POOL-GEOMETRY.md` — E083 exact J615 M/B defaults and resolved 4-MiB/32-KiB FList list geometry, compile-only.

@@ -1,10 +1,10 @@
 a94f4741e619a496034a1cfd0c0149d93cb3f74c33e024d5d7c2023f4494c605  ./.gitignore
-86c7d4b5934e10fc33dd32cf32a8cb4d52ac50ce8584e794b3eddf1f1ea870c2  ./README.md
-0ad5ed2a668d4cfa23cbc2f6b99539de8735643b70c30087b4ece124ba4969e7  ./docs/CURRENT-STATE.md
-e6b0fba8d867413f7d3a06f9cbc016671f309107d56f053898904a34fdda4819  ./docs/PATCHES.md
+3ed042734afb74c511a9a00a9b9d45daf6b8c81558e55f0ed500171cbec7de99  ./README.md
+0ac577cedadc5ac8fda25eb754ff3c26e2def0c04eb4b911c63313d51146eea0  ./docs/CURRENT-STATE.md
+ec3183103d4903d112348239d8b269751b3dcc8f1c8ffd9b1a897cb3eec9c4aa  ./docs/PATCHES.md
 d61bf1973a6d6b3e840ef7eff94cb497eb57118a711f6891e2b0ee98ca6db461  ./docs/RECOVERY.md
 072edbe867996f268553f3da518769548159145691000f5f6dc7f888dd84cdf7  ./docs/WORKFLOW.md
-0f7a1cbb31d42cf5466520664d0e332f37c7e1b0c6ac7aaa7f7b5f0d422baf23  ./manifests/CURRENT-HASHES.txt
+167db4e62045672e61121ca6c435c3b51372daad543252b0b3c8fa45f9d6f2c3  ./manifests/CURRENT-HASHES.txt
 4f16537a51cf9d1ad18841ec138b5a6090407739af7b69898c933dcafdca8fea  ./patches/linux/0001-drm-asahi-checkpoint-T8122-G15-bring-up-through-RTKi.patch
 258eb0243e41b10800df1daf5671c8003f358efec31caaac405e74fc8c2cc00a  ./patches/linux/0002-drm-asahi-map-G15-RTKit-preallocated-crashlog-memory.patch
 7a0b6374402bc2fb4c75b01ae93645470385f1b671530ea9996b118915c9f961  ./patches/linux/0003-drm-asahi-stage-G15-RTKit-app-endpoint-start.patch
@@ -22,6 +22,7 @@ b20da8f6d4b4df1d6e58dd5e2eb90449a4da830f17acfa4837f4d78bd4bd9a33  ./patches/linu
 cf5fa4401ec4e31c68df27f62bc470d680f7bcb76255b66da61c36b4be5a61d6  ./patches/linux/0015-drm-asahi-model-G15-FList-range-5-list-class.patch
 dfb98af1a80f7be36ef623476af27fe3b71db0638d5dc3f8e00d5c8f83bbc8ef  ./patches/linux/0016-drm-asahi-pin-J615-G15-UMA-pool-geometry.patch
 3a93a7f7398e5209ff710ea44f9a142179e070c5d7643d5beafc61383699c707  ./patches/linux/0017-drm-asahi-encode-G15-range-8-mapping-notifications.patch
+0d123511937dd9f185cab93a4cc397a87ce16984a1dc2137ab8d92c360bc8bf7  ./patches/linux/0018-drm-asahi-own-G15-FList-persistent-backings.patch
 09f94cf355cb34847caf59bf33f46231748958c10fa37dcde7d35b1a2307ac2d  ./patches/mesa/0001-hk-pass-initial-load-clear-state-to-kernel.patch
 07821063a351d0306dc5cc0689979cf10c537af5a417dc5d97e390ee456ec798  ./patches/mesa/0002-hk-pass-depth-stencil-level-offsets-to-kernel.patch
 bc26f90769b09e298649b0fc8f5f6b0373c7e50c03f0b5926f5d285f562db569  ./patches/mesa/0003-hk-build-G15-EOT-state-loader-for-proven-path.patch
@@ -40,6 +41,7 @@ f22a1fd0df6e1ec299bdf1c487da0c1a04a0ee836a0826173c17f8bc35439a59  ./research/g15
 9628e938471e90b359a369c448788d3e41fa5b737250820eb13e51b404b1d4df  ./research/g15/G15-CONTROL-STATE.md
 bf93fb8a6eda6af0eee9f06070330168b7edf662675e758595309caecc7e1dc7  ./research/g15/G15-EMPTY-COMPUTE-CONTAINER.md
 d3c7b33009bd8c43cafd2ed69d4a138efede6f99090da5d7e08f36a333237c8a  ./research/g15/G15-EMPTY-COMPUTE-REGISTERARRAY.md
+fb41d73538146ba1dc1add68ec3e41fabf4e87848174c16aa1d79b42a8b98938  ./research/g15/G15-FLIST-PERSISTENT-OWNER.md
 68b5563f87ce37ae39fa9fb74802147aa41ba1cb87a4d6c61d3a07a00ea80109  ./research/g15/G15-FLIST-RANGE5-LIST-PTE.md
 8c617d80fad9dd6dabc296bbcba673fece4c3c00c9525055ed4873785e53581f  ./research/g15/G15-FLIST-RESOURCE-PLAN.md
 cb7f861f5ae4d1e0560e14f128ce1dc714b74a8e7baa44bd77063ddd7932d6d3  ./research/g15/G15-FRAGMENT-COMMAND.md
@@ -65,5 +67,5 @@ c0a9643509b7050f0b3c0718a5060fd0c592235250b22f7e47dd18614aef7ddc  ./research/g15
 5be0bb89b4ce13967ff8a1301a4f332dac6267d4b8ead6d87683d5c9bf381e1e  ./research/g15/G15-VERTEX-COMMAND.md
 d531fda1be727de5e510ea5718ef68d3b0172d3ec4f2d3f5b039bb6c7f42e06e  ./research/g15/G15-WRAPPER-LAYOUT.md
 1e42ac959bea3032d870499ed56255d3212aaf1f794b184fc08bbb5d2504dbf4  ./research/g15/J615-POWER-CONFIG.md
-8c82de8b473433f3837c2ef64e9aae6754f42ae136507c2b8b71ca43d012d700  ./research/g15/README.md
+c22c908ab18fa09badfc8da31dba43665b3ef7d09531a33df85017143fe89d57  ./research/g15/README.md
 d42da0407a1a8725d538c5438cb402860139b661c347613781a5b0b4226731e6  ./research/g15/build-g15g-c0-dpe-ppt.py
