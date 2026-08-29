@@ -1,0 +1,113 @@
+From 139b745dbf0092825cad3c65bc18fb03385f2305 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sat, 29 Aug 2026 15:29:18 +0100
+Subject: [PATCH] drm: asahi: stage G15 RunCompute asset fields
+
+---
+ drivers/gpu/drm/asahi/queue/mod.rs | 55 ++++++++++++++++++++++++++++--
+ 1 file changed, 53 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index 7ca39219136f..93447b466079 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -199,6 +199,43 @@ struct G15UnpublishedStockEmptyCommandAssets {
+     hardware_buffer_id: u32,
+ }
+ 
++/// Host-only staging image for the exact stock-empty RunCompute pointer/UMA
++/// fields closed by E071/E072/E088/E102. This is intentionally not a firmware
++/// structure and there is no method that writes it into `fw::compute::RunCompute`.
++/// Keeping the underlying non-Copy asset token inside preserves HardwareBuffer
++/// completion ownership until this staging object is consumed.
++#[derive(Debug)]
++#[allow(dead_code)]
++struct G15UnpublishedRunComputeFieldStage {
++    assets: G15UnpublishedStockEmptyCommandAssets,
++    event_control_fwva_14: u64,
++    sku_fwva_760: u64,
++    sku_size_768: u32,
++    page_pool_state_fwva_83e: u64,
++    uma_prepared_846: u8,
++    uma_min_pool_size_847: u64,
++    uma_ideal_pool_size_84f: u64,
++    hwmetrics_fwva_857: u64,
++}
++
++#[allow(dead_code)]
++impl G15UnpublishedRunComputeFieldStage {
++    fn from_assets(assets: G15UnpublishedStockEmptyCommandAssets) -> Self {
++        Self {
++            event_control_fwva_14: assets.event_control_fwva,
++            sku_fwva_760: assets.sku_fwva,
++            sku_size_768: assets.sku_size,
++            page_pool_state_fwva_83e: assets.page_pool_state_fwva,
++            // Exact stock-empty prepared/min/ideal values from E071/E072.
++            uma_prepared_846: 1,
++            uma_min_pool_size_847: 0,
++            uma_ideal_pool_size_84f: 0,
++            hwmetrics_fwva_857: assets.hwmetrics_fwva,
++            assets,
++        }
++    }
++}
++
+ /// Unreachable ownership graph for the exact stock-empty G15 Compute
+ /// prerequisites that have independent Apple lifetimes but must coexist before
+ /// a RunCompute command can be published.
+@@ -278,6 +315,12 @@ fn prepare_unpublished_after_retirement(
+             .seed_selected_after_event_finish(event_index, state_sequence)?;
+         let event_control_fwva = self._event_control.control_fwva(event_index)?;
+         let sku = self._sku.write_retired_stock_empty_slot(sku_index, sku_stream)?;
++        if event_control_fwva == 0
++            || sku.fwva() == 0
++            || sku.size() as usize != fw::compute::G15_STOCK_EMPTY_SKU_STREAM_SIZE
++        {
++            return Err(EIO);
++        }
+ 
+         let lease = self._flist.prepare_stock_empty_reference(priority)?;
+         let page_pool_state_fwva = match self._flist.initialized_page_pool_state_fwva() {
+@@ -294,6 +337,10 @@ fn prepare_unpublished_after_retirement(
+                 return Err(err);
+             }
+         };
++        if page_pool_state_fwva == 0 || hwmetrics_fwva == 0 {
++            let _ = self._flist.complete_reference(lease.hardware_buffer_id);
++            return Err(EIO);
++        }
+ 
+         Ok(G15UnpublishedStockEmptyCommandAssets {
+             event_control_fwva,
+@@ -311,6 +358,10 @@ fn complete_unpublished(
+     ) -> Result<bool> {
+         self._flist.complete_reference(assets.hardware_buffer_id)
+     }
++
++    fn complete_staged(&self, stage: G15UnpublishedRunComputeFieldStage) -> Result<bool> {
++        self.complete_unpublished(stage.assets)
++    }
+ }
+ 
+ /// Compile-only owner for the exact 23J220 G15 command-buffer stamp and
+@@ -690,7 +741,7 @@ fn prepare_unpublished(
+         state_sequence: u32,
+         sku_stream: &fw::compute::G15StockEmptySkuStream,
+         priority: u32,
+-    ) -> Result<G15UnpublishedStockEmptyCommandAssets> {
++    ) -> Result<G15UnpublishedRunComputeFieldStage> {
+         if fence.pending.load(Ordering::Acquire) == 0 {
+             return Err(EINVAL);
+         }
+@@ -722,7 +773,7 @@ fn prepare_unpublished(
+             sku_stream,
+             priority,
+         ) {
+-            Ok(assets) => Ok(assets),
++            Ok(assets) => Ok(G15UnpublishedRunComputeFieldStage::from_assets(assets)),
+             Err(err) => {
+                 self.event.rollback_bound(event_index);
+                 self.sku.rollback_bound(sku_index);
+-- 
+2.53.0
+
