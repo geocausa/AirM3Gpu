@@ -1,0 +1,98 @@
+From e48a1f854d3adf675374aad6b6bff352805904bf Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 09:29:23 +0100
+Subject: [PATCH] drm: asahi: place J615 client UMA weak-slot state
+
+---
+ drivers/gpu/drm/asahi/buffer.rs | 24 ++++++++++++++++++++++++
+ drivers/gpu/drm/asahi/file.rs   | 16 ++++++++++++++--
+ 2 files changed, 38 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/buffer.rs b/drivers/gpu/drm/asahi/buffer.rs
+index a3877589b8d6..1b1d341f8cb5 100644
+--- a/drivers/gpu/drm/asahi/buffer.rs
++++ b/drivers/gpu/drm/asahi/buffer.rs
+@@ -329,6 +329,30 @@ fn value(self) -> u64 {
+     }
+ }
+ 
++/// Client-address-space-scoped weak UMAPool slot state recovered from exact
++/// J615/23J220 `AGXUMASharedPoolContainer` ownership.
++///
++/// E139 proves the real container lives under one `AGXShared`, beside the
++/// client `task *` / `IOGPUTask *` whose bank-0 address space backs both FList
++/// range-5 lists. E137 separately proves the four pool slots are weak and must
++/// not own the pool objects. Store only globally unique pool identities here;
++/// this is deliberately not an `Arc`/strong pool owner and cannot promote a
++/// pool to a live reference. Future promotion must close the E137 try-retain
++/// contract before any Queue can consume these slots.
++#[allow(dead_code)]
++pub(crate) struct G15ClientUmaPoolContainerState {
++    weak_pool_ids: [Option<G15UmaPoolIdentity>; 4],
++}
++
++#[allow(dead_code)]
++impl G15ClientUmaPoolContainerState {
++    pub(crate) fn new_client_address_space() -> Self {
++        Self {
++            weak_pool_ids: [None; 4],
++        }
++    }
++}
++
+ #[allow(dead_code)]
+ impl G15DeviceUmaOwnerState {
+     pub(crate) fn new_device_global() -> Result<Self> {
+diff --git a/drivers/gpu/drm/asahi/file.rs b/drivers/gpu/drm/asahi/file.rs
+index 99f492d71149..d1caa616a3ff 100644
+--- a/drivers/gpu/drm/asahi/file.rs
++++ b/drivers/gpu/drm/asahi/file.rs
+@@ -66,6 +66,10 @@ struct Vm {
+     // hardware IAS; current G13/G14 VMs therefore keep no extra allocator.
+     g15_ualloc_range5_uncached: Option<Arc<Mutex<alloc::DefaultAllocator>>>,
+     g15_ualloc_range5_cached: Option<Arc<Mutex<alloc::DefaultAllocator>>>,
++    // Exact J615 `AGXShared +0x1b8` analogue. Keep only the four weak pool
++    // identities at client-VM lifetime; E140 intentionally exposes no Queue
++    // accessor and performs no UMAPool construction/retention.
++    _g15_uma_shared_pools: Option<Arc<Mutex<buffer::G15ClientUmaPoolContainerState>>>,
+     vm: mmu::Vm,
+     kernel_range: Range<u64>,
+     _dummy_mapping: mmu::KernelMapping,
+@@ -436,7 +440,7 @@ pub(crate) fn vm_create(
+             GFP_KERNEL,
+         )?;
+ 
+-        let (g15_ualloc_range5_uncached, g15_ualloc_range5_cached) =
++        let (g15_ualloc_range5_uncached, g15_ualloc_range5_cached, g15_uma_shared_pools) =
+             if gpu.get_cfg().uat_ias >= 42 {
+                 (
+                     Some(Arc::pin_init(
+@@ -467,9 +471,16 @@ pub(crate) fn vm_create(
+                         )?),
+                         GFP_KERNEL,
+                     )?),
++                    Some(Arc::pin_init(
++                        new_mutex!(
++                            buffer::G15ClientUmaPoolContainerState::new_client_address_space(),
++                            "g15_uma_shared_pools"
++                        ),
++                        GFP_KERNEL,
++                    )?),
+                 )
+             } else {
+-                (None, None)
++                (None, None, None)
+             };
+ 
+         mod_dev_dbg!(
+@@ -490,6 +501,7 @@ pub(crate) fn vm_create(
+                 ualloc_priv,
+                 g15_ualloc_range5_uncached,
+                 g15_ualloc_range5_cached,
++                _g15_uma_shared_pools: g15_uma_shared_pools,
+                 vm,
+                 kernel_range,
+                 _dummy_mapping: dummy_mapping,
+-- 
+2.53.0
+

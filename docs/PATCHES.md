@@ -668,3 +668,16 @@ Patch 0052 validation performed on 2026-08-30:
 - placement audit: one G15-only GpuManager UMA host state owns the 0x100 HardwareBuffer-ID namespace and zero-seeded pool-ID sequence; construction creates no UMAPool and consumes no pool ID;
 - reachability: no shared-pool constructor call, no Queue accessor/call site, ordinary `submit_compute()` unchanged, no RunCompute writer;
 - runtime: module not installed/not executed; no RunCompute.
+
+Patch 0053 validation performed on 2026-08-30:
+
+- base: `f2cb03001da02b1bde833550f38700b247ca30c2`;
+- expected commit tree: `0975d080969e61298bb5b36f6f0d4e1748586a89`;
+- patch SHA-256: `edc7855793bb335953815aa232e9b9552a37138f560cdf3a075f6617a9df3ad3`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- Asahi module build: PASS at the established 24-individual-warning bring-up baseline;
+- module SHA-256: `02821df79de9b52dc509c64a1a8e35ba3aa734921a20d27d2e8ab44c6e71ee68`;
+- ownership audit: one empty four-slot non-owning client-VM UMA container state beside the existing range-5 allocators, with no strong shared-pool owner or Queue accessor;
+- reachability: the only pool-ID allocation consumer remains the dormant E136 shared-pool constructor; no live submit/RunCompute path changed;
+- runtime: not installed/not executed; no RunCompute.

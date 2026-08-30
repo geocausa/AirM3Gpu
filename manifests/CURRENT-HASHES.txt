@@ -616,3 +616,13 @@ E139 private result sha256  7f40703f316e2c9221f27944b23714829ea9df966a89ad941d37
 E139 private address-space proof sha256  40ca4179a816deaf4497d6f83705f20bcf5898ad301d309d4a357b026c006112
 E139 public FList client-address-space note sha256  f4eebf11c5d99383572e6b198d2a4ddcbf124563a068df429a63ace4829a188c
 E139 closure  AGXShared +0x1b8 owns the weak shared-pool container; AGXShared +0x50/+0x58 carry client task/IOGPUTask; both range-5 FList lists map through that client IOGPUTask; Linux per-file::Vm range-5 allocator is correct; no Linux delta/install/RunCompute
+
+private evidence checkpoint E140  aa9390fe98c6d9f6dadb3864f1671c6bd25fab89
+E140 Linux checkpoint  e48a1f854d3adf675374aad6b6bff352805904bf
+E140 Linux tree  0975d080969e61298bb5b36f6f0d4e1748586a89
+E140 module sha256  02821df79de9b52dc509c64a1a8e35ba3aa734921a20d27d2e8ab44c6e71ee68
+E140 patch 0053 sha256  edc7855793bb335953815aa232e9b9552a37138f560cdf3a075f6617a9df3ad3
+E140 private result sha256  17577a10f8a53dddea3137a1f5fe235ef93e39c9c5be8bc9dd3a96716583d28e
+E140 private placement proof sha256  12cc4a8a7f80cfa7e6445dd1bf4a17adec4bb7a459e5aca4581b5b8c499f49a4
+E140 public client UMA weak-slot note sha256  d38fe04d6361a33139a2fe2b9d2280b40c27eb84310ac29a6cf3ea3bd23d5b98
+E140 closure  AGXShared free releases/zeros its +0x1b8 container while container free owns no pool slots; Linux places one empty four-slot non-owning identity state at file::Vm lifetime beside range-5 allocators; no Queue accessor, pool ID, UMAPool, install or RunCompute
