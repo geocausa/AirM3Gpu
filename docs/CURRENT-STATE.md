@@ -344,6 +344,8 @@ See `research/g15/G15-COMPUTE-LAUNCH-BOUNDARY.md`.
 
 E145 assembles the previously separate J615 owner tiers into one private unpublished Compute-channel lifetime without enabling it. `GpuManager::g15_select_or_create_compute_pool()` preserves E142's client-container transaction while connecting replacement construction to the device-global UMA namespace plus cached range-5 FList allocator. `QueueInner::g15_assemble_unpublished_compute_channel()` then constructs the separate channel/command resources from E144's retained uncached range-5, bank1/q22 and manager-owned `G15StatsComp` inputs only after pool selection returns. The Linux-only HardwareBuffer owner cookie is derived from the globally ordered nonzero pool identity rather than accepted as an arbitrary input. The assembly helper has zero callers, `queue/compute.rs` is unchanged, and live pool creation/RunCompute remain fail-closed. Patch 0058 is compile-only assembly.
 
+E146 closes the ordinary J615 shared Compute UMAPool priority class. Exact `AGXChannel::init()` copies command-queue effective context priority `+0x44c` to channel `+0x1e8`, then maps only context types 0/5 to class 0 and all other types to class 1. Matching IOGPU/AGX state initializes type 3 and normal runtime branches select types 1/2, so the normal CL/Compute path always selects class 1. Linux removes the raw class parameter from the dormant E145 pool/assembly bridge and uses `G15_J615_NORMAL_COMPUTE_POOL_PRIORITY_CLASS = 1`; the helper still has zero callers and `queue/compute.rs` remains unchanged. Patch 0059 is compile-only exact-input closure.
+
 ## Source checkpoint
 
 The current clean Linux checkpoint head is:

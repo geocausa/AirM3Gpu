@@ -676,3 +676,13 @@ E145 private result sha256  ec166bd1b991c87042a11b0c23f18581fa2c70faebe919ef24f3
 E145 private assembly proof sha256  a7bc08cd91d84285da6a6c35702b01e99e9b8be69c9739bc36d04c3466cac448
 E145 public dormant-channel-assembly note sha256  b1b814f017e9a3a4cfb539854ac0d4899a04aa76bc296d7ea41ec8ff5e695d3a
 E145 closure  zero-caller bundle type-connects client weak-pool selection, device-global UMA identity/FList construction and channel-local exact owners; arbitrary host owner-cookie removed; no live pool creation, install or RunCompute
+
+private evidence checkpoint E146  da11c029cd6b02fc593fb4ed11fb655304dbef90
+E146 Linux checkpoint  b06c8650159bf700c3d4766542da8c976ef19048
+E146 Linux tree  604d859c910c383246f3316c9de1d5fe480388eb
+E146 module sha256  27cca5cf07d8f2737cddb9160a3f87b1e43888517d02ad68b3b9d349ddbda302
+E146 patch 0059 sha256  40386ce8796e4e57927f7ad4df6a105b2220866491285de2a19baacc44ba89dc
+E146 private result sha256  b9142f6ed4be64636eced2c0f08cbb47b7dae64733b5b47ee0746b975f47587f
+E146 private priority-class proof sha256  c57610dcb2a3969004a46bbe930b929fb2dddef2a49bcce1d36600f30e1916b9
+E146 public normal-compute-pool-class note sha256  3cf8043b0845e3c72ec7c60414c9563de3d93ae67986a2ba4a8560f526446706
+E146 closure  exact normal J615 context types 3/1/2 map invariantly to shared Compute pool class 1; raw class input removed; no live pool creation, install or RunCompute

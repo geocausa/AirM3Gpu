@@ -746,3 +746,16 @@ Patch 0058 validation performed on 2026-08-30:
 - ownership audit: client-container replacement transaction now reaches device-global pool identity plus cached range-5 FList construction; channel-local owners are assembled only after selection returns; host-only sticky-ID cookie derives from pool identity;
 - reachability: assembly helper has zero callers, `queue/compute.rs` unchanged, no live pool-ID consumer and no RunCompute writer;
 - runtime: module not installed/not executed; no RunCompute.
+
+Patch 0059 validation performed on 2026-08-30:
+
+- base: `899f1b6b8ba7bbf81b33c7aa75dcbdd56a1c9ed4`;
+- expected commit tree: `604d859c910c383246f3316c9de1d5fe480388eb`;
+- patch SHA-256: `40386ce8796e4e57927f7ad4df6a105b2220866491285de2a19baacc44ba89dc`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- Asahi module build: PASS at the established 24-individual-warning bring-up baseline;
+- module SHA-256: `27cca5cf07d8f2737cddb9160a3f87b1e43888517d02ad68b3b9d349ddbda302`;
+- source audit: channel `+0x1e8 <- command queue +0x44c`; shared-pool class is 0 only for types 0/5 and 1 otherwise; normal exact types are 3 initially then 1/2;
+- reachability: dormant assembly helper remains zero-caller, `queue/compute.rs` unchanged and no live pool-ID consumer/RunCompute writer is added;
+- runtime: module not installed/not executed; no RunCompute.

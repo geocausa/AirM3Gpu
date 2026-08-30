@@ -1,0 +1,96 @@
+From b06c8650159bf700c3d4766542da8c976ef19048 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 10:22:48 +0100
+Subject: [PATCH] drm: asahi: fix normal J615 Compute pool class
+
+---
+ drivers/gpu/drm/asahi/buffer.rs    | 8 ++++++++
+ drivers/gpu/drm/asahi/gpu.rs       | 6 ++----
+ drivers/gpu/drm/asahi/queue/mod.rs | 4 +---
+ 3 files changed, 11 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/buffer.rs b/drivers/gpu/drm/asahi/buffer.rs
+index fae8f65d3657..1537d3d23601 100644
+--- a/drivers/gpu/drm/asahi/buffer.rs
++++ b/drivers/gpu/drm/asahi/buffer.rs
+@@ -318,6 +318,14 @@ pub(crate) struct G15DeviceUmaOwnerState {
+     next_pool_id: u64,
+ }
+ 
++/// Exact normal-J615 shared Compute UMAPool priority class.
++///
++/// AGXChannel::init() derives the shared-pool class as 0 only for context
++/// priority types 0 or 5 and as 1 otherwise. Exact IOGPU command-queue state
++/// starts at type 3 and the ordinary runtime branches select types 1 or 2, so
++/// the normal CL/Compute path always selects class 1.
++pub(crate) const G15_J615_NORMAL_COMPUTE_POOL_PRIORITY_CLASS: u32 = 1;
++
+ #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+ #[allow(dead_code)]
+ pub(crate) struct G15UmaPoolIdentity(u64);
+diff --git a/drivers/gpu/drm/asahi/gpu.rs b/drivers/gpu/drm/asahi/gpu.rs
+index 7dd9a5c49cca..4d569d552956 100644
+--- a/drivers/gpu/drm/asahi/gpu.rs
++++ b/drivers/gpu/drm/asahi/gpu.rs
+@@ -2299,7 +2299,6 @@ pub(crate) fn core_masks_packed(&self) -> &[u32] {
+     pub(crate) fn g15_select_or_create_compute_pool(
+         &self,
+         container: &Arc<Mutex<buffer::G15ClientUmaPoolContainerState>>,
+-        priority_class: u32,
+         range5_cached: &Arc<Mutex<alloc::DefaultAllocator>>,
+         bank1: mmu::G15SharedBank1,
+         mapping_notifier: Arc<Mutex<mmu::G15MappingNotifier>>,
+@@ -2308,7 +2307,6 @@ pub(crate) fn g15_select_or_create_compute_pool(
+         {
+             let _ = (
+                 container,
+-                priority_class,
+                 range5_cached,
+                 bank1,
+                 mapping_notifier,
+@@ -2320,7 +2318,7 @@ pub(crate) fn g15_select_or_create_compute_pool(
+         {
+             buffer::G15ClientUmaPoolContainerState::select_or_create_compute_channel(
+                 container,
+-                priority_class,
++                buffer::G15_J615_NORMAL_COMPUTE_POOL_PRIORITY_CLASS,
+                 || {
+                     // Exact host ordering holds the shared-container lock while
+                     // replacement construction runs. The wider UMA namespace
+@@ -2331,7 +2329,7 @@ pub(crate) fn g15_select_or_create_compute_pool(
+                     buffer::G15SharedComputeUmaPoolOwner::new_j615_unprepared(
+                         &self.dev,
+                         &mut device_uma,
+-                        priority_class,
++                        buffer::G15_J615_NORMAL_COMPUTE_POOL_PRIORITY_CLASS,
+                         &mut range5,
+                         bank1,
+                         Some(mapping_notifier),
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index 21e43a2ee97b..2c0167628b8b 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -1727,11 +1727,10 @@ impl QueueInner::ver {
+     fn g15_assemble_unpublished_compute_channel(
+         &self,
+         gpu: &gpu::GpuManager::ver,
+-        priority_class: u32,
+     ) -> Result<G15UnpublishedComputeChannel::ver> {
+         #[ver(G != G15)]
+         {
+-            let _ = (gpu, priority_class);
++            let _ = gpu;
+             return Err(EINVAL);
+         }
+ 
+@@ -1752,7 +1751,6 @@ fn g15_assemble_unpublished_compute_channel(
+             // next device-global identity before FList construction, as Apple.
+             let pool = gpu.g15_select_or_create_compute_pool(
+                 container,
+-                priority_class,
+                 range5_cached,
+                 bank1.clone(),
+                 mapping_notifier.clone(),
+-- 
+2.53.0
+
