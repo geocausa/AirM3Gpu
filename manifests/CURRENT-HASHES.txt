@@ -553,3 +553,9 @@ E131 patch 0048 sha256  6b3d93b5a39003e650fb6ddfe4ce8994358d3e2d9da0e1897d7cf039
 E131 private result sha256  4c88fc22c93b9b39c7451f3b53dcc9679e26a7e9177d9b0b6e84bbf35ad7b171
 E131 public RunCompute-source note sha256  be74351706891bc389ae8e6460b34c6dae4c322aba1408b74c9ad6e98c1bdfcb
 E131 closure  command-local stock-empty SKU inputs derive from typed RunCompute +0x04/+0x10/+0x7f0/+0x7f8/+0x808/+0x80c/+0x828/+0x830; target scalar finalize-input bag removed; no live Queue/RunCompute writer
+
+private evidence checkpoint E132  50e2f3c8f82a44d8cd835f4477aceb79378436b7
+E132 private result sha256  feb8167a46725650aa63613573ee33326ab3a7e9b6b60690746420584d9c0aea
+E132 exact AGXMetalG15G_C0 sha256  d262a98d865cde1d9af8df0ed318bd5109efcfbc940968d8ef9fa8402565ae88
+E132 public JobParameters2 note sha256  1d903b2e860c75fcf072614e8c97312ce1c8535cad0064f1858cb035fb7a3601
+E132 closure  exact 23J220 userspace producer proves stock-empty RunCompute +0x774/+0x77c/+0x784/+0x78c/+0x7a4/+0x7ac/+0x7b4/+0x7bc and G15JobMeta.engine_state +0x7e4 are zero; Linux E131 unchanged; pre-micro +0x740/+0x748/+0x750 remains AGXCommandQueue-sourced; no install/RunCompute

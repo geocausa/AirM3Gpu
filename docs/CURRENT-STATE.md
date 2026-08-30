@@ -1,6 +1,6 @@
 # Current G15 Bring-up State
 
-Research state: 2026-08-28
+Research state: 2026-08-30
 
 Last live checkpoint: 2026-08-27
 
@@ -303,6 +303,8 @@ E129 closes the remaining GART HW-soft-fault boolean at the same dormant boundar
 E130 closes `firmware_state_fwva` ownership at that dormant boundary. Exact `AGXFirmware::allocFirmwareData()` descriptor index 3 pairs host `+0x228` with GPU/FW-visible `+0x268`, size `0xe10`; its position in the first size sequence `0x1860, 0xc10, 0x1248, 0xe10, 0x4360` identifies it as the Compute statistics object between Fragment stats and HwDataA. `AGXFirmware::initFirmwareData()` zeroes exactly all `0xe10` bytes, `AGXArmFirmware::initFirmwareSharedData()` converts `+0x268` into shared-data `+0x244`, and the G15 CL SKU encoder consumes the same source. Linux already owns the exact-size/default-zeroed `G15StatsComp` under manager-global RuntimePointers. Commit `635fca8e84b3` removes the arbitrary raw finalize address and carries a typed `GpuWeakPointer<G15StatsComp>` only in the dormant owner graph; the generic serializer remains parameterized and no live Queue or RunCompute producer changes.
 
 E131 closes the remaining command-local scalar sources at the same dormant boundary. Exact 23J220 SKU encoding reads the command counter from RunCompute `+0x04`, managed context ID from `+0x10`, JobMeta FW stamp/value from `+0x7f0/+0x7f8`, UUID from `+0x808`, and user-timestamp presence from `+0x828/+0x830`; E114 independently proves descriptor `+0x48c`, used by the setup packet, is copied into RunCompute `+0x80c` as `G15JobMeta.event_seq`. Linux commit `251a60a085f3` therefore deletes `G15StockEmptySkuFinalizeInputs` and derives these values from the typed already-initialized `RunComputeG15V14_7` image. G15 `+0x10` is renamed to `g15_context_id_10` without changing its `VmBind::slot()` producer or layout, and the generic serializer's user-timestamp contract is narrowed to the exact presence predicate. The serializer remains parameterized; no live Queue/RunCompute writer is added.
+
+E132 recovers the exact macOS 14.8 / 23J220 `AGXMetalG15G_C0` userspace producer from the matching OTA system Cryptex and closes the stock-empty userspace-produced command body without a Linux delta. Exact `beginComputePass()` zeroes the complete 0x1d0 raw Compute payload; the no-dispatch begin/end path never rewrites raw `+0x008/+0x010/+0x018/+0x020/+0x028/+0x030/+0x038/+0x040`, proving RunCompute `+0x774/+0x77c/+0x784/+0x78c/+0x7a4/+0x7ac/+0x7b4/+0x7bc` are all zero. Exact kernel repacking plus userspace constructor/empty-finalizer defaults also prove Compute `G15JobMeta.engine_state` at `+0x7e4` is zero. The same producer writes raw `+0x0a4=0x1c`, unlike the newer retained capture, directly validating the same-build guard. Linux E131 already has the exact zero values. The remaining active command-body gap is the pre-micro `+0x740/+0x748/+0x750` snapshot sourced from `AGXCommandQueue +0x20/+0x38`.
 
 See `research/g15/G15-23J220-COMPUTE-ABI.md`, `research/g15/G15-23J220-COMPUTE-REGISTERARRAY.md`, `research/g15/G15-EMPTY-COMPUTE-REGISTERARRAY.md`, `research/g15/G15-EMPTY-COMPUTE-CONTAINER.md`, and `research/g15/G15-23J220-COMPUTE-SKU-SOURCES.md`.
 
