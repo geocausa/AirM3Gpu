@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-PERSISTENT-MANAGER-BELOW-DRM.md` — E157 one-shot live proof of the current mapped global-resource manager through RTKit/q21-ready/q22-active with DRM registration deliberately blocked; no Queue/RunCompute.
 - `G15-LAZY-CL-CHANNEL-ENSURE.md` — E156 exact post-init publication/failure ordering plus zero-caller serialized WorkQueue-owned lazy channel ensure; no live construction or RunCompute.
 - `G15-CL-WORKQUEUE-CHANNEL-LIFETIME.md` — E155 exact lazy CL WorkQueue -> channel ownership/finalize/free order plus dormant Linux WorkQueue lifetime anchor; slot remains empty/no setter, no RunCompute.
 - `G15-CHANNEL-RUNTIME-SCALAR-PRODUCERS.md` — E154 exact owning-process PID source plus non-foreground priority/QoS tuple; final dormant scalar input bag removed, unpublished helper remains zero-caller.

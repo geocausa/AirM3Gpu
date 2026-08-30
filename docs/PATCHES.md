@@ -884,3 +884,19 @@ Patch 0068 validation performed on 2026-08-30:
 - exact publication audit: new CL WorkQueue is externally published only after channel init/priority success; failure releases channel then WorkQueue;
 - Linux lock audit: WorkQueue-owned channel slot has no reverse lock path; local RAII construction leaves slot empty on failure;
 - reachability: ensure helper zero-caller; `queue/compute.rs`, `fw/compute.rs`, `workqueue.rs`, and E075 gate unchanged; no install/RunCompute.
+
+
+Patch 0069 validation performed on 2026-08-30:
+
+- base: `4463837493947d05a8a1e44b9d11329f96467856`;
+- expected commit tree: `5e41c1b93109d8c828f72d6763e63fa1666a0741`;
+- patch SHA-256: `3c1dc27434199742248f44db8ff011e16f042e91ae4b4b4306b994485db7291c`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- module build: PASS at the established 24-warning baseline, SHA-256 `97421a8dbacc0ea95d7ddd890dac79e4393e24560aea76b25589a00b7ef250b7`;
+- source reachability: only `driver.rs` changes; G15 DRM registration is absent, E156 ensure remains zero-caller, and `queue/compute.rs` / `fw/compute.rs` are unchanged;
+- one-shot live kernel: `7.1.6-gc6fa9b794ba9`; E075 temporary range-8 preflight and teardown PASS, persistent pre-RTKit manager PASS, RTKit/`MSG_INIT` reached q21-ready and E152 q22-active;
+- exact live marker: `T8122 G15 E157 persistent manager + RTKit + q21-ready/q22-active PASS; DRM registration blocked`;
+- idle observation: more than two minutes with no panic/Oops/SError/DART/IOMMU/GPU fault, firmware/RTKit crash, MTR alarm, watchdog or BUG marker;
+- containment: `/dev/dri/renderD128` absent, no File/VM/Queue/QueueInfo/channel/submission path reachable, no RunCompute/custom GPU command;
+- recovery: returned to golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`; candidate module restored to `a516262736853a707acf16f7639d9f6a7da40d671aa61e5713bcc00cd2c7c421` and initrd restored to `98ac9330624aa66ceb237040abc0be8e9abfa5f7c891c7909a768661c3cf0cb0`.

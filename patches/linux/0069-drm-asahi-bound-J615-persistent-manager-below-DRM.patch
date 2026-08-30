@@ -1,0 +1,74 @@
+From 1ec97a9499cefbcd5ade19ea7bc61202478bff75 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 15:48:04 +0100
+Subject: [PATCH] drm: asahi: bound J615 persistent manager below DRM
+
+---
+ drivers/gpu/drm/asahi/driver.rs | 37 ++++++++++++++-------------------
+ 1 file changed, 16 insertions(+), 21 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/driver.rs b/drivers/gpu/drm/asahi/driver.rs
+index 32d89a0b28c8..5dfc460f2ec5 100644
+--- a/drivers/gpu/drm/asahi/driver.rs
++++ b/drivers/gpu/drm/asahi/driver.rs
+@@ -229,29 +229,19 @@ fn probe(
+             regs::Resources::stop_cpu(pdev)?;
+             dev_info!(pdev.as_ref(), "T8122 G15 ASC stopped after UAT preflight\n");
+
+-            // E075 diagnostic-only gate: the range-8 leaf preflight is bounded
+-            // and must not continue into InitData/RTKit/DRM in this build.
++            // E157 retires only the obsolete E075 early-return gate. E075 already
++            // live-proved clean reversible range-7/range-8 parent/leaf teardown;
++            // E031-E033 separately live-proved the persistent manager/RTKit boot
++            // boundary. Re-enter that persistent path now to exercise the newer
++            // E147-E152 mapped global resource graph, but keep DRM registration
++            // below a new later gate so File/VM/Queue creation stays unreachable.
+             dev_info!(
+                 pdev.as_ref(),
+-                "T8122 G15 E075 range-8 leaf preflight complete; persistent runtime blocked\n"
+-            );
+-            if cfg.gpu_gen == hw::GpuGen::G15 {
+-                return Err(ENODEV);
+-            }
+-
+-            // E030: E029 closed the shared bank-1 ownership/backend boundary.
+-            // Continue through the already-proven persistent manager/RTKit/DRM
+-            // path so the existing zero-payload submit gate can retry only the
+-            // E024 empty QueueInfo publication. No command work is enabled.
+-            dev_info!(
+-                pdev.as_ref(),
+-                "T8122 G15 E030 shared bank-1 backend PASS; continuing to bounded persistent runtime\n"
++                "T8122 G15 E075 range-8 preflight PASS; continuing to E157 persistent-manager checkpoint\n"
+             );
+
+-            // The next checkpoint is deliberately CPU/DT-only. Parse the
+-            // complete J615 power configuration after the ASC is stopped,
+-            // validate every machine-specific input we recovered, then return
+-            // ENODEV. GpuManager/initdata/RTKit/MSG_INIT remain unreachable.
++            // Revalidate the complete exact J615 power configuration before the
++            // persistent manager takes ownership of the restarted ASC/UAT state.
+             let pwr = match hw::PwrConfig::load(&drm, cfg) {
+                 Ok(pwr) => pwr,
+                 Err(e) => {
+@@ -375,11 +365,16 @@ fn probe(
+             }
+
+             (*drm).gpu.init()?;
+-            drm::driver::Registration::new_foreign_owned(&drm, pdev.as_ref(), 0)?;
+
++            // E157 bounded persistent checkpoint. Successful init means MSG_INIT
++            // was consumed, q21 firmware_ready reached 1, and E152's q22 mapping
++            // notifier activated from an empty ring. Keep the manager/RTKit alive
++            // by binding the platform driver, but do not register DRM yet: no
++            // File::open(), VM, Queue, channel ensure, QueueInfo publication, or
++            // command path can be reached in this checkpoint.
+             dev_info!(
+                 pdev.as_ref(),
+-                "T8122 G15 persistent RTKit + DRM registration PASS; unbound range-0 VM mapping + passive queue lifecycle enabled, special bindings/submissions blocked\n"
++                "T8122 G15 E157 persistent manager + RTKit + q21-ready/q22-active PASS; DRM registration blocked\n"
+             );
+             return Ok(Self { drm });
+         }
+-- 
+2.53.0
+

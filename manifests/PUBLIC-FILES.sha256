@@ -1,10 +1,10 @@
 a94f4741e619a496034a1cfd0c0149d93cb3f74c33e024d5d7c2023f4494c605  ./.gitignore
-d433acb958659d05b19306d0a74aacc97336d6c9a4828f4448b72d82a6b42224  ./README.md
-88e7b00b0655ee21766ac4e2bf55483963420ad5e33ea19a55a9037a45fa3f0c  ./docs/CURRENT-STATE.md
-dcef54e8b3ecd21ec630c97772d86b24b7073dda29f8d9882a40fe61e7a7c976  ./docs/PATCHES.md
+d9750d8b13e468f212b12cbcdf1dd0f6102317169e1e2d5fe3447d14dd59af86  ./README.md
+54f88b1731b7a0c296c53089a09b159141b9e0de80d87fbb92b635633a015b49  ./docs/CURRENT-STATE.md
+ea99f95115f246ed26ac5378b546358d403372eefbd0b83dbbe4b2710416873c  ./docs/PATCHES.md
 d61bf1973a6d6b3e840ef7eff94cb497eb57118a711f6891e2b0ee98ca6db461  ./docs/RECOVERY.md
 072edbe867996f268553f3da518769548159145691000f5f6dc7f888dd84cdf7  ./docs/WORKFLOW.md
-7e71c81b39446fc02fe1c06fad27c93a4f3854e0a3817390752759462ef440bc  ./manifests/CURRENT-HASHES.txt
+f8cfaf7020345d218145a2e83832cc6aece19b67a294a34e1908313310aa1951  ./manifests/CURRENT-HASHES.txt
 4f16537a51cf9d1ad18841ec138b5a6090407739af7b69898c933dcafdca8fea  ./patches/linux/0001-drm-asahi-checkpoint-T8122-G15-bring-up-through-RTKi.patch
 258eb0243e41b10800df1daf5671c8003f358efec31caaac405e74fc8c2cc00a  ./patches/linux/0002-drm-asahi-map-G15-RTKit-preallocated-crashlog-memory.patch
 7a0b6374402bc2fb4c75b01ae93645470385f1b671530ea9996b118915c9f961  ./patches/linux/0003-drm-asahi-stage-G15-RTKit-app-endpoint-start.patch
@@ -73,6 +73,7 @@ d29abdff0f53a641bbd19d111d3c52dbee611421931ee53ec3de97ad27b78985  ./patches/linu
 a8d9b4953646e7982d241b928cddc687c29bf548946aa9204ec7af7ee8fe40d1  ./patches/linux/0066-drm-asahi-bridge-J615-channel-runtime-scalars.patch
 adf6581faf35dd0cf82794b110485fadb515b436d0d2e50e96bfd74ae5c39823  ./patches/linux/0067-drm-asahi-anchor-J615-CL-channel-to-WorkQueue-lifetime.patch
 14b488f59f95efe2bfc66561d017db7c75f254d7774af108d8836cf3086f3e08  ./patches/linux/0068-drm-asahi-stage-J615-lazy-CL-channel-ensure.patch
+3c1dc27434199742248f44db8ff011e16f042e91ae4b4b4306b994485db7291c  ./patches/linux/0069-drm-asahi-bound-J615-persistent-manager-below-DRM.patch
 09f94cf355cb34847caf59bf33f46231748958c10fa37dcde7d35b1a2307ac2d  ./patches/mesa/0001-hk-pass-initial-load-clear-state-to-kernel.patch
 07821063a351d0306dc5cc0689979cf10c537af5a417dc5d97e390ee456ec798  ./patches/mesa/0002-hk-pass-depth-stencil-level-offsets-to-kernel.patch
 bc26f90769b09e298649b0fc8f5f6b0373c7e50c03f0b5926f5d285f562db569  ./patches/mesa/0003-hk-build-G15-EOT-state-loader-for-proven-path.patch
@@ -137,6 +138,7 @@ fc091fd38ea19c22c2ef00c0530d861652d86dc6445ae643b555b87e977d98f9  ./research/g15
 0d128f2c58f127677e17a5e74fc33aa01f4377db29a942633acf65d4ebd97818  ./research/g15/G15-MAPPED-GLOBAL-FIRMWARE-RESOURCE-BACKINGS.md
 5a41b4b14c17b0a30b7a65f39e31968bb0902e2c25ef0ba2ad133711bc0e5ed9  ./research/g15/G15-MAPPING-NOTIFY.md
 3cf8043b0845e3c72ec7c60414c9563de3d93ae67986a2ba4a8560f526446706  ./research/g15/G15-NORMAL-COMPUTE-POOL-CLASS.md
+b74f99516ff012a4b8292e9be4e24666ddc606fe4736a380b0923f3a86fe4248  ./research/g15/G15-PERSISTENT-MANAGER-BELOW-DRM.md
 f1b98c16082d7185265dbc0fd15d50e6e318ecd9c255af05cf4114090b28c43e  ./research/g15/G15-PIPE-CALLBACK-GATE.md
 b0a133eb6498b79e25464ad1d280a80cb47e6dfddf8095e32237f7687e9a954d  ./research/g15/G15-PIPE-SUBMISSION-BOUNDARY.md
 21f59d82c417dcde7f775ef79101ab3046d17f50329546b953e9aac4b27db18c  ./research/g15/G15-PRE-MSG-INIT-AUDIT.md
@@ -180,5 +182,5 @@ cbc9603a831808031d5f528eadd7f3302879723f06ab798243258ba9a1eace95  ./research/g15
 6c630e1e0ad344f8cdf6f2c8c7d1d5bc091de06f478aaf42971c8acc34cf1e78  ./research/g15/G15-WEAK-UMAPOOL-PROMOTION.md
 d531fda1be727de5e510ea5718ef68d3b0172d3ec4f2d3f5b039bb6c7f42e06e  ./research/g15/G15-WRAPPER-LAYOUT.md
 1e42ac959bea3032d870499ed56255d3212aaf1f794b184fc08bbb5d2504dbf4  ./research/g15/J615-POWER-CONFIG.md
-8d07130e656be6cdab7317b5548044513531662788c2608f88203915eecb5003  ./research/g15/README.md
+cad40cc29fdad34c33747af5f22cb30f0ff0a26c0e77e0ceaf8565e48504fc30  ./research/g15/README.md
 d42da0407a1a8725d538c5438cb402860139b661c347613781a5b0b4226731e6  ./research/g15/build-g15g-c0-dpe-ppt.py

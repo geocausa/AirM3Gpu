@@ -790,3 +790,14 @@ E156 exact publication-order sha256  5cb4a8f2c52caafd39bad6c6f1c18f39840e77192b2
 E156 lock-order audit sha256  a41d13de0b2e8f3c9d784941dac9f0d332d052d75b7ba259edf600d21c69bb46
 E156 public lazy-ensure note sha256  e8fd9724165d0f4ecd5afe3c2add7911ec8d814f1809092e7625b6b8b743763b
 E156 closure  serialized local-construct then publish channel slot; helper remains zero-caller; no install/RunCompute
+
+private evidence checkpoint E157  bdbb1971c1065e0a4fbd2bd64b60875e973470e6
+E157 Linux checkpoint  1ec97a9499cefbcd5ade19ea7bc61202478bff75
+E157 Linux tree  5e41c1b93109d8c828f72d6763e63fa1666a0741
+E157 module sha256  97421a8dbacc0ea95d7ddd890dac79e4393e24560aea76b25589a00b7ef250b7
+E157 patch 0069 sha256  3c1dc27434199742248f44db8ff011e16f042e91ae4b4b4306b994485db7291c
+E157 private result sha256  04e9038f7999e4d03dcf9e4a6b75d53e9e1f62ef0b828b1374fe0ae3de3353da
+E157 private live proof sha256  2d665ea7a04ad70d858799a72462b824342eecaefd0d4f30fd30345b3edbb3b8
+E157 private source audit sha256  6d491264bcd417443bcc700a3a5ea2aef05eacd1d8ef379f78125d8ccfd7e3e7
+E157 public persistent-manager note sha256  b74f99516ff012a4b8292e9be4e24666ddc606fe4736a380b0923f3a86fe4248
+E157 closure  current E147-E152 mapped global resource graph live-proven through RTKit q21-ready/q22-active and >2 min fault-free idle; DRM deliberately unregistered, E156 ensure zero-caller, no RunCompute
