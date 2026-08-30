@@ -594,3 +594,9 @@ E136 patch 0051 sha256  19cdffd3af93a7d0043572e23f9edac69dd02aca8228e2b476a4b802
 E136 private result sha256  385950bed45d7a70189c53502e1c77d5830a7a4c5e1d422d90bcdc2d6ee9d3cc
 E136 public shared-Compute UMA owner-split note sha256  3bb6ad29e425811151ee1b07f65380d451bee90d4c74b7ea56feaafc43346121
 E136 closure  definition-only ownership split puts the 0x100 UMAPool HardwareBuffer-ID namespace plus pool-ID sequence behind one device-global state, moves FList into a reusable priority-class shared Compute pool owner, and removes FList construction from dormant channel/command ownership; no GpuManager/Queue placement, submit_compute change, install or RunCompute
+
+private evidence checkpoint E137  340353045505b09e7fc4fe09c53fe458afe6a5c1
+E137 private result sha256  41554eb8321e75ba8522c4662aca9fe8abf282159a286c4a1a012d6fd413c09d
+E137 private lifecycle proof sha256  a625440ccdb72b57be2037057ad44d08f02fdc76b55fbafbbb4f242116e97afe
+E137 public shared-UMAPool lifecycle note sha256  e3bf35db681b56bae7b849f939250374018fcbe1dff3d4b259a74a2d286ed7d0
+E137 closure  exact shared UMAPool container slots are weak references promoted by nonzero-only atomic try-retain; direct channel refs are separate from pool +0x20 active-epoch retain; last-reference finalize pointer-checks/clears the weak slot and cleanup releases pool-owned container reference; Linux E136 unchanged, no install/RunCompute
