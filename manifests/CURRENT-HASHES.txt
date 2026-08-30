@@ -610,3 +610,9 @@ E138 private result sha256  1a86e03571d4447fda7b654ec27dfb0ab635d8f6754b2c071720
 E138 private placement proof sha256  5a20490e5292e02d641aa0e421880a6d5926a2e5862fa544ced8dec36fc1d096
 E138 public device-global UMA host-state note sha256  ac85ddbce26ebf53653bdca6fedd071a844001d05db3d7f52638f25568c84258
 E138 closure  exact command-queue/workqueue paths create no pool eagerly; J615 newTA/new3D/newCL factories at +0xb38/+0xb40/+0xb48 are reached lazily; one zero-seeded G15 UMA host state is placed in GpuManager without UMAPool construction, pool-ID consumption, Queue exposure, install or RunCompute
+
+private evidence checkpoint E139  b73fba381b02ff8c6b77d36df1052d640f859616
+E139 private result sha256  7f40703f316e2c9221f27944b23714829ea9df966a89ad941d37570c23e9f706
+E139 private address-space proof sha256  40ca4179a816deaf4497d6f83705f20bcf5898ad301d309d4a357b026c006112
+E139 public FList client-address-space note sha256  f4eebf11c5d99383572e6b198d2a4ddcbf124563a068df429a63ace4829a188c
+E139 closure  AGXShared +0x1b8 owns the weak shared-pool container; AGXShared +0x50/+0x58 carry client task/IOGPUTask; both range-5 FList lists map through that client IOGPUTask; Linux per-file::Vm range-5 allocator is correct; no Linux delta/install/RunCompute
