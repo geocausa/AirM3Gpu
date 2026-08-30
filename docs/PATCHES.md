@@ -915,3 +915,18 @@ Patch 0070 validation performed on 2026-08-30:
 - idle observation: more than two minutes with no panic/Oops/SError/DART/IOMMU/GPU fault, firmware/RTKit crash, MTR alarm, or GPU command execution;
 - recovery: returned to golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`; sacrificial module restored to `a516262736853a707acf16f7639d9f6a7da40d671aa61e5713bcc00cd2c7c421` and initrd to `98ac9330624aa66ceb237040abc0be8e9abfa5f7c891c7909a768661c3cf0cb0`;
 - no RunCompute/custom GPU command.
+
+Patch 0071 validation performed on 2026-08-30:
+
+- base: `f73850e8fe51096c74d2b98e419eb06d491bd6a0`;
+- expected commit tree: `2662423cdaff567bedf3602e6b298b7e76723cc8`;
+- patch SHA-256: `4bf2fdce0af85ce447f7d8d82a060718a865984099605cc599d2b5dc490ddde7`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- clean module build: PASS at the established 24-warning baseline, SHA-256 `ff442de62b218d17a8d2fa845b1b204499c5e4005eaf12308fdf37ce2989ae33`;
+- discovery containment: G15 File open + GET_PARAMS/GET_TIME allowed; VM/GEM/map/Queue/destroy/submit ioctls return ENODEV before first mutation; E033 signed-submit branch unreachable; E156 lazy-channel ensure remains definition-only;
+- one-shot live marker: `T8122 G15 E159 persistent manager + DRM discovery PASS; client mutations blocked`;
+- live probe: render open PASS, GET_PARAMS PASS (`0x8122`, generation 15), GET_TIME PASS, zeroed VM_CREATE => exact ENODEV (19) before validation/allocation;
+- repeated probe after >2 minutes PASS; no post-bootstrap q22 mapping/pressure publication and no panic/Oops/SError/DART/IOMMU/GPU fault, firmware/RTKit crash, or MTR alarm;
+- recovery: returned to golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`; module restored to `a516262736853a707acf16f7639d9f6a7da40d671aa61e5713bcc00cd2c7c421`, initrd to `98ac9330624aa66ceb237040abc0be8e9abfa5f7c891c7909a768661c3cf0cb0`;
+- no RunCompute/custom GPU command.

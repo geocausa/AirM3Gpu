@@ -813,3 +813,14 @@ E158 private source audit sha256  0782b202b3ad229f9c8c143fd1edd7fd45b15204483214
 E158 restored-artifact proof sha256  6ddd0807a659a3f0b37d03ff59e6846fc728f7f063003352a97801a7ca28b4de
 E158 public DRM-open-gate note sha256  510f2ee80623cb0a4a63df9c717586cda636416a95f3f4007787126a3a1dd40f
 E158 closure  current persistent graph plus DRM registration live-proven with render node present; hard G15 File-open ENODEV contains all client/VM/Queue/channel/submission state; no RunCompute
+
+private evidence checkpoint E159  7b8b3cc7f7c90402069fb667fcbe5e8f206ff658
+E159 Linux checkpoint  d2fd43167928898a8bca816454fe7e4a3e53c93f
+E159 Linux tree  2662423cdaff567bedf3602e6b298b7e76723cc8
+E159 module sha256  ff442de62b218d17a8d2fa845b1b204499c5e4005eaf12308fdf37ce2989ae33
+E159 patch 0071 sha256  4bf2fdce0af85ce447f7d8d82a060718a865984099605cc599d2b5dc490ddde7
+E159 private result sha256  aa724206056c34f296468eb7b1fb291b550ee10ee902d39a984719984b2af9af
+E159 private live proof sha256  204ceff930cdd3952b3502eb1bc31a4b56349393fab6ec07e8f322a96e8532f3
+E159 private source audit sha256  39f7cad0ca61eeb07cc265e56fffe09bcc94e777c8224e2e4c0c0d057360fae4
+E159 public discovery-file note sha256  a4f90e8a2519e26a798f3cec8162cc6cd7d643e1f6ac757c75f8aa424f5227bd
+E159 closure  persistent bootstrap + DRM + File discovery live-proven; only GET_PARAMS/GET_TIME allowed, all client mutation pre-gated; no q22 runtime publication or RunCompute

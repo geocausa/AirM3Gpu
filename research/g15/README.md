@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-DISCOVERY-FILE-LIFETIME.md` — E159 live proof of render-node/File discovery plus GET_PARAMS/GET_TIME while every VM/GEM/Queue/submission mutation remains pre-gated; no q22 runtime publication or RunCompute.
 - `G15-DRM-REGISTRATION-OPEN-GATE.md` — E158 one-shot live proof of DRM registration with render node present while a hard G15 File-open ENODEV gate prevents every client/VM/Queue/channel/submission path; no RunCompute.
 - `G15-PERSISTENT-MANAGER-BELOW-DRM.md` — E157 one-shot live proof of the current mapped global-resource manager through RTKit/q21-ready/q22-active with DRM registration deliberately blocked; no Queue/RunCompute.
 - `G15-LAZY-CL-CHANNEL-ENSURE.md` — E156 exact post-init publication/failure ordering plus zero-caller serialized WorkQueue-owned lazy channel ensure; no live construction or RunCompute.
