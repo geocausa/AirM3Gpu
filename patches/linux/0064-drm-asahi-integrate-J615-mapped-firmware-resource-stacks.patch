@@ -1,0 +1,102 @@
+From d9f5cf4cddeb2a109cc9c074fff080102d5d89dd Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 13:21:28 +0100
+Subject: [PATCH] drm: asahi: integrate J615 mapped firmware resource stacks
+
+---
+ drivers/gpu/drm/asahi/buffer.rs | 21 +++++++++++----------
+ drivers/gpu/drm/asahi/gpu.rs    | 20 ++++++++++++++++----
+ 2 files changed, 27 insertions(+), 14 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/buffer.rs b/drivers/gpu/drm/asahi/buffer.rs
+index 4a93b3f91bb1..93cbaa2ee7b0 100644
+--- a/drivers/gpu/drm/asahi/buffer.rs
++++ b/drivers/gpu/drm/asahi/buffer.rs
+@@ -821,16 +821,17 @@ pub(crate) struct G15FirmwareChannelResourceLeases {
+ impl Drop for G15FirmwareResourceLease {
+     fn drop(&mut self) {
+         // A lease can only be constructed by a successful selection. Failure
+-        // here therefore indicates an internal bookkeeping invariant violation;
+-        // E149 still has no GPU-backing consumer, so keep Drop infallible while
+-        // retaining the error as a fail-closed no-op rather than panicking.
++        // here therefore indicates an internal bookkeeping invariant violation.
++        // Keep Drop infallible; E152 may own a mapped backing, but failed release
++        // must not fabricate a free index or tear down an address still leased.
+         let _ = self.manager.0.lock().release(self.index);
+     }
+ }
+ 
+-/// Accelerator/device-global host placement of the five exact 23J220 firmware
+-/// resource stacks recovered by E147. This is bookkeeping only: no GPU backing,
+-/// QueueInfo address, WorkQueue, or RunCompute field is created here.
++/// Accelerator/device-global placement of the five exact 23J220 firmware
++/// resource stacks recovered by E147. E152 gives the manager graph their exact
++/// mapped eager backings, but still creates no QueueInfo/WorkQueue/RunCompute
++/// writer and exposes selected FWVAs only through explicit resource leases.
+ ///
+ /// Each manager is constructed at a distinct `new_mutex!` callsite so lockdep
+ /// keeps the five independent Apple stack locks as distinct classes.
+@@ -901,11 +902,11 @@ pub(crate) fn new_device_global() -> Result<Self> {
+         })
+     }
+ 
+-    /// Definition-only E150 mapped variant. It eagerly allocates one exact
++    /// E150/E152 mapped device-global variant. It eagerly allocates one exact
+     /// first backing for each stack, and later growth/release owns real mapped
+-    /// blocks behind E149's mode-0 slot transaction. No current GpuManager path
+-    /// calls this constructor; boot-time q22 publication ordering remains the
+-    /// next gate before replacing `new_device_global()`.
++    /// blocks behind E149's mode-0 slot transaction. E151 marks those eager
++    /// mappings bootstrap-silent; E152 installs this constructor in the G15
++    /// pre-RTKit manager graph and activates q22 only after firmware_ready.
+     pub(crate) fn new_mapped_device_global(
+         dev: &AsahiDevice,
+         bank1: mmu::G15SharedBank1,
+diff --git a/drivers/gpu/drm/asahi/gpu.rs b/drivers/gpu/drm/asahi/gpu.rs
+index a8143bd1bc90..1cf4cfdc1a09 100644
+--- a/drivers/gpu/drm/asahi/gpu.rs
++++ b/drivers/gpu/drm/asahi/gpu.rs
+@@ -254,9 +254,10 @@ pub(crate) struct GpuManager {
+     #[ver(G == G15)]
+     #[pin]
+     g15_uma: Mutex<buffer::G15DeviceUmaOwnerState>,
+-    /// E147/E148 exact accelerator-global firmware resource-stack bookkeeping.
+-    /// Queue/channel lifetimes may hold logical index leases, but no GPU backing
+-    /// or firmware-visible address is exposed by this host-only state.
++    /// E147-E152 exact accelerator-global firmware resource stacks. Their
++    /// initial mapped backings are created in the pre-RTKit manager graph with
++    /// E151 bootstrap-silent q22 policy; Queue/channel leases remain the only
++    /// path that can select an element/FWVA, and Compute still has no live writer.
+     #[ver(G == G15)]
+     g15_fw_resources: buffer::G15DeviceFirmwareResourceState,
+     #[pin]
+@@ -1923,7 +1924,11 @@ fn make_mgr(
+         #[ver(G == G15)]
+         let g15_uma = buffer::G15DeviceUmaOwnerState::new_device_global()?;
+         #[ver(G == G15)]
+-        let g15_fw_resources = buffer::G15DeviceFirmwareResourceState::new_device_global()?;
++        let g15_fw_resources = buffer::G15DeviceFirmwareResourceState::new_mapped_device_global(
++            dev,
++            uat.g15_shared_bank1().ok_or(EINVAL)?,
++            initdata.g15_mapping_notifier.arc(),
++        )?;
+ 
+         let x = UniqueArc::pin_init(
+             try_pin_init!(GpuManager::ver {
+@@ -2780,6 +2785,13 @@ fn init(&self) -> Result {
+                 }
+                 fsleep(Delta::from_millis(1));
+             }
++
++            // E152: q21 firmware_ready is the first Linux boundary at which the
++            // native q22 consumer is known operational. The exact Apple eager
++            // firmware-resource backings were already mapped before its gate was
++            // enabled, so activation does not replay them. From this point on,
++            // dynamic backing growth and teardown must publish q22 normally.
++            self.initdata.g15_mapping_notifier.lock().activate()?;
+         }
+ 
+         Ok(())
+-- 
+2.53.0
+

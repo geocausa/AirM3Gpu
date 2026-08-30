@@ -735,3 +735,13 @@ E151 private exact bootstrap-order proof sha256  aea9ffa0f99d261a09553ba994cca69
 E151 private exact-provenance sha256  72ce12e2817dc3cf89c9b6c26045724855c4eb5480740843731891fc6d1e8c5a
 E151 public q22-bootstrap-order note sha256  8b8f274bd838ee8dcb098c345fe37b24514179da7440d3916b3236e13a56f9d2
 E151 closure  exact constructor-zero q22 gate and eager pre-prepare resource mappings; dormant monotonic activation policy added, mapped owner/activation zero-caller, no runtime map/install/RunCompute
+
+private evidence checkpoint E152  077796a05c8d89278fe53c68f08a4499c167d55d
+E152 Linux checkpoint  d9f5cf4cddeb2a109cc9c074fff080102d5d89dd
+E152 Linux tree  55edccc4efa3efb01c4ed516f70b2ce282a11ec7
+E152 module sha256  f7978bab4daf1987d442b58b83407d40ddfbaebdd03eb7013fa492fc892402ab
+E152 patch 0064 sha256  760456b4cbdd39a532ac6dc4e5b52d4a01993a96bf1ccf5ed8c8b52efa1e7cff
+E152 private result sha256  72daf7efbde14cf715a8dc3b9f9a4b69dfd346542942097756551bee8c7628fa
+E152 private lifetime-order proof sha256  99967910f3646a162011e6c5cbeeb337b2e3b22eda30df39c2fd610c446c4317
+E152 public activation note sha256  9eb8cd24eac7c71ec9b3701779938dad894654b792e4b61bad43d4330345ab6e
+E152 closure  mapped global resource owners integrated at manager lifetime; q22 activates after firmware_ready before DRM; E075 gate/install/RunCompute remain closed

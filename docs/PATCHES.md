@@ -815,3 +815,18 @@ Patch 0063 validation performed on 2026-08-30:
 - notification-policy audit: existing mappings remain immediate; only the dormant mapped firmware-resource factory uses `AfterActivation`, retaining post-activation growth/unmap publication without replaying bootstrap maps;
 - reachability: notifier activation, `new_mapped_device_global()` and `mapped_fwva()` remain zero-caller; `gpu.rs` is unchanged and no new runtime mapping is created;
 - runtime: module not installed/not executed; no RunCompute.
+
+Patch 0064 validation performed on 2026-08-30:
+
+- base: `823fb161085e61788585bdfb57fdf0e8481d6aea`;
+- expected commit tree: `55edccc4efa3efb01c4ed516f70b2ce282a11ec7`;
+- patch SHA-256: `760456b4cbdd39a532ac6dc4e5b52d4a01993a96bf1ccf5ed8c8b52efa1e7cff`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- Asahi module build: PASS at the established 24-individual-warning bring-up baseline;
+- module SHA-256: `f7978bab4daf1987d442b58b83407d40ddfbaebdd03eb7013fa492fc892402ab`;
+- construction audit: InitData/q22 precedes `make_mgr()`, and all five mapped firmware-resource first backings use `AfterActivation`; existing G15 manager validation requires q22 ring-empty after graph construction;
+- activation audit: q22 activation occurs only after q21 `firmware_ready == 1`, and persistent DRM registration follows `gpu.init()`;
+- teardown audit: inactive bootstrap mappings unmap silently; active mappings publish q22 unmap and preserve PTE/VA on publication failure;
+- reachability: retained E075 G15 `ENODEV` probe gate unchanged; `queue/compute.rs`, `fw/compute.rs`, and `workqueue.rs` unchanged; selected FWVAs still have no RunCompute writer;
+- runtime: module not installed/not executed; no RunCompute.
