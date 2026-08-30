@@ -57,6 +57,6 @@ Linux already emits that value.
 
 The exact 23J220 producer unconditionally writes `raw +0x0a4 = 0x1c` during `beginComputePass()`, while the retained newer-userspace empty capture had `raw +0x0a4 = 0`. Raw defaults therefore do change across AGXMetal builds. E112 was correct to refuse promotion of the newer capture's nonzero `raw +0x008` into 23J220; the matching producer proves the target value is zero.
 
-## Remaining boundary
+## Remaining boundary at E132, corrected by E133
 
-E132 does not close the pre-micro command state at RunCompute `+0x740/+0x748/+0x750`. Exact 23J220 kernel reconstruction traces those to `AGXCommandQueue +0x20/+0x38`, not to the userspace raw Compute payload. Their queue initialization, mutation and snapshot lifetime are the next source boundary before a command-mutating integration can be considered.
+E132 originally left RunCompute `+0x740/+0x748/+0x750` open under an `AGXCommandQueue +0x20/+0x38` interpretation. E133 replays the exact caller/prologue register chain and corrects that attribution: the snapshot register is the parsed `AGXComputeHardwareKernelCommand` wrapper, with wrapper `+0x20 <- raw Compute +0xc0` and wrapper `+0x38 <- raw +0xd8`. The matching 23J220 userspace producer initializes both raw qwords to zero on the stock-empty path, so E133 closes all three command values without changing their bytes.

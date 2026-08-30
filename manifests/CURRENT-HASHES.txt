@@ -1,11 +1,11 @@
-AirM3Gpu research state: 2026-08-29
+AirM3Gpu research state: 2026-08-30
 Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  635fca8e84b3d6ba27f6f7dd760275c635cd3495
-linux current checkpoint    251a60a085f3bb9bfdcb04f1d6fd28f24dbf2cbb
-linux current tree          a54e4d9c9792d286e70607aa388f5c0dc61dbe9a
+linux previous public head  251a60a085f3bb9bfdcb04f1d6fd28f24dbf2cbb
+linux current checkpoint    f09bed89530e5fa482240c55653545a3bed3e292
+linux current tree          6e3a8f1ed53a8890f0f6c1437db18a5a541e221d
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -557,5 +557,15 @@ E131 closure  command-local stock-empty SKU inputs derive from typed RunCompute 
 private evidence checkpoint E132  50e2f3c8f82a44d8cd835f4477aceb79378436b7
 E132 private result sha256  feb8167a46725650aa63613573ee33326ab3a7e9b6b60690746420584d9c0aea
 E132 exact AGXMetalG15G_C0 sha256  d262a98d865cde1d9af8df0ed318bd5109efcfbc940968d8ef9fa8402565ae88
-E132 public JobParameters2 note sha256  1d903b2e860c75fcf072614e8c97312ce1c8535cad0064f1858cb035fb7a3601
-E132 closure  exact 23J220 userspace producer proves stock-empty RunCompute +0x774/+0x77c/+0x784/+0x78c/+0x7a4/+0x7ac/+0x7b4/+0x7bc and G15JobMeta.engine_state +0x7e4 are zero; Linux E131 unchanged; pre-micro +0x740/+0x748/+0x750 remains AGXCommandQueue-sourced; no install/RunCompute
+E132 public JobParameters2 note current sha256  df258ea0265b742092ad73197c9f27d431702bfa11ebae7b61eba9b55f027614
+E132 closure  exact 23J220 userspace producer proves stock-empty RunCompute +0x774/+0x77c/+0x784/+0x78c/+0x7a4/+0x7ac/+0x7b4/+0x7bc and G15JobMeta.engine_state +0x7e4 are zero; Linux E131 unchanged; E133 later corrects the then-open pre-micro source; no install/RunCompute
+
+
+private evidence checkpoint E133  93a3906f839b17b459a84f0a97d814eaa69463c1
+E133 Linux checkpoint  f09bed89530e5fa482240c55653545a3bed3e292
+E133 Linux tree  6e3a8f1ed53a8890f0f6c1437db18a5a541e221d
+E133 module sha256  b4f6dddbaa80a53ee853ac18d424f6e91cb13969849ff50912c26eba13a2444f
+E133 patch 0049 sha256  9ecc99bd4273bd2e894c88dc73cfb95d80909cdd98987d96fb58bf233406eb14
+E133 private result sha256  795d021f10c31ee2b2817fef5d990d2f3390f2883530b58e237b5387c1bca565
+E133 public pre-micro raw-source note sha256  1df99809d819af1f21bc98aea31f99fc43511505e4e2c05fbd569ca9fd89b405
+E133 closure  exact caller/prologue tracing corrects RunCompute +0x740/+0x748/+0x750 from queue-state aliases to raw Compute +0xc0/+0xd8; matching 23J220 stock-empty producer proves all three values zero; Linux bytes unchanged, semantic names/comments corrected; no install/RunCompute
