@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-UNBOUND-VM-MAPPING.md` — E162 live proof of private bank-0 `VM_BIND`/unbind before firmware context publication; Queue/q22/channel/submission still blocked.
 - `G15-HOST-GEM-LIFETIME.md` — E161 live proof of public/VM-private host GEM create + CPU mmap lifetime with GPU mapping, Queue and submission still gated; no UAT bind/q22 runtime publication.
 - `G15-PRIVATE-VM-LIFETIME.md` — E160 live proof of private J615 bank-0 VM create/destroy with no firmware-visible bind or q22 runtime publication; GEM/Queue/submission remain gated.
 - `G15-DISCOVERY-FILE-LIFETIME.md` — E159 live proof of render-node/File discovery plus GET_PARAMS/GET_TIME while every VM/GEM/Queue/submission mutation remains pre-gated; no q22 runtime publication or RunCompute.

@@ -960,3 +960,17 @@ Patch 0073 validation performed on 2026-08-30:
 - containment: no user bind/slot marker, no post-bootstrap q22 runtime mapping publication, strict fault scan empty;
 - recovery: golden kernel and exact sacrificial module/initrd restored;
 - no RunCompute/custom GPU command.
+
+Patch 0074 validation performed on 2026-08-30:
+
+- base: `34848b4519467fa079402e117f97fe653e32b833`;
+- expected commit tree: `817a3c7734d7efb288343363c86f62835fcf70e1`;
+- patch SHA-256: `c2dca9451e04d17f20e1d1f4e4d79c461ab2c6674e270b244fec8595c8d09020`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- module build: PASS at the established 24-warning baseline, SHA-256 `a68a03de7977c41f27f9feaf65016aafefe73e99d55a78026f9d1bc183be6a70`;
+- containment: ordinary private-root `VM_BIND`/unbind allowed; special binding, Queue/context publication and submit remain gated; `GpuManager::bind_vm()` stays Queue-side; shared bank-1/q22 path untouched;
+- live probe: VM/GEM create, 16 KiB RW bind at `0x4000`, Queue create exact `ENODEV`, unbind/close/destroy PASS; 16 repeated cycles plus later probes PASS;
+- runtime evidence: no firmware-visible bind/slot marker, no post-bootstrap q22 runtime publication, and strict GPU/firmware/kernel fault evidence empty;
+- recovery: golden kernel restored and sacrificial module/initrd returned byte-for-byte to baseline;
+- no RunCompute/custom GPU command.

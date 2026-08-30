@@ -1,0 +1,60 @@
+From 87bcd27a516d0fc8d6b81e32c034c1fc2b2795d5 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 17:28:35 +0100
+Subject: [PATCH] drm: asahi: enable J615 unbound VM mappings
+
+---
+ drivers/gpu/drm/asahi/driver.rs | 8 ++++----
+ drivers/gpu/drm/asahi/file.rs   | 7 +++----
+ 2 files changed, 7 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/driver.rs b/drivers/gpu/drm/asahi/driver.rs
+index 6c0e8b4de520..bfb9b9129fa4 100644
+--- a/drivers/gpu/drm/asahi/driver.rs
++++ b/drivers/gpu/drm/asahi/driver.rs
+@@ -366,13 +366,13 @@ fn probe(
+ 
+             (*drm).gpu.init()?;
+ 
+-            // E161 opens only host GEM create/mmap-offset on top of E160.
+-            // VM GPU mapping, special binding, Queue/QueueInfo, q22 runtime
+-            // publication, channel construction, and submission remain blocked.
++            // E162 opens only unbound private-root VM_BIND on top of E161.
++            // Special/shared bindings, Queue/QueueInfo context publication,
++            // channel construction, q22 runtime publication and submit stay blocked.
+             drm::driver::Registration::new_foreign_owned(&drm, pdev.as_ref(), 0)?;
+             dev_info!(
+                 pdev.as_ref(),
+-                "T8122 G15 E161 persistent manager + VM/GEM host lifecycle PASS; GPU mapping/Queue/submission blocked\n"
++                "T8122 G15 E162 persistent manager + unbound VM mapping PASS; Queue/context/submission blocked\n"
+             );
+             return Ok(Self { drm });
+         }
+diff --git a/drivers/gpu/drm/asahi/file.rs b/drivers/gpu/drm/asahi/file.rs
+index d9e573b08591..ff68c2178f15 100644
+--- a/drivers/gpu/drm/asahi/file.rs
++++ b/drivers/gpu/drm/asahi/file.rs
+@@ -261,9 +261,9 @@ fn as_raw(&self) -> *mut bindings::drm_file {
+ unsafe impl AnyBitPattern for uapi::drm_asahi_gem_bind_op {}
+ 
+ impl File {
+-    /// E161 G15 userspace gate beyond the host GEM-lifecycle boundary. File
+-    /// discovery, private VM lifecycle, GEM_CREATE and GEM_MMAP_OFFSET are
+-    /// allowed; GPU mapping/publication, Queue, and submission stay fail-closed.
++    /// E162 G15 userspace gate beyond the unbound VM-mapping boundary. Normal
++    /// VM_BIND may edit only the private bank-0 root; special shared mappings,
++    /// Queue/context publication, and submission remain fail-closed.
+     fn reject_g15_client_mutation(device: &AsahiDevice) -> Result<()> {
+         if device.gpu.get_cfg().gpu_gen == hw::GpuGen::G15 {
+             Err(ENODEV)
+@@ -622,7 +622,6 @@ pub(crate) fn vm_bind(
+         data: &uapi::drm_asahi_vm_bind,
+         file: &DrmFile,
+     ) -> Result<u32> {
+-        Self::reject_g15_client_mutation(device)?;
+         mod_dev_dbg!(
+             device,
+             "[File {} VM {}]: IOCTL: vm_bind\n",
+-- 
+2.53.0
+
