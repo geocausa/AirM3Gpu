@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-Q22-FIRMWARE-CURSOR-CONSUMPTION.md` — E164 live proof that the native q22 pressure path advances firmware `read_idx` from 0 to 194 after exact 0xc0 occupancy, while QueueInfo/context/channel/submission remain blocked.
 - `G15-PASSIVE-QUEUE-LIFETIME.md` — E163 live passive Queue create/destroy with q22-tracked resource map/unmap, while context/QueueInfo/channel/submission remain blocked; q22 read-cursor proof still open.
 - `G15-UNBOUND-VM-MAPPING.md` — E162 live proof of private bank-0 `VM_BIND`/unbind before firmware context publication; Queue/q22/channel/submission still blocked.
 - `G15-HOST-GEM-LIFETIME.md` — E161 live proof of public/VM-private host GEM create + CPU mmap lifetime with GPU mapping, Queue and submission still gated; no UAT bind/q22 runtime publication.

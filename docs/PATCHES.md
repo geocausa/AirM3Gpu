@@ -989,3 +989,18 @@ Patch 0075 validation performed on 2026-08-30:
 - q22 scope: bounded runtime map/unmap lifetime proven stable; firmware `read_idx` advancement deliberately not claimed yet;
 - recovery: golden kernel and exact sacrificial module/initrd restored;
 - no RunCompute/custom GPU command.
+
+Patch 0076 validation performed on 2026-08-30:
+
+- base: `0e43b64df4bf8c2c1b56f45e8077232510159448`;
+- expected commit tree: `62bd6c7b5fb7bacf76a5d6e59b1e156a57eb3d80`;
+- patch SHA-256: `146c3564cb8760e6258dbd8aed85fae27bb5cc8bc58c1155a37bdab61d10faba`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- module build: PASS at the established 24-warning baseline, SHA-256 `a3b63e5fd6f3ed0dc5d47a7d11daf79dc04cb365c5a3cf0e29b61db5e7539e8c`;
+- source containment: only `mmu.rs` changes; Queue/file gates, Compute writers and WorkQueue implementation are unchanged; E156 lazy channel ensure remains definition-only;
+- host-writer audit: exactly one q22 `read_idx.store()` exists and it is the CPU-only pre-activation preflight reset;
+- live cursor proof: runtime producer reached `0:190`; exact 0xc0 pressure crossing at write 192/193 was followed by firmware `read_idx=194` before the next unmap; bounded end state `194:198`;
+- live containment: 25 passive Queue lifecycles, SUBMIT exact `ENODEV`, no QueueInfo/context publication markers, strict fault evidence empty, >3 minute candidate uptime;
+- recovery: golden kernel restored and sacrificial module/initrd returned byte-for-byte to baseline;
+- no RunCompute/custom GPU command.

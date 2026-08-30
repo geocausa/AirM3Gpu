@@ -1,0 +1,46 @@
+From 688651b7bfe16f552a8b2fc71e5b295323b08686 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 19:55:34 +0100
+Subject: [PATCH] drm: asahi: trace J615 q22 read cursor
+
+---
+ drivers/gpu/drm/asahi/mmu.rs | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/drivers/gpu/drm/asahi/mmu.rs b/drivers/gpu/drm/asahi/mmu.rs
+index 10e79b46b228..9171d6e5a461 100644
+--- a/drivers/gpu/drm/asahi/mmu.rs
++++ b/drivers/gpu/drm/asahi/mmu.rs
+@@ -1784,7 +1784,9 @@ fn publish_pages(&mut self, base: u64, phys_pages: &[u64], mapping: bool) -> Res
+         // this does not introduce another ownership edge into InitData.
+         let dev = self.dev.clone();
+         self.backing.with_mut(|raw, _inner| -> Result {
++            let start_read = raw.state.read_idx.load(Ordering::Relaxed);
+             let mut write = raw.state.write_idx.load(Ordering::Relaxed);
++            let start_write = write;
+             if write >= Self::RING_LEN {
+                 dev_err!(
+                     dev.as_ref(),
+@@ -1853,6 +1855,19 @@ fn publish_pages(&mut self, base: u64, phys_pages: &[u64], mapping: bool) -> Res
+                 raw.state.write_idx.store(next, Ordering::Relaxed);
+                 write = next;
+             }
++
++            let end_read = raw.state.read_idx.load(Ordering::Relaxed);
++            dev_info!(
++                dev.as_ref(),
++                "T8122 G15 E164 q22 {} base={:#x} pages={} cursors r/w {}:{} -> {}:{}\n",
++                if mapping { "map" } else { "unmap" },
++                base,
++                phys_pages.len(),
++                start_read,
++                start_write,
++                end_read,
++                write
++            );
+             Ok(())
+         })
+     }
+-- 
+2.53.0
+
