@@ -1,0 +1,72 @@
+From 6c65dc3a73c6c724d198015b6addfcf3bdfce5f3 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 09:58:49 +0100
+Subject: [PATCH] drm: asahi: retain J615 lazy channel context
+
+---
+ drivers/gpu/drm/asahi/queue/mod.rs | 33 ++++++++++++++++++++++++++----
+ 1 file changed, 29 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index 5a4f713612ba..c0035eee73ee 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -1296,12 +1296,20 @@ pub(crate) struct QueueInner {
+     // disabled; retaining the allocation here only reconstructs channel state.
+     #[ver(G == G15)]
+     g15_ta_object_payload: GpuArray<u8>,
+-    // Exact E139-E142 AGXShared/client address-space bridge. This retains only
+-    // the per-VM shared-pool selection container so future G15 Compute channel
+-    // creation can stay lazy. E143 performs no pool selection/construction and
+-    // consumes no device-global pool ID.
++    // Exact E139-E143 AGXShared/client address-space bridge plus the allocator
++    // and bank-1/q22 handles required by the future lazy CL-channel transaction.
++    // E144 only retains these handles; no owner constructor or pool selector is
++    // called and no device-global pool ID is consumed.
+     #[ver(G == G15)]
+     _g15_uma_shared_pools: Option<Arc<Mutex<buffer::G15ClientUmaPoolContainerState>>>,
++    #[ver(G == G15)]
++    _g15_range5_uncached: Option<Arc<Mutex<alloc::DefaultAllocator>>>,
++    #[ver(G == G15)]
++    _g15_range5_cached: Option<Arc<Mutex<alloc::DefaultAllocator>>>,
++    #[ver(G == G15)]
++    _g15_shared_bank1: Option<mmu::G15SharedBank1>,
++    #[ver(G == G15)]
++    _g15_mapping_notifier: Option<Arc<Mutex<mmu::G15MappingNotifier>>>,
+     // Exact 0x2800 GPU-facing PM record backing. Apple uses range 5 with
+     // compact PTE class 0x300; the separate 0x40 tail is intentionally absent.
+     #[ver(G == G15)]
+@@ -1988,6 +1996,15 @@ pub(crate) fn new(
+         let buffer =
+             buffer::Buffer::ver::new(&*(*dev).gpu, alloc, ualloc.clone(), ualloc_priv, mgr)?;
+ 
++        #[ver(G == G15)]
++        let g15_lazy_range5_uncached = _g15_ualloc_range5_uncached.clone();
++        #[ver(G == G15)]
++        let g15_lazy_range5_cached = _g15_ualloc_range5_cached.clone();
++        #[ver(G == G15)]
++        let g15_lazy_shared_bank1 = _g15_shared_bank1.clone();
++        #[ver(G == G15)]
++        let g15_lazy_mapping_notifier = _g15_mapping_notifier.clone();
++
+         #[ver(G == G15)]
+         let g15_pm_scene_alloc = _g15_ualloc_range5_uncached
+             .as_ref()
+@@ -2077,6 +2094,14 @@ pub(crate) fn new(
+                 #[ver(G == G15)]
+                 _g15_uma_shared_pools,
+                 #[ver(G == G15)]
++                _g15_range5_uncached: g15_lazy_range5_uncached,
++                #[ver(G == G15)]
++                _g15_range5_cached: g15_lazy_range5_cached,
++                #[ver(G == G15)]
++                _g15_shared_bank1: g15_lazy_shared_bank1,
++                #[ver(G == G15)]
++                _g15_mapping_notifier: g15_lazy_mapping_notifier,
++                #[ver(G == G15)]
+                 g15_pm_records,
+                 #[ver(G == G15)]
+                 _g15_pm_page_metrics: g15_pm_page_metrics,
+-- 
+2.53.0
+

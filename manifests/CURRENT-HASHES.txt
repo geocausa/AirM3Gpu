@@ -656,3 +656,13 @@ E143 private result sha256  9b58010d2a66bcf8feeccadd3406c358b075f95f39744b581174
 E143 private placement proof sha256  bd5298a1007e0c0ca47e54350861c26e80066778fbe3dd72dabbd056d5ed90fb
 E143 public client UMA Queue-context note sha256  19179b3e54079ba9078c0695e7724794ea95a9e456bcfbabe279e9d221152b95
 E143 closure  exact command queue +0x488 shared object feeds AGXShared +0x1b8 at lazy channel init; Linux retains same per-VM container in QueueInner only; no pool selection/construction, pool ID, install or RunCompute
+
+private evidence checkpoint E144  82b232116c9796fc4f900f796636563e3c12a31f
+E144 Linux checkpoint  6c65dc3a73c6c724d198015b6addfcf3bdfce5f3
+E144 Linux tree  c62064dd8399232215e5fb8328ead9061548e522
+E144 module sha256  4dba06a8fd5958322d009342464858fb2f2a942d075065e50e9c6e46c0863e0e
+E144 patch 0057 sha256  826d187ed1077baeb9a42c04725f81da20e3651f603644cbd09fa738790a7556
+E144 private result sha256  989630bb12c23d9a303755f7a1eab6073363ebf07671fee61d1b7efeef175aa2
+E144 private context proof sha256  4ac007329f937f467832bf1528118932df7c2f1b01247c3af56b5130540a8d8a
+E144 public lazy Compute-channel context note sha256  fc091fd38ea19c22c2ef00c0530d861652d86dc6445ae643b555b87e977d98f9
+E144 closure  QueueInner retains exact client range5 cached/uncached plus bank1/q22 handles beside shared-pool container; constructors remain uncalled; no pool ID, install or RunCompute

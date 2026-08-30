@@ -720,3 +720,16 @@ Patch 0056 validation performed on 2026-08-30:
 - ownership audit: the per-file::Vm shared-pool container Arc is retained through GpuManager into private G15 QueueInner, matching exact command-queue -> AGXShared -> +0x1b8 provenance;
 - reachability: no selection/create caller, no shared-pool constructor caller, no global pool-ID consumption and no Compute/RunCompute source change;
 - runtime: module not installed/not executed; no RunCompute.
+
+Patch 0057 validation performed on 2026-08-30:
+
+- base: `848a9d426b2d1bb25a3f917ed37b15300b6d7f53`;
+- expected commit tree: `c62064dd8399232215e5fb8328ead9061548e522`;
+- patch SHA-256: `826d187ed1077baeb9a42c04725f81da20e3651f603644cbd09fa738790a7556`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- Asahi module build: PASS at the established 24-individual-warning bring-up baseline;
+- module SHA-256: `4dba06a8fd5958322d009342464858fb2f2a942d075065e50e9c6e46c0863e0e`;
+- ownership audit: QueueInner privately retains the E143 container plus per-client range-5 cached/uncached and shared bank1/q22 handles required by the dormant pool/channel owners;
+- reachability: no shared-pool selection/constructor call, no channel-owner constructor call, no pool-ID consumption and no Compute/RunCompute source change;
+- runtime: module not installed/not executed; no RunCompute.
