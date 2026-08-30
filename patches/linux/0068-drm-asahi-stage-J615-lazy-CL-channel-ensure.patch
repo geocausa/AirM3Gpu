@@ -1,0 +1,61 @@
+From 4463837493947d05a8a1e44b9d11329f96467856 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 15:32:06 +0100
+Subject: [PATCH] drm: asahi: stage J615 lazy CL channel ensure
+
+---
+ drivers/gpu/drm/asahi/queue/mod.rs | 38 ++++++++++++++++++++++++++++++
+ 1 file changed, 38 insertions(+)
+
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index 189966562abe..4604c7e2eace 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -1717,6 +1717,44 @@ pub(crate) fn new(
+         mod_dev_dbg!(dev, "[Queue {}] Queue created\n", id);
+         Ok(ret)
+     }
++
++    /// E156 definition-only lazy first-CL transaction. Exact 23J220 constructs
++    /// the WorkQueue/channel pair privately and publishes the new CL WorkQueue
++    /// in the command-queue array only after channel init/priority succeeds.
++    /// Linux already owns the inherited Compute WorkQueue, so serialize on its
++    /// E155 child slot, construct the complete channel into a local RAII value,
++    /// and publish `Some` only after every constructor step succeeds.
++    #[allow(dead_code)]
++    fn g15_ensure_unpublished_nonforeground_compute_channel(
++        &self,
++        gpu: &gpu::GpuManager::ver,
++    ) -> Result {
++        #[ver(G != G15)]
++        {
++            let _ = gpu;
++            return Err(EINVAL);
++        }
++
++        #[ver(G == G15)]
++        {
++            let subqueue = self.q_comp.as_ref().ok_or(EINVAL)?;
++            let slot = subqueue._g15_compute_channel.as_ref().ok_or(EINVAL)?;
++            let mut channel = slot.lock();
++            if channel.is_some() {
++                return Ok(());
++            }
++
++            // Keep the slot lock across construction. This prevents duplicate
++            // pool/resource/channel acquisition if a later activation boundary
++            // permits concurrent first-use attempts. No existing lock path can
++            // reach this private slot in reverse; E156 adds no caller.
++            let new_channel = self
++                .inner
++                .g15_assemble_unpublished_nonforeground_compute_channel(gpu)?;
++            *channel = Some(new_channel);
++            Ok(())
++        }
++    }
+ }
+ 
+ const SQ_RENDER: usize = 0;
+-- 
+2.53.0
+

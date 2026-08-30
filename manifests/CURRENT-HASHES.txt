@@ -779,3 +779,14 @@ E155 private lifetime audit sha256  e7dd8fde563a2622fc0a000a96ec5d4aaf714019bf60
 E155 private exact lifetime chain sha256  9ae8ea1d7082af726134cc29e0ad0c716ca0ed5cff9a661a990ebd915a652cc0
 E155 public WorkQueue/channel lifetime note sha256  054a8f9634d98769919482425b10ab0fc22207a1b1f15a92f0a09e3aed825d4e
 E155 closure  exact CL WorkQueue owns channel and releases it before base teardown; Linux WorkQueue Arc lifetime anchored to empty dormant channel slot; no setter/install/RunCompute
+
+private evidence checkpoint E156  4ef94a70bcb95f579a19ab794e3a829149aae058
+E156 Linux checkpoint  4463837493947d05a8a1e44b9d11329f96467856
+E156 Linux tree  8fc5403bbb85848f7c49011452a9b67ea97514b1
+E156 module sha256  928a0ac15e93dff5a3b83855b67240bbe3ab6d70c9c51d889732924f3d9165a8
+E156 patch 0068 sha256  14b488f59f95efe2bfc66561d017db7c75f254d7774af108d8836cf3086f3e08
+E156 private result sha256  1f27982b8ef4bdc7b970d4686b8aad353da4a2cf55e2c931536e4b51fffe940e
+E156 exact publication-order sha256  5cb4a8f2c52caafd39bad6c6f1c18f39840e77192b2190f7bab1b1da4ad24a61
+E156 lock-order audit sha256  a41d13de0b2e8f3c9d784941dac9f0d332d052d75b7ba259edf600d21c69bb46
+E156 public lazy-ensure note sha256  e8fd9724165d0f4ecd5afe3c2add7911ec8d814f1809092e7625b6b8b743763b
+E156 closure  serialized local-construct then publish channel slot; helper remains zero-caller; no install/RunCompute

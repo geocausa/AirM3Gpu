@@ -1,10 +1,10 @@
 a94f4741e619a496034a1cfd0c0149d93cb3f74c33e024d5d7c2023f4494c605  ./.gitignore
-9c82500ce991fdfe7c4e26008439e8f580d4e2a320b97becf24fa658d39800ce  ./README.md
-adfeb151a28f1b9480e29e1fa058574566d3918674ca561aaacdb9d11a18311a  ./docs/CURRENT-STATE.md
-bec252596d10defacf988bdaf73dcbc6c82808c9372a67ac84f739b3468e9ad6  ./docs/PATCHES.md
+d433acb958659d05b19306d0a74aacc97336d6c9a4828f4448b72d82a6b42224  ./README.md
+88e7b00b0655ee21766ac4e2bf55483963420ad5e33ea19a55a9037a45fa3f0c  ./docs/CURRENT-STATE.md
+dcef54e8b3ecd21ec630c97772d86b24b7073dda29f8d9882a40fe61e7a7c976  ./docs/PATCHES.md
 d61bf1973a6d6b3e840ef7eff94cb497eb57118a711f6891e2b0ee98ca6db461  ./docs/RECOVERY.md
 072edbe867996f268553f3da518769548159145691000f5f6dc7f888dd84cdf7  ./docs/WORKFLOW.md
-0db7a79443caea11081289917aa02005927521833540c5bbef340e4f1a67178b  ./manifests/CURRENT-HASHES.txt
+7e71c81b39446fc02fe1c06fad27c93a4f3854e0a3817390752759462ef440bc  ./manifests/CURRENT-HASHES.txt
 4f16537a51cf9d1ad18841ec138b5a6090407739af7b69898c933dcafdca8fea  ./patches/linux/0001-drm-asahi-checkpoint-T8122-G15-bring-up-through-RTKi.patch
 258eb0243e41b10800df1daf5671c8003f358efec31caaac405e74fc8c2cc00a  ./patches/linux/0002-drm-asahi-map-G15-RTKit-preallocated-crashlog-memory.patch
 7a0b6374402bc2fb4c75b01ae93645470385f1b671530ea9996b118915c9f961  ./patches/linux/0003-drm-asahi-stage-G15-RTKit-app-endpoint-start.patch
@@ -72,6 +72,7 @@ dbe93a8bddf28239f270d5634d77d6b9d787d7b0a90a3c26a2ba7f85bd29baf7  ./patches/linu
 d29abdff0f53a641bbd19d111d3c52dbee611421931ee53ec3de97ad27b78985  ./patches/linux/0065-drm-asahi-bridge-J615-global-selected-resource-state.patch
 a8d9b4953646e7982d241b928cddc687c29bf548946aa9204ec7af7ee8fe40d1  ./patches/linux/0066-drm-asahi-bridge-J615-channel-runtime-scalars.patch
 adf6581faf35dd0cf82794b110485fadb515b436d0d2e50e96bfd74ae5c39823  ./patches/linux/0067-drm-asahi-anchor-J615-CL-channel-to-WorkQueue-lifetime.patch
+14b488f59f95efe2bfc66561d017db7c75f254d7774af108d8836cf3086f3e08  ./patches/linux/0068-drm-asahi-stage-J615-lazy-CL-channel-ensure.patch
 09f94cf355cb34847caf59bf33f46231748958c10fa37dcde7d35b1a2307ac2d  ./patches/mesa/0001-hk-pass-initial-load-clear-state-to-kernel.patch
 07821063a351d0306dc5cc0689979cf10c537af5a417dc5d97e390ee456ec798  ./patches/mesa/0002-hk-pass-depth-stencil-level-offsets-to-kernel.patch
 bc26f90769b09e298649b0fc8f5f6b0373c7e50c03f0b5926f5d285f562db569  ./patches/mesa/0003-hk-build-G15-EOT-state-loader-for-proven-path.patch
@@ -130,6 +131,7 @@ a619697f140977ab3a6f20e37c0122fd623bf081e3b4b9bcf6bf595219e9e1b3  ./research/g15
 930773477526814543e7824c79dcc506219ac19461f2f00fdc538556bacf8c6b  ./research/g15/G15-HWDATA-LAYOUT.md
 3d62945173953fc253c2e1bdd3d50ab70ad4332af92367b4e9af0a9bc695f28d  ./research/g15/G15-INIT-SEQUENCE.md
 b2b599517e0a9c78637cdeb71670a683e92e975287b16aa136505f9298818bde  ./research/g15/G15-J615-UMA-POOL-GEOMETRY.md
+e8fd9724165d0f4ecd5afe3c2add7911ec8d814f1809092e7625b6b8b743763b  ./research/g15/G15-LAZY-CL-CHANNEL-ENSURE.md
 fc091fd38ea19c22c2ef00c0530d861652d86dc6445ae643b555b87e977d98f9  ./research/g15/G15-LAZY-COMPUTE-CHANNEL-CONTEXT.md
 9eb8cd24eac7c71ec9b3701779938dad894654b792e4b61bad43d4330345ab6e  ./research/g15/G15-MAPPED-FIRMWARE-RESOURCE-ACTIVATION.md
 0d128f2c58f127677e17a5e74fc33aa01f4377db29a942633acf65d4ebd97818  ./research/g15/G15-MAPPED-GLOBAL-FIRMWARE-RESOURCE-BACKINGS.md
@@ -178,5 +180,5 @@ cbc9603a831808031d5f528eadd7f3302879723f06ab798243258ba9a1eace95  ./research/g15
 6c630e1e0ad344f8cdf6f2c8c7d1d5bc091de06f478aaf42971c8acc34cf1e78  ./research/g15/G15-WEAK-UMAPOOL-PROMOTION.md
 d531fda1be727de5e510ea5718ef68d3b0172d3ec4f2d3f5b039bb6c7f42e06e  ./research/g15/G15-WRAPPER-LAYOUT.md
 1e42ac959bea3032d870499ed56255d3212aaf1f794b184fc08bbb5d2504dbf4  ./research/g15/J615-POWER-CONFIG.md
-953ee63a88c01b14de809c50d54f16e0041054a00fe9d60e8f6788a00e313137  ./research/g15/README.md
+8d07130e656be6cdab7317b5548044513531662788c2608f88203915eecb5003  ./research/g15/README.md
 d42da0407a1a8725d538c5438cb402860139b661c347613781a5b0b4226731e6  ./research/g15/build-g15g-c0-dpe-ppt.py

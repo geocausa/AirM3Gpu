@@ -872,3 +872,15 @@ Patch 0067 validation performed on 2026-08-30:
 - Linux lifetime audit: Compute WorkQueue retains an opaque clone of its empty channel slot, so independent WorkQueue Job/Event Arc clones preserve the channel lifetime;
 - reachability: slot remains `None`, no setter exists, unpublished channel assembler remains definition-only, `queue/compute.rs` and `fw/compute.rs` unchanged;
 - runtime: E075 gate unchanged; module not installed/not executed; no RunCompute.
+
+Patch 0068 validation performed on 2026-08-30:
+
+- base: `440e026d0d9c3a04555a9f9446bf35cd1a364e15`;
+- expected commit tree: `8fc5403bbb85848f7c49011452a9b67ea97514b1`;
+- patch SHA-256: `14b488f59f95efe2bfc66561d017db7c75f254d7774af108d8836cf3086f3e08`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- module build: PASS at the established 24-warning baseline, SHA-256 `928a0ac15e93dff5a3b83855b67240bbe3ab6d70c9c51d889732924f3d9165a8`;
+- exact publication audit: new CL WorkQueue is externally published only after channel init/priority success; failure releases channel then WorkQueue;
+- Linux lock audit: WorkQueue-owned channel slot has no reverse lock path; local RAII construction leaves slot empty on failure;
+- reachability: ensure helper zero-caller; `queue/compute.rs`, `fw/compute.rs`, `workqueue.rs`, and E075 gate unchanged; no install/RunCompute.

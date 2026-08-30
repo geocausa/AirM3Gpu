@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-LAZY-CL-CHANNEL-ENSURE.md` — E156 exact post-init publication/failure ordering plus zero-caller serialized WorkQueue-owned lazy channel ensure; no live construction or RunCompute.
 - `G15-CL-WORKQUEUE-CHANNEL-LIFETIME.md` — E155 exact lazy CL WorkQueue -> channel ownership/finalize/free order plus dormant Linux WorkQueue lifetime anchor; slot remains empty/no setter, no RunCompute.
 - `G15-CHANNEL-RUNTIME-SCALAR-PRODUCERS.md` — E154 exact owning-process PID source plus non-foreground priority/QoS tuple; final dormant scalar input bag removed, unpublished helper remains zero-caller.
 - `G15-GLOBAL-SELECTED-RESOURCE-STATE.md` — E153 exact ordinary timestamp-mode=false producer plus direct initialization of the real mapped global Queue/channel resource selections; five E127 local backing owners/slot inputs removed, no RunCompute.
