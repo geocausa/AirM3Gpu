@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-GLOBAL-FIRMWARE-RESOURCE-STACKS.md` — E147 exact device-global firmware resource-stack placement, eager backing and dynamic global selection/release; proves the five E127 local indices cannot become live constants.
 - `G15-NORMAL-COMPUTE-POOL-CLASS.md` — E146 exact normal-J615 class-1 shared Compute pool selection; dormant assembly no longer accepts an arbitrary pool class.
 - `G15-DORMANT-COMPUTE-CHANNEL-ASSEMBLY.md` — E145 type-connected device/client/shared-pool and channel-local owner tiers behind one zero-caller unpublished bundle; no live pool creation or RunCompute.
 - `G15-LAZY-COMPUTE-CHANNEL-CONTEXT.md` — E144 private Queue retention of per-client range-5 cached/uncached plus bank1/q22 handles required by future lazy pool/channel construction; no constructor or RunCompute.

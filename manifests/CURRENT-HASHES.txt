@@ -686,3 +686,11 @@ E146 private result sha256  b9142f6ed4be64636eced2c0f08cbb47b7dae64733b5b47ee074
 E146 private priority-class proof sha256  c57610dcb2a3969004a46bbe930b929fb2dddef2a49bcce1d36600f30e1916b9
 E146 public normal-compute-pool-class note sha256  3cf8043b0845e3c72ec7c60414c9563de3d93ae67986a2ba4a8560f526446706
 E146 closure  exact normal J615 context types 3/1/2 map invariantly to shared Compute pool class 1; raw class input removed; no live pool creation, install or RunCompute
+
+private evidence checkpoint E147  d3da47b9c656c6be2a599f3c0e604966e9afac1b
+E147 Linux checkpoint  b06c8650159bf700c3d4766542da8c976ef19048
+E147 Linux tree  604d859c910c383246f3316c9de1d5fe480388eb
+E147 private result sha256  57bf8efbc0adcf0fd487bdd432a6205bd64324a03906229079a36302f1bcbd39
+E147 private global-resource-stack proof sha256  163ad2182bbe831cae6314f75c2422fd427f74f32ba4d0b13f61aefb641f93c0
+E147 public global-resource-stack note sha256  1494ad4ffe9b3a2f4ce49221c4d3fc53d44fbd543be06b1a0bf6d0420fe5a3de
+E147 closure  exact five firmware stacks are accelerator-global, eagerly backed and dynamically select/release independent global indices; no Linux delta, install or RunCompute
