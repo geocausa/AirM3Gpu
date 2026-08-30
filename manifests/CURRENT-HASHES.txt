@@ -636,3 +636,13 @@ E141 private result sha256  4edabbb38416140253917607c36532895e5213ed3b4b2c2bbda9
 E141 private promotion proof sha256  4b4f7d8940842786bb060a27a0028551c5081a9672f786af63cd8c518dc31c37
 E141 public weak-UMAPool-promotion note sha256  6c630e1e0ad344f8cdf6f2c8c7d1d5bc091de06f478aaf42971c8acc34cf1e78
 E141 closure  safe identity-only nonzero promotion under client-container mutex; direct-channel and active-epoch lifetimes tracked separately; final zero clears only matching identity; no pool-owner coupling, Queue accessor, pool ID, install or RunCompute
+
+private evidence checkpoint E142  8786a3f9a5c3daf0f1d3d30b6307368ec961ccc2
+E142 Linux checkpoint  594d39b1b85e35ae315d048d60528cfe9a8b0d10
+E142 Linux tree  1a469e6be6435ff56048209f298d57dc458f45dc
+E142 module sha256  ba5c556ce93c9b50e1450e4e050b7ad43dae3618c23c75a2e8eae97e9d0f88ae
+E142 patch 0055 sha256  9ab879b373f5ff5c9191ab5bace4c8d32f11d325928c64d5c3094dd84c77f783
+E142 private result sha256  f51d733cfe172373727fd7889d9231efe297b459c411fb5d949e51e98ee6df2d
+E142 private transaction proof sha256  59903734eafb5f188b946e98d1a2d584e4e85617e9043f20c44c4258b0b25c9f
+E142 public shared-UMAPool transaction note sha256  45310bd8f3cb183837f9094c0ea12a78e344c29746b8b15c0288d29b7d98b182
+E142 closure  exact container lock spans failed promotion through new shared-pool construction and slot publication; Linux actual-pool storage is logically weak and dropped at final zero; no Queue accessor/caller, pool ID, install or RunCompute

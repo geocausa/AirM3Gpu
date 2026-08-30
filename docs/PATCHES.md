@@ -694,3 +694,16 @@ Patch 0054 validation performed on 2026-08-30:
 - ownership audit: four client-VM slots remain identity-only/non-owning while logical direct references and the separate active-channel epoch enforce nonzero-only promotion and identity-checked final clearing;
 - reachability: no Queue accessor/call site, no actual pool owner in the container, ordinary `submit_compute()` unchanged and no RunCompute writer;
 - runtime: module not installed/not executed; no RunCompute.
+
+Patch 0055 validation performed on 2026-08-30:
+
+- base: `a301b5b72feff2e32f69dd9e5e560a4c61a2ed60`;
+- expected commit tree: `1a469e6be6435ff56048209f298d57dc458f45dc`;
+- patch SHA-256: `9ab879b373f5ff5c9191ab5bace4c8d32f11d325928c64d5c3094dd84c77f783`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- Asahi module build: PASS at the established 24-individual-warning bring-up baseline;
+- module SHA-256: `ba5c556ce93c9b50e1450e4e050b7ad43dae3618c23c75a2e8eae97e9d0f88ae`;
+- transaction audit: exact 23J220 keeps the client-container lock across failed try-retain, new UMAPool factory/init, accelerator-list insertion and slot publication; Linux create closure is serialized under the same modeled transaction;
+- reachability: per-VM container still has no Queue accessor, shared-pool constructor has zero callers, ordinary `submit_compute()` unchanged and no RunCompute writer;
+- runtime: module not installed/not executed; no RunCompute.

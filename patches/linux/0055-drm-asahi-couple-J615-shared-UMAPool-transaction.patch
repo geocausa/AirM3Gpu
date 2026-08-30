@@ -1,0 +1,298 @@
+From 594d39b1b85e35ae315d048d60528cfe9a8b0d10 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 09:46:53 +0100
+Subject: [PATCH] drm: asahi: couple J615 shared UMAPool transaction
+
+---
+ drivers/gpu/drm/asahi/buffer.rs | 202 ++++++++++++++++++--------------
+ 1 file changed, 116 insertions(+), 86 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/buffer.rs b/drivers/gpu/drm/asahi/buffer.rs
+index 40c06707b5c8..9c1ebe846a61 100644
+--- a/drivers/gpu/drm/asahi/buffer.rs
++++ b/drivers/gpu/drm/asahi/buffer.rs
+@@ -329,16 +329,15 @@ fn value(self) -> u64 {
+     }
+ }
+ 
+-/// One non-owning shared-pool slot in the client-address-space container.
++/// One logically weak shared-pool slot in the client-address-space container.
+ ///
+-/// The identity is deliberately not a Rust pointer/reference to the UMAPool.
+-/// `direct_refs` models channel-direct object references, while
+-/// `active_channels != 0` contributes the separate aggregate active-epoch
+-/// retain proven in E137. The slot itself contributes no logical pool reference.
+-#[derive(Clone, Copy, Debug)]
++/// E142 stores the Rust pool owner only as implementation backing for an
++/// explicit lifetime state machine: the slot itself contributes no logical pool
++/// reference, and the owner is removed/dropped as soon as the modeled direct +
++/// active references reach zero. This is not a strong `Option<Pool>` lifetime.
+ #[allow(dead_code)]
+ struct G15ClientUmaPoolSlotState {
+-    identity: Option<G15UmaPoolIdentity>,
++    pool: Option<G15SharedComputeUmaPoolOwner>,
+     direct_refs: u32,
+     active_channels: u32,
+ }
+@@ -347,38 +346,46 @@ struct G15ClientUmaPoolSlotState {
+ impl G15ClientUmaPoolSlotState {
+     const fn empty() -> Self {
+         Self {
+-            identity: None,
++            pool: None,
+             direct_refs: 0,
+             active_channels: 0,
+         }
+     }
+ 
++    fn identity(&self) -> Option<G15UmaPoolIdentity> {
++        self.pool.as_ref().map(|pool| pool.pool_identity)
++    }
++
+     fn is_live(&self) -> bool {
+-        self.direct_refs != 0 || self.active_channels != 0
++        self.pool.is_some() && self.direct_refs != 0 && self.active_channels != 0
++    }
++
++    fn is_empty(&self) -> bool {
++        self.pool.is_none() && self.direct_refs == 0 && self.active_channels == 0
+     }
+ }
+ 
+-/// Client-address-space-scoped weak UMAPool slot state recovered from exact
+-/// J615/23J220 `AGXUMASharedPoolContainer` ownership.
++/// Client-address-space-scoped shared UMAPool selection state recovered from
++/// exact J615/23J220 `AGXUMASharedPoolContainer` ownership.
+ ///
+-/// E139 proves the real container lives under one `AGXShared`, beside the
+-/// client `task *` / `IOGPUTask *` whose bank-0 address space backs both FList
+-/// range-5 lists. E137 separately proves the four pool slots are weak. E141
+-/// models that contract without unsafe Rust weak pointers: each slot carries
+-/// only a globally unique pool identity plus logical reference state. A channel
+-/// reference owns the client-container `Arc`, not the pool object itself.
++/// E139/E140 place this object at client-VM lifetime. E141 closes the safe
++/// identity-only nonzero-promotion/reference state. E142 couples that state to
++/// the actual shared Compute pool owner without giving the slot an independent
++/// logical retain: pool construction/replacement happens while this mutex is
++/// held, and final logical release removes the owner before the slot can be
++/// reused.
+ ///
+-/// This remains definition-only. It has no Queue accessor, cannot construct a
+-/// UMAPool/FList, and therefore cannot consume a global pool ID by itself.
++/// The object remains unreachable from Queue creation in E142, so none of these
++/// methods can allocate a pool in the live driver yet.
+ #[allow(dead_code)]
+ pub(crate) struct G15ClientUmaPoolContainerState {
+     slots: [G15ClientUmaPoolSlotState; 4],
+ }
+ 
+-/// Host-only direct-channel reference to one logically live weak container
+-/// slot. Drop performs Apple's teardown ordering for the modeled references:
+-/// remove one active-channel contribution first, then the channel-direct
+-/// reference, and clear the slot only if that exact identity reaches zero.
++/// Host-only direct-channel reference to one logically live shared Compute
++/// UMAPool. The reference owns the client-container `Arc`, matching Apple's
++/// requirement that a live shared pool cannot outlive its container. Pool access
++/// is available only after identity validation under the same container mutex.
+ #[allow(dead_code)]
+ pub(crate) struct G15ClientUmaComputeChannelRef {
+     container: Arc<Mutex<G15ClientUmaPoolContainerState>>,
+@@ -391,14 +398,31 @@ impl G15ClientUmaComputeChannelRef {
+     pub(crate) fn pool_id(&self) -> u64 {
+         self.identity.value()
+     }
++
++    pub(crate) fn with_pool<R>(
++        &self,
++        f: impl FnOnce(&mut G15SharedComputeUmaPoolOwner) -> Result<R>,
++    ) -> Result<R> {
++        let mut guard = self.container.lock();
++        let slot = guard.slots.get_mut(self.slot_index).ok_or(EINVAL)?;
++        if slot.identity() != Some(self.identity) || !slot.is_live() {
++            return Err(EINVAL);
++        }
++        f(slot.pool.as_mut().ok_or(EINVAL)?)
++    }
+ }
+ 
+ #[allow(dead_code)]
+ impl Drop for G15ClientUmaComputeChannelRef {
+     fn drop(&mut self) {
+-        self.container
+-            .lock()
+-            .release_compute_channel(self.slot_index, self.identity);
++        let retired_pool = {
++            self.container
++                .lock()
++                .release_compute_channel(self.slot_index, self.identity)
++        };
++        // Do not run FList/GPU-allocation destructors while holding the
++        // client-container selection mutex.
++        core::mem::drop(retired_pool);
+     }
+ }
+ 
+@@ -406,7 +430,12 @@ fn drop(&mut self) {
+ impl G15ClientUmaPoolContainerState {
+     pub(crate) fn new_client_address_space() -> Self {
+         Self {
+-            slots: [G15ClientUmaPoolSlotState::empty(); 4],
++            slots: [
++                G15ClientUmaPoolSlotState::empty(),
++                G15ClientUmaPoolSlotState::empty(),
++                G15ClientUmaPoolSlotState::empty(),
++                G15ClientUmaPoolSlotState::empty(),
++            ],
+         }
+     }
+ 
+@@ -417,75 +446,73 @@ fn compute_slot_index(priority_class: u32) -> Result<usize> {
+         Ok(2 + priority_class as usize)
+     }
+ 
+-    /// Install a caller-created Compute pool identity into its exact shared
+-    /// container slot and create the first channel reference. This method does
+-    /// not create the pool; the globally ordered identity must already belong
+-    /// to a successfully constructed pool owner.
+-    pub(crate) fn install_new_compute_channel(
+-        container: &Arc<Mutex<Self>>,
+-        pool: &G15SharedComputeUmaPoolOwner,
+-    ) -> Result<G15ClientUmaComputeChannelRef> {
+-        let identity = pool.pool_identity;
+-        let slot_index = Self::compute_slot_index(pool.priority_class)?;
+-        {
+-            let mut guard = container.lock();
+-            let slot = &mut guard.slots[slot_index];
+-            if slot.identity.is_some() || slot.is_live() {
+-                return Err(EBUSY);
+-            }
+-            slot.identity = Some(identity);
+-            // The newly constructed pool's object reference becomes this
+-            // channel's direct reference. The 0 -> 1 active-channel transition
+-            // contributes the separate aggregate active-epoch retain.
+-            slot.direct_refs = 1;
+-            slot.active_channels = 1;
+-        }
+-
+-        Ok(G15ClientUmaComputeChannelRef {
+-            container: container.clone(),
+-            slot_index,
+-            identity,
+-        })
+-    }
+-
+-    /// Exact weak-slot promotion semantics for an existing Compute pool. The
+-    /// slot is inspected under the container mutex and promotion is permitted
+-    /// only while the modeled pool object has a nonzero logical reference.
+-    pub(crate) fn try_promote_compute_channel(
++    /// Select/promote an existing Compute pool or create its replacement under
++    /// one client-container transaction.
++    ///
++    /// Exact AGXChannel::init() keeps `AGXUMASharedPoolContainer +0x40` locked
++    /// across failed try-retain, `halNewUMAPool()`, UMAPool initialization,
++    /// accelerator-list insertion and weak-slot publication. Calling `create`
++    /// while this Rust mutex guard is held preserves that serialization and
++    /// prevents two racing callers from consuming independent global pool IDs.
++    pub(crate) fn select_or_create_compute_channel<F>(
+         container: &Arc<Mutex<Self>>,
+         priority_class: u32,
+-    ) -> Result<Option<G15ClientUmaComputeChannelRef>> {
++        create: F,
++    ) -> Result<G15ClientUmaComputeChannelRef>
++    where
++        F: FnOnce() -> Result<G15SharedComputeUmaPoolOwner>,
++    {
+         let slot_index = Self::compute_slot_index(priority_class)?;
+         let identity = {
+             let mut guard = container.lock();
+             let slot = &mut guard.slots[slot_index];
+-            let Some(identity) = slot.identity else {
+-                return Ok(None);
+-            };
+-            if !slot.is_live() {
+-                return Ok(None);
+-            }
+ 
+-            let direct_refs = slot.direct_refs.checked_add(1).ok_or(EOVERFLOW)?;
+-            let active_channels = slot.active_channels.checked_add(1).ok_or(EOVERFLOW)?;
+-            slot.direct_refs = direct_refs;
+-            slot.active_channels = active_channels;
+-            identity
++            if slot.is_live() {
++                let identity = slot.identity().ok_or(EINVAL)?;
++                let direct_refs = slot.direct_refs.checked_add(1).ok_or(EOVERFLOW)?;
++                let active_channels = slot.active_channels.checked_add(1).ok_or(EOVERFLOW)?;
++                slot.direct_refs = direct_refs;
++                slot.active_channels = active_channels;
++                identity
++            } else {
++                // A dead owner must have been removed by final release. Refuse
++                // to paper over a broken internal lifetime invariant.
++                if !slot.is_empty() {
++                    return Err(EINVAL);
++                }
++
++                // Deliberately execute pool/FList construction with the
++                // container transaction still held, matching the exact host.
++                let pool = create()?;
++                if pool.priority_class != priority_class {
++                    return Err(EINVAL);
++                }
++                let identity = pool.pool_identity;
++                slot.pool = Some(pool);
++                // The construction reference becomes the first channel-direct
++                // reference; 0 -> 1 active_channels represents the separate
++                // aggregate active-epoch retain.
++                slot.direct_refs = 1;
++                slot.active_channels = 1;
++                identity
++            }
+         };
+ 
+-        Ok(Some(G15ClientUmaComputeChannelRef {
++        Ok(G15ClientUmaComputeChannelRef {
+             container: container.clone(),
+             slot_index,
+             identity,
+-        }))
++        })
+     }
+ 
+-    fn release_compute_channel(&mut self, slot_index: usize, identity: G15UmaPoolIdentity) {
+-        let Some(slot) = self.slots.get_mut(slot_index) else {
+-            return;
+-        };
+-        if slot.identity != Some(identity) || slot.direct_refs == 0 || slot.active_channels == 0 {
+-            return;
++    fn release_compute_channel(
++        &mut self,
++        slot_index: usize,
++        identity: G15UmaPoolIdentity,
++    ) -> Option<G15SharedComputeUmaPoolOwner> {
++        let slot = self.slots.get_mut(slot_index)?;
++        if slot.identity() != Some(identity) || slot.direct_refs == 0 || slot.active_channels == 0 {
++            return None;
+         }
+ 
+         // Apple removes the accelerator-active contribution before dropping the
+@@ -493,10 +520,13 @@ fn release_compute_channel(&mut self, slot_index: usize, identity: G15UmaPoolIde
+         slot.active_channels -= 1;
+         slot.direct_refs -= 1;
+ 
+-        // Last-reference finalization pointer-checks the weak slot before
+-        // clearing it. Identity equality is the safe Rust equivalent here.
+-        if !slot.is_live() && slot.identity == Some(identity) {
+-            slot.identity = None;
++        if slot.direct_refs == 0 && slot.active_channels == 0 && slot.identity() == Some(identity) {
++            // Taking the owner here makes physical Rust ownership follow the
++            // modeled last-reference boundary. The returned pool is dropped by
++            // the caller only after the container mutex has been released.
++            slot.pool.take()
++        } else {
++            None
+         }
+     }
+ }
+-- 
+2.53.0
+

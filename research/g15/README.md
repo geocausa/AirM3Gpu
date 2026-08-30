@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-SHARED-UMAPOOL-SELECTION-TRANSACTION.md` — E142 exact container-lock span across failed promotion, pool construction and slot publication plus compile-only logically weak actual-pool coupling; no Queue caller or RunCompute.
 - `G15-WEAK-UMAPOOL-PROMOTION.md` — E141 safe logical nonzero-only weak-slot promotion/direct+active lifetime model with identity-checked final clearing; no pool owner coupling or live Queue consumer.
 - `G15-CLIENT-UMA-WEAK-SLOT-PLACEMENT.md` — E140 exact AGXShared container destruction scope plus compile-only four-slot non-owning state at Linux client-VM lifetime; no pool promotion or RunCompute consumer.
 - `G15-FLIST-CLIENT-ADDRESS-SPACE.md` — E139 exact AGXShared/client IOGPUTask provenance for both persistent range-5 FList lists and per-client shared-pool-container scope; Linux per-VM range-5 allocator confirmed correct, no Linux delta.
