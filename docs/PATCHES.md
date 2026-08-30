@@ -642,3 +642,16 @@ Patch 0050 validation performed on 2026-08-30:
 - transaction audit: fence arm acquired before dormant event/SKU binding and retained through finalize; explicit rollback/completion releases asset ownership before pending-count release;
 - reachability: private dormant wrapper only; ordinary `submit_compute()` unchanged; no RunCompute writer;
 - runtime: not installed/not executed; no RunCompute.
+
+Patch 0051 validation performed on 2026-08-30:
+
+- base: `a244a846e3014b9eebdec580f852e39d27a1a50d`;
+- expected commit tree: `f6dc1e1f4a7bd308991dec1de29b41879a56f452`;
+- patch SHA-256: `19cdffd3af93a7d0043572e23f9edac69dd02aca8228e2b476a4b802a52deb91`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- Asahi module build: PASS at the established 24-individual-warning bring-up baseline;
+- module SHA-256: `efe3e1ed324db6d3abf77ac6b930a5f7a16ef27c45ad9b187c10c123bb925d9b`;
+- ownership audit: one definition-only device-global UMA manager/pool-ID state, separate reusable shared Compute pool/FList owner, and channel/command owner with no FList;
+- reachability: no `GpuManager` instance, no live shared Compute pool, no Queue call site, ordinary `submit_compute()` unchanged, no RunCompute writer;
+- runtime: not installed/not executed; no RunCompute.

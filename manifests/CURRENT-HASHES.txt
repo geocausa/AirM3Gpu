@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  f09bed89530e5fa482240c55653545a3bed3e292
-linux current checkpoint    a244a846e3014b9eebdec580f852e39d27a1a50d
-linux current tree          179518d4f4d3d41ce658800f2f0e92ad7b2d176e
+linux previous public head  a244a846e3014b9eebdec580f852e39d27a1a50d
+linux current checkpoint    7c7e4d68082f8ff349c191bc3021c2f7d023009e
+linux current tree          f6dc1e1f4a7bd308991dec1de29b41879a56f452
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -585,3 +585,12 @@ private evidence checkpoint E135  a125e34c17580e9ef01315d91927a9087e1e55b9
 E135 private result sha256  5fef175bdee32993407502c8e202f97bad90e012b512f8848161a4393037945b
 E135 public shared-Compute UMA placement note sha256  f8b935f54fa07cd8cea22a03d9d9affb5dd2905b6aef783b7ce8045c83a2317b
 E135 closure  accelerator +0x2a08 owns one 0x100-entry UMAPool HardwareBuffer-ID namespace; normal CL channels select/reuse shared Compute pools by priority class; UMAPool +0x80 pool ID is global creation-order state, not a Compute constant; direct per-Queue all-in-one owner-graph placement blocked; Linux E134 unchanged; no install/RunCompute
+
+private evidence checkpoint E136  29d519cacb9df7fbe5cd919e2ecc6ca42f6c7efb
+E136 Linux checkpoint  7c7e4d68082f8ff349c191bc3021c2f7d023009e
+E136 Linux tree  f6dc1e1f4a7bd308991dec1de29b41879a56f452
+E136 module sha256  efe3e1ed324db6d3abf77ac6b930a5f7a16ef27c45ad9b187c10c123bb925d9b
+E136 patch 0051 sha256  19cdffd3af93a7d0043572e23f9edac69dd02aca8228e2b476a4b802a52deb91
+E136 private result sha256  385950bed45d7a70189c53502e1c77d5830a7a4c5e1d422d90bcdc2d6ee9d3cc
+E136 public shared-Compute UMA owner-split note sha256  3bb6ad29e425811151ee1b07f65380d451bee90d4c74b7ea56feaafc43346121
+E136 closure  definition-only ownership split puts the 0x100 UMAPool HardwareBuffer-ID namespace plus pool-ID sequence behind one device-global state, moves FList into a reusable priority-class shared Compute pool owner, and removes FList construction from dormant channel/command ownership; no GpuManager/Queue placement, submit_compute change, install or RunCompute
