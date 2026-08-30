@@ -626,3 +626,13 @@ E140 private result sha256  17577a10f8a53dddea3137a1f5fe235ef93e39c9c5be8bc9dd3a
 E140 private placement proof sha256  12cc4a8a7f80cfa7e6445dd1bf4a17adec4bb7a459e5aca4581b5b8c499f49a4
 E140 public client UMA weak-slot note sha256  d38fe04d6361a33139a2fe2b9d2280b40c27eb84310ac29a6cf3ea3bd23d5b98
 E140 closure  AGXShared free releases/zeros its +0x1b8 container while container free owns no pool slots; Linux places one empty four-slot non-owning identity state at file::Vm lifetime beside range-5 allocators; no Queue accessor, pool ID, UMAPool, install or RunCompute
+
+private evidence checkpoint E141  531903b8450f162331f51075bc4543cdd1454e91
+E141 Linux checkpoint  a301b5b72feff2e32f69dd9e5e560a4c61a2ed60
+E141 Linux tree  f607a93285a3f615d554d424b100d09094ecc69d
+E141 module sha256  411f9dd5f5e1cfc3f4f16fcdbef994e6234dfd15e1148d93f332211c3262de6c
+E141 patch 0054 sha256  e90b953a3ef2e6549a7973ad2ef0e6b7d7b4fdb6e260fc6375522ae235a17f2d
+E141 private result sha256  4edabbb38416140253917607c36532895e5213ed3b4b2c2bbda90116e2e6ad4f
+E141 private promotion proof sha256  4b4f7d8940842786bb060a27a0028551c5081a9672f786af63cd8c518dc31c37
+E141 public weak-UMAPool-promotion note sha256  6c630e1e0ad344f8cdf6f2c8c7d1d5bc091de06f478aaf42971c8acc34cf1e78
+E141 closure  safe identity-only nonzero promotion under client-container mutex; direct-channel and active-epoch lifetimes tracked separately; final zero clears only matching identity; no pool-owner coupling, Queue accessor, pool ID, install or RunCompute
