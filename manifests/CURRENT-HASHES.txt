@@ -885,3 +885,16 @@ E164 private source audit sha256  84cf12d46df5a831912e8ce552cbc1fd3d5813aacb0ece
 E164 restored-artifact proof sha256  6ddd0807a659a3f0b37d03ff59e6846fc728f7f063003352a97801a7ca28b4de
 E164 public q22 cursor note sha256  8416958bb3064e01ade615ddf6bfc24664db9d19762ee769af28b2e548a71d4b
 E164 closure  native pressure threshold live-proven to advance firmware q22 read_idx 0->194; QueueInfo/context/channel/submission blocked; no RunCompute
+
+private evidence checkpoint E165  1e19e44ea1c85c00d0722172be1762571eeaf618
+E165 Linux checkpoint  f962a8a435d2673ca0e26daf92697dcd163c4e71
+E165 Linux tree  a60f278451922180d581ce9a99b9f136fc9ce05d
+E165 module sha256  6fb38244350b03bd85f76ace27976c441b1eac325a7271908cdf173eb31a0e66
+E165 patch 0077 sha256  a58926c6217b4b8af04d85b0c4931e658597329d48cbed763a5e39ee5238027a
+E165 private result sha256  7799f3058770d671ad2b8b1820ac37b9d899042d584492d85ea45c1201274853
+E165 private live proof sha256  6cfe619ed19f1f97cbf9a30b43da1b904a81b712d4e34af594cb0c5d9cbc3179
+E165 private context-bind audit sha256  a253d832ca26e80db057c3713d5fc901235346b6389bb8f3b2e43775095a3006
+E165 private source audit sha256  51cee9703249f32149e4d5a798ffc4e77c2e0ae20e1243c396a0d2bd0bdb3139
+E165 restored-artifact proof sha256  6ddd0807a659a3f0b37d03ff59e6846fc728f7f063003352a97801a7ca28b4de
+E165 public VM-context note sha256  40f46adefca24f4891c95c390f00654cb49cc1bc330854230188015abab871b0
+E165 closure  signed VM-context GPTBAT publication live-proven across slots 1..18; QueueInfo/channel/commands blocked; ordinary SUBMIT ENODEV; no RunCompute

@@ -1,0 +1,186 @@
+From f962a8a435d2673ca0e26daf92697dcd163c4e71 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 20:08:37 +0100
+Subject: [PATCH] drm: asahi: stage J615 VM-context bind probe
+
+---
+ drivers/gpu/drm/asahi/driver.rs    |  2 +-
+ drivers/gpu/drm/asahi/file.rs      | 35 +++++++++++-----------------
+ drivers/gpu/drm/asahi/mmu.rs       | 15 ------------
+ drivers/gpu/drm/asahi/queue/mod.rs | 37 ++----------------------------
+ 4 files changed, 16 insertions(+), 73 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/driver.rs b/drivers/gpu/drm/asahi/driver.rs
+index 082e3ce3d763..302680904e95 100644
+--- a/drivers/gpu/drm/asahi/driver.rs
++++ b/drivers/gpu/drm/asahi/driver.rs
+@@ -372,7 +372,7 @@ fn probe(
+             drm::driver::Registration::new_foreign_owned(&drm, pdev.as_ref(), 0)?;
+             dev_info!(
+                 pdev.as_ref(),
+-                "T8122 G15 E163 passive Queue lifecycle PASS; context/channel/submission blocked\n"
++                "T8122 G15 E165 passive Queue + signed VM-context probe ready; QueueInfo/channel/commands blocked\n"
+             );
+             return Ok(Self { drm });
+         }
+diff --git a/drivers/gpu/drm/asahi/file.rs b/drivers/gpu/drm/asahi/file.rs
+index de3c9298bec0..4001a1288600 100644
+--- a/drivers/gpu/drm/asahi/file.rs
++++ b/drivers/gpu/drm/asahi/file.rs
+@@ -1059,33 +1059,19 @@ pub(crate) fn submit(
+         data: &mut uapi::drm_asahi_submit,
+         file: &DrmFile,
+     ) -> Result<u32> {
+-        Self::reject_g15_client_mutation(device)?;
+         debug::update_debug_flags();
+ 
+         let is_g15 = device.gpu.get_cfg().gpu_gen == hw::GpuGen::G15;
+-        const G15_EMPTY_QUEUE_PROBE_FLAGS: u32 = 0x4731_3550; // "G15P"
+-        const G15_EMPTY_QUEUE_PROBE_PAD: u32 = 0x4530_3333; // "E033"
++        const G15_VM_BIND_PROBE_FLAGS: u32 = 0x4731_3556; // "G15V"
++        const G15_VM_BIND_PROBE_PAD: u32 = 0x4531_3635; // "E165"
+ 
+         if is_g15 {
+-            // Lab-only discriminator. A plain all-zero SUBMIT is common enough
+-            // for ambient userspace to hit accidentally after DRM registration.
+-            // Require an explicit two-word signature before any VM bind or
+-            // QueueInfo publication can occur. Ordinary G15 submissions remain
+-            // fail-closed with ENODEV.
+-            if data.flags != G15_EMPTY_QUEUE_PROBE_FLAGS
+-                || data.pad != G15_EMPTY_QUEUE_PROBE_PAD
+-            {
++            // E165 is an explicit lab-only VM-context publication probe. Keep
++            // ordinary G15 submissions fail-closed before Queue lookup or any
++            // firmware-visible context mutation.
++            if data.flags != G15_VM_BIND_PROBE_FLAGS || data.pad != G15_VM_BIND_PROBE_PAD {
+                 return Err(ENODEV);
+             }
+-        } else if data.flags != 0 || data.pad != 0 {
+-            cls_pr_debug!(Errors, "submit: Invalid arguments\n");
+-            return Err(EINVAL);
+-        }
+-
+-        if is_g15 {
+-            // E033 is an explicit signed zero-payload probe, not a partial enablement
+-            // of ordinary userspace submission. Real Mesa submissions remain
+-            // rejected before queue lookup/VM publication.
+             if data.syncs != 0
+                 || data.cmdbuf != 0
+                 || data.in_sync_count != 0
+@@ -1102,15 +1088,20 @@ pub(crate) fn submit(
+                 .get(data.queue_id.try_into()?)
+                 .ok_or(ENOENT)?
+                 .into();
+-            let slot = queue.lock().preflight_vm_bind()?;
++            let slot = queue.lock().preflight_vm_bind_only()?;
+             dev_info!(
+                 device.as_ref(),
+-                "T8122 G15 VM bind + empty QueueInfo publish/release PASS (slot {}); command parsing/execution blocked\n",
++                "T8122 G15 E165 VM-context GPTBAT bind PASS (slot {}); QueueInfo/channel/commands blocked\n",
+                 slot
+             );
+             return Err(ENODEV);
+         }
+ 
++        if data.flags != 0 || data.pad != 0 {
++            cls_pr_debug!(Errors, "submit: Invalid arguments\n");
++            return Err(EINVAL);
++        }
++
+         let gpu = &device.gpu;
+         gpu.update_globals();
+ 
+diff --git a/drivers/gpu/drm/asahi/mmu.rs b/drivers/gpu/drm/asahi/mmu.rs
+index 9171d6e5a461..10e79b46b228 100644
+--- a/drivers/gpu/drm/asahi/mmu.rs
++++ b/drivers/gpu/drm/asahi/mmu.rs
+@@ -1784,9 +1784,7 @@ fn publish_pages(&mut self, base: u64, phys_pages: &[u64], mapping: bool) -> Res
+         // this does not introduce another ownership edge into InitData.
+         let dev = self.dev.clone();
+         self.backing.with_mut(|raw, _inner| -> Result {
+-            let start_read = raw.state.read_idx.load(Ordering::Relaxed);
+             let mut write = raw.state.write_idx.load(Ordering::Relaxed);
+-            let start_write = write;
+             if write >= Self::RING_LEN {
+                 dev_err!(
+                     dev.as_ref(),
+@@ -1855,19 +1853,6 @@ fn publish_pages(&mut self, base: u64, phys_pages: &[u64], mapping: bool) -> Res
+                 raw.state.write_idx.store(next, Ordering::Relaxed);
+                 write = next;
+             }
+-
+-            let end_read = raw.state.read_idx.load(Ordering::Relaxed);
+-            dev_info!(
+-                dev.as_ref(),
+-                "T8122 G15 E164 q22 {} base={:#x} pages={} cursors r/w {}:{} -> {}:{}\n",
+-                if mapping { "map" } else { "unmap" },
+-                base,
+-                phys_pages.len(),
+-                start_read,
+-                start_write,
+-                end_read,
+-                write
+-            );
+             Ok(())
+         })
+     }
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index 4604c7e2eace..b490c4807381 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -65,7 +65,7 @@ pub(crate) trait Queue: Send + Sync {
+     /// Publish this queue's VM in a UAT user slot without constructing or
+     /// submitting any GPU work. This is used only by the bounded G15 bring-up
+     /// gate immediately before the real submission path.
+-    fn preflight_vm_bind(&mut self) -> Result<u32>;
++    fn preflight_vm_bind_only(&mut self) -> Result<u32>;
+ 
+     fn submit(
+         &mut self,
+@@ -1803,42 +1803,9 @@ fn build_attachments(reader: &mut Reader<'_>, size: usize) -> Result<microseq::A
+ 
+ #[versions(AGX)]
+ impl Queue for Queue::ver {
+-    fn preflight_vm_bind(&mut self) -> Result<u32> {
++    fn preflight_vm_bind_only(&mut self) -> Result<u32> {
+         let bind = (*self.dev).gpu.bind_vm(&self.vm)?;
+         let slot = bind.slot();
+-
+-        #[ver(G == G15)]
+-        {
+-            let gpu = match (*self.dev)
+-                .gpu
+-                .clone()
+-                .arc_as_any()
+-                .downcast::<gpu::GpuManager::ver>()
+-            {
+-                Ok(gpu) => gpu,
+-                Err(_) => return Err(EIO),
+-            };
+-
+-            // Use the compute subqueue for the bounded publication probe. With
+-            // wptr=0 the common scheduler path returns before any command entry
+-            // is dereferenced, and this avoids render/TVB-specific work.
+-            gpu.g15_set_command_submission_enabled(true)?;
+-            let publish_result = self
+-                .q_comp
+-                .as_ref()
+-                .ok_or(EIO)?
+-                .wq
+-                .g15_publish_empty(&gpu);
+-
+-            // Restore the host runtime gate only after both the accelerator TX
+-            // entry and native ReleaseResource completed successfully. On any
+-            // ambiguous failure leave it enabled and fail-stop until reboot.
+-            if publish_result.is_ok() {
+-                gpu.g15_set_command_submission_enabled(false)?;
+-            }
+-            publish_result?;
+-        }
+-
+         core::mem::drop(bind);
+         Ok(slot)
+     }
+-- 
+2.53.0
+

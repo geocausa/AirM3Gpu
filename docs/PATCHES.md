@@ -1004,3 +1004,17 @@ Patch 0076 validation performed on 2026-08-30:
 - live containment: 25 passive Queue lifecycles, SUBMIT exact `ENODEV`, no QueueInfo/context publication markers, strict fault evidence empty, >3 minute candidate uptime;
 - recovery: golden kernel restored and sacrificial module/initrd returned byte-for-byte to baseline;
 - no RunCompute/custom GPU command.
+
+Patch 0077 validation performed on 2026-08-30:
+
+- base: `688651b7bfe16f552a8b2fc71e5b295323b08686`;
+- expected commit tree: `a60f278451922180d581ce9a99b9f136fc9ce05d`;
+- patch SHA-256: `a58926c6217b4b8af04d85b0c4931e658597329d48cbed763a5e39ee5238027a`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- module build: PASS with 25 Rust warnings (one expected dead-code warning added by retiring the old empty-Queue preflight call path), SHA-256 `6fb38244350b03bd85f76ace27976c441b1eac325a7271908cdf173eb31a0e66`;
+- source boundary: E164 cursor tracing retired; stale empty-Queue publication removed from preflight; signed G15 path reaches only `GpuManager::bind_vm()` and returns `ENODEV` before QueueInfo/channel/commands;
+- live probe: 18 full VM + passive Queue + signed GPTBAT bind + Queue/VM destroy lifecycles PASS, slots 1..18; ordinary zero SUBMIT exact `ENODEV` every time;
+- containment: empty QueueInfo/ReleaseResource/uncertain-publication markers empty, strict fault evidence empty, >3 minute candidate uptime;
+- recovery: golden kernel restored and sacrificial module/initrd returned byte-for-byte to baseline;
+- no RunCompute/custom GPU command.
