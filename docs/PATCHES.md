@@ -655,3 +655,16 @@ Patch 0051 validation performed on 2026-08-30:
 - ownership audit: one definition-only device-global UMA manager/pool-ID state, separate reusable shared Compute pool/FList owner, and channel/command owner with no FList;
 - reachability: no `GpuManager` instance, no live shared Compute pool, no Queue call site, ordinary `submit_compute()` unchanged, no RunCompute writer;
 - runtime: not installed/not executed; no RunCompute.
+
+Patch 0052 validation performed on 2026-08-30:
+
+- base: `7c7e4d68082f8ff349c191bc3021c2f7d023009e`;
+- expected commit tree: `1e10f2d211ddb16995ac73de2c7c5243f9f6d1b0`;
+- patch SHA-256: `708529d42db6c1f162d8a8e37c754a23e7e25bef364c1349a9f4b11680488b57`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- Asahi module build: PASS at the established 24-individual-warning bring-up baseline;
+- module SHA-256: `3f9406c6b481c57e6d15082414968b128e330dc035c8a9fe1c0e8330586ead9e`;
+- placement audit: one G15-only GpuManager UMA host state owns the 0x100 HardwareBuffer-ID namespace and zero-seeded pool-ID sequence; construction creates no UMAPool and consumes no pool ID;
+- reachability: no shared-pool constructor call, no Queue accessor/call site, ordinary `submit_compute()` unchanged, no RunCompute writer;
+- runtime: module not installed/not executed; no RunCompute.

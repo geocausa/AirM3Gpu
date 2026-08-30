@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-DEVICE-GLOBAL-UMA-HOST-STATE.md` — E138 exact lazy TA/3D/CL channel/pool construction and G15 device-global zero-seeded UMA host-state placement; no pool or RunCompute consumer.
 - `G15-SHARED-UMAPOOL-LIFECYCLE.md` — E137 exact weak-slot try-retain/replacement, channel-direct vs active-epoch references, pointer-identity finalization, and pool-owned container lifetime; no Linux delta.
 - `G15-SHARED-COMPUTE-UMA-OWNER-SPLIT.md` — E136 definition-only device-global UMA state + reusable shared Compute pool/FList lifetime; dormant channel/command owner no longer contains the FList, with no live Queue/RunCompute path.
 - `G15-SHARED-COMPUTE-UMA-PLACEMENT.md` — E135 exact accelerator-global UMAPool HardwareBuffer-ID namespace, shared/reusable Compute-pool selection, global-order pool ID, and the resulting block on naïve per-Queue owner-graph placement.

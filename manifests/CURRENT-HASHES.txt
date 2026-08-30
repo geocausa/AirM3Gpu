@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  a244a846e3014b9eebdec580f852e39d27a1a50d
-linux current checkpoint    7c7e4d68082f8ff349c191bc3021c2f7d023009e
-linux current tree          f6dc1e1f4a7bd308991dec1de29b41879a56f452
+linux previous public head  7c7e4d68082f8ff349c191bc3021c2f7d023009e
+linux current checkpoint    f2cb03001da02b1bde833550f38700b247ca30c2
+linux current tree          1e10f2d211ddb16995ac73de2c7c5243f9f6d1b0
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -600,3 +600,13 @@ E137 private result sha256  41554eb8321e75ba8522c4662aca9fe8abf282159a286c4a1a01
 E137 private lifecycle proof sha256  a625440ccdb72b57be2037057ad44d08f02fdc76b55fbafbbb4f242116e97afe
 E137 public shared-UMAPool lifecycle note sha256  e3bf35db681b56bae7b849f939250374018fcbe1dff3d4b259a74a2d286ed7d0
 E137 closure  exact shared UMAPool container slots are weak references promoted by nonzero-only atomic try-retain; direct channel refs are separate from pool +0x20 active-epoch retain; last-reference finalize pointer-checks/clears the weak slot and cleanup releases pool-owned container reference; Linux E136 unchanged, no install/RunCompute
+
+private evidence checkpoint E138  1f1cafd96199af664f668f876f839caa43d26b9a
+E138 Linux checkpoint  f2cb03001da02b1bde833550f38700b247ca30c2
+E138 Linux tree  1e10f2d211ddb16995ac73de2c7c5243f9f6d1b0
+E138 module sha256  3f9406c6b481c57e6d15082414968b128e330dc035c8a9fe1c0e8330586ead9e
+E138 patch 0052 sha256  708529d42db6c1f162d8a8e37c754a23e7e25bef364c1349a9f4b11680488b57
+E138 private result sha256  1a86e03571d4447fda7b654ec27dfb0ab635d8f6754b2c071720da82b4896a5b
+E138 private placement proof sha256  5a20490e5292e02d641aa0e421880a6d5926a2e5862fa544ced8dec36fc1d096
+E138 public device-global UMA host-state note sha256  ac85ddbce26ebf53653bdca6fedd071a844001d05db3d7f52638f25568c84258
+E138 closure  exact command-queue/workqueue paths create no pool eagerly; J615 newTA/new3D/newCL factories at +0xb38/+0xb40/+0xb48 are reached lazily; one zero-seeded G15 UMA host state is placed in GpuManager without UMAPool construction, pool-ID consumption, Queue exposure, install or RunCompute

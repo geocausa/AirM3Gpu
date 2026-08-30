@@ -1,0 +1,72 @@
+From f2cb03001da02b1bde833550f38700b247ca30c2 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 03:50:16 +0100
+Subject: [PATCH] drm: asahi: place J615 device-global UMA host state
+
+
+diff --git a/drivers/gpu/drm/asahi/buffer.rs b/drivers/gpu/drm/asahi/buffer.rs
+index 1b12de1d4865..a3877589b8d6 100644
+--- a/drivers/gpu/drm/asahi/buffer.rs
++++ b/drivers/gpu/drm/asahi/buffer.rs
+@@ -308,9 +308,10 @@ pub(crate) fn complete(
+ /// namespaces together here so a future live owner cannot accidentally create
+ /// one manager/counter per Queue.
+ ///
+-/// This type remains definition-only. In particular, it is not instantiated in
+-/// GpuManager yet, and no caller may treat the pool-ID sequence as Compute-only:
+-/// eventual TA/3D/CL pool creation must all consume this same sequence.
++/// E138 places this host-only state once in the G15 `GpuManager`, matching the
++/// accelerator-global lifetime without allocating a UMAPool or consuming a pool
++/// ID. No caller may treat the pool-ID sequence as Compute-only: eventual
++/// TA/3D/CL pool creation must all consume this same sequence.
+ #[allow(dead_code)]
+ pub(crate) struct G15DeviceUmaOwnerState {
+     hardware_buffer_ids: G15HardwareBufferIdManager,
+@@ -330,7 +331,7 @@ fn value(self) -> u64 {
+ 
+ #[allow(dead_code)]
+ impl G15DeviceUmaOwnerState {
+-    pub(crate) fn new_unpublished() -> Result<Self> {
++    pub(crate) fn new_device_global() -> Result<Self> {
+         Ok(Self {
+             hardware_buffer_ids: G15HardwareBufferIdManager::new()?,
+             // Exact kernel-image initial value of the global pool-ID counter.
+diff --git a/drivers/gpu/drm/asahi/gpu.rs b/drivers/gpu/drm/asahi/gpu.rs
+index 16843521966f..ae33199c480f 100644
+--- a/drivers/gpu/drm/asahi/gpu.rs
++++ b/drivers/gpu/drm/asahi/gpu.rs
+@@ -248,6 +248,12 @@ pub(crate) struct GpuManager {
+     g15_preflight_rx_doorbells: AtomicU64,
+     #[ver(G == G15)]
+     g15_preflight_unknown_messages: AtomicU64,
++    /// Exact J615 accelerator-global UMA host state. E138 places only the
++    /// 0x100 HardwareBuffer-ID namespace plus zero-seeded pool-ID sequence;
++    /// it allocates no UMAPool and has no live Queue/RunCompute consumer.
++    #[ver(G == G15)]
++    #[pin]
++    g15_uma: Mutex<buffer::G15DeviceUmaOwnerState>,
+     #[pin]
+     alloc: Mutex<KernelAllocators>,
+     io_mappings: KVec<mmu::KernelMapping>,
+@@ -1908,6 +1914,9 @@ fn make_mgr(
+             GFP_KERNEL,
+         )?;
+ 
++        #[ver(G == G15)]
++        let g15_uma = buffer::G15DeviceUmaOwnerState::new_device_global()?;
++
+         let x = UniqueArc::pin_init(
+             try_pin_init!(GpuManager::ver {
+                 dev: dev.into(),
+@@ -1925,6 +1934,8 @@ fn make_mgr(
+                 g15_preflight_rx_doorbells: AtomicU64::new(0),
+                 #[ver(G == G15)]
+                 g15_preflight_unknown_messages: AtomicU64::new(0),
++                #[ver(G == G15)]
++                g15_uma <- new_mutex!(g15_uma, "g15_uma"),
+                 event_manager,
+                 alloc <- new_mutex!(alloc, "alloc"),
+                 #[ver(G != G15)]
+-- 
+2.53.0
+
