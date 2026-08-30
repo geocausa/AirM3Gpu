@@ -694,3 +694,13 @@ E147 private result sha256  57bf8efbc0adcf0fd487bdd432a6205bd64324a03906229079a3
 E147 private global-resource-stack proof sha256  163ad2182bbe831cae6314f75c2422fd427f74f32ba4d0b13f61aefb641f93c0
 E147 public global-resource-stack note sha256  1494ad4ffe9b3a2f4ce49221c4d3fc53d44fbd543be06b1a0bf6d0420fe5a3de
 E147 closure  exact five firmware stacks are accelerator-global, eagerly backed and dynamically select/release independent global indices; no Linux delta, install or RunCompute
+
+private evidence checkpoint E148  4269a854c3e577592d58b99f14e060d65f7a32f1
+E148 Linux checkpoint  1308998922f430f77c5e19ecee33dc5799bfdb8f
+E148 Linux tree  8c1d9c20f68a199ae0ca777bb51ce75265da545c
+E148 module sha256  5e7b8335fe27806e451a2dd9e34d4606529cbe959499ea7cec327272cc2ebd46
+E148 patch 0060 sha256  dbe93a8bddf28239f270d5634d77d6b9d787d7b0a90a3c26a2ba7f85bd29baf7
+E148 private result sha256  90552426cb02b742c1eafc87b9b8f8e78f2770442c6044b91f8cd7bd3627fb63
+E148 private bookkeeping model sha256  3bc1468177bc257f0bc18d729883149ebf44ded51196ac1072e161d1cbc25b0d
+E148 public global-resource-lease note sha256  983baa0523e08a0ea784d4cad1b77fb2041920e1b0b369d4d31209af81902ff1
+E148 closure  device-global exact logical selector/use-count state plus Queue/channel RAII global-index leases; no mapped stack backing, selected FWVA, install or RunCompute

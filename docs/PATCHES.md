@@ -759,3 +759,17 @@ Patch 0059 validation performed on 2026-08-30:
 - source audit: channel `+0x1e8 <- command queue +0x44c`; shared-pool class is 0 only for types 0/5 and 1 otherwise; normal exact types are 3 initially then 1/2;
 - reachability: dormant assembly helper remains zero-caller, `queue/compute.rs` unchanged and no live pool-ID consumer/RunCompute writer is added;
 - runtime: module not installed/not executed; no RunCompute.
+
+Patch 0060 validation performed on 2026-08-30:
+
+- base: `b06c8650159bf700c3d4766542da8c976ef19048`;
+- expected commit tree: `8c1d9c20f68a199ae0ca777bb51ce75265da545c`;
+- patch SHA-256: `dbe93a8bddf28239f270d5634d77d6b9d787d7b0a90a3c26a2ba7f85bd29baf7`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- Asahi module build: PASS at the established 24-individual-warning bring-up baseline;
+- module SHA-256: `5e7b8335fe27806e451a2dd9e34d4606529cbe959499ea7cec327272cc2ebd46`;
+- selector audit: exact 0x800 global ceiling, two-level lowest-free selection, eager logical first backing, growth, per-backing use counts and inverse release; independent timestamp/scheduler/channel namespaces verified including non-32-aligned timestamp growth;
+- lifetime audit: real Queue construction owns timestamp+scheduler logical leases; zero-caller unpublished Compute assembly owns independent channel-state/cached/uncached leases with RAII rollback;
+- reachability: no resource-stack GPU backing/FWVA, E127 local proof indices remain separate, `queue/compute.rs` / `fw/compute.rs` / `workqueue.rs` unchanged and no RunCompute writer;
+- runtime: module not installed/not executed; no RunCompute.
