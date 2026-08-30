@@ -757,3 +757,14 @@ E153 private selected-state bridge sha256  f3ebd40dac5b9a83157c6b0d24cdccc8b0c31
 E153 private byte-audit output sha256  be97c5ed2f819567960a7a18d62ba0d13d3f513392aa9914c8b4c966c47dba6c
 E153 public selected-state note sha256  72fd0deb91805fe4f4face4ce707afda282c8ca182b56f3b2db1b1910a015990
 E153 closure  exact ordinary timestamp mode false; real global selected states initialized at Queue/channel lifetime; E127 duplicate backing/slot layer removed; no install/RunCompute
+
+private evidence checkpoint E154  14512c79f5f7601ca52d7563e611017fd1db067c
+E154 Linux checkpoint  1e74793c7d14144b70f1c5e383e25fe1397eba08
+E154 Linux tree  888152d04b2997863753ed527d530040136dbe1e
+E154 module sha256  65ee61e61d540d431a293383f9013e42dd466f0be578ea6ad21ef7c7e8b1bea9
+E154 patch 0066 sha256  a8d9b4953646e7982d241b928cddc687c29bf548946aa9204ec7af7ee8fe40d1
+E154 private result sha256  d1ae89f7825f4007f8c5b0c4ea874e03b3eae781a397f0ecb5b35676417f1ae7
+E154 private scalar-producer proof sha256  e12fae2458b4171ce513b5aacfc4955ab2b1a498fe07ebe0ffea0784d6e3ca79
+E154 private Linux bridge sha256  d7da93da3a6965b8acbaa7f5014e615789eeafeda6154e1d5a5766fcda7a9549
+E154 public channel-scalar note sha256  a8df7b4b81016defa5ba16c97ee6bff56aaa761b3cfe68bee1c9e2d79dfbc0cc
+E154 closure  exact process-PID QueueInfo source and non-foreground priority/QoS tuple bridged internally; final scalar input bag removed; assembler still zero-caller, no install/RunCompute

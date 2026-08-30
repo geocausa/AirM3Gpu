@@ -1,0 +1,218 @@
+From 1e74793c7d14144b70f1c5e383e25fe1397eba08 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 15:00:20 +0100
+Subject: [PATCH] drm: asahi: bridge J615 channel runtime scalars
+
+---
+ drivers/gpu/drm/asahi/file.rs         | 16 ++++++++--
+ drivers/gpu/drm/asahi/fw/workqueue.rs |  8 +++++
+ drivers/gpu/drm/asahi/gpu.rs          |  3 ++
+ drivers/gpu/drm/asahi/queue/mod.rs    | 46 ++++++++++++++-------------
+ 4 files changed, 49 insertions(+), 24 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/file.rs b/drivers/gpu/drm/asahi/file.rs
+index 860960d39f5e..74c052504656 100644
+--- a/drivers/gpu/drm/asahi/file.rs
++++ b/drivers/gpu/drm/asahi/file.rs
+@@ -211,6 +211,11 @@ pub(crate) enum Object {
+ // #[pin_data]
+ pub(crate) struct File {
+     id: u64,
++    // E154 exact J615 IOGPUDevice +0x60 counterpart. Apple snapshots
++    // proc_pid(get_bsdtask_info(task)) at per-client device construction and
++    // copies it through IOGPUCommandQueue +0x490 -> AGXChannel +0x4c. Capture
++    // the opening process once so fd handoff cannot silently change identity.
++    owner_pid: u32,
+     // #[pin]
+     vms: xarray::XArray<KBox<Vm>>,
+     // #[pin]
+@@ -237,9 +242,14 @@ fn open(device: &AsahiDevice) -> Result<Pin<KBox<Self>>> {
+
+         let gpu = &device.gpu;
+         let id = gpu.ids().file.next();
++        let owner_pid: u32 = kernel::current!()
++            .group_leader()
++            .pid()
++            .try_into()
++            .map_err(|_| EINVAL)?;
+
+         mod_dev_dbg!(device, "[File {}]: DRM device opened\n", id);
+-        Ok(KBox::pin_init(File::new(id), GFP_KERNEL)?)
++        Ok(KBox::pin_init(File::new(id, owner_pid), GFP_KERNEL)?)
+     }
+
+     fn as_raw(&self) -> *mut bindings::drm_file {
+@@ -263,7 +273,7 @@ fn reject_g15_runtime_mutation(device: &AsahiDevice) -> Result<()> {
+         }
+     }
+
+-    fn new(id: u64) -> impl PinInit<Self, Error> {
++    fn new(id: u64, owner_pid: u32) -> impl PinInit<Self, Error> {
+         unsafe {
+             pin_init::pin_init_from_closure(move |slot: *mut Self| {
+                 let raw_vms = addr_of_mut!((*slot).vms);
+@@ -281,6 +291,7 @@ fn new(id: u64) -> impl PinInit<Self, Error> {
+                     .__pinned_init(raw_objects)?;
+
+                 (*slot).id = id;
++                (*slot).owner_pid = owner_pid;
+                 Ok(())
+             })
+         }
+@@ -1016,6 +1027,7 @@ pub(crate) fn queue_create(
+             g15_ualloc_range5_uncached,
+             g15_ualloc_range5_cached,
+             g15_uma_shared_pools,
++            file.inner().owner_pid,
+             // TODO: Plumb deeper the enum
+             uapi::drm_asahi_priority_DRM_ASAHI_PRIORITY_REALTIME - data.priority,
+             data.usc_exec_base,
+diff --git a/drivers/gpu/drm/asahi/fw/workqueue.rs b/drivers/gpu/drm/asahi/fw/workqueue.rs
+index 4acd05a736e7..89cdb26b5c5e 100644
+--- a/drivers/gpu/drm/asahi/fw/workqueue.rs
++++ b/drivers/gpu/drm/asahi/fw/workqueue.rs
+@@ -333,6 +333,14 @@ pub(crate) struct QueueInfo<'a> {
+     G15_J615_CL_SECOND_CONSTRUCTOR_INTEGER << 4;
+ const _: [(); 0x500] = [(); G15_J615_CL_UNCACHED_CHANNEL_VALUE_50 as usize];
+ pub(crate) const G15_J615_CL_PRIORITY_INTEGER_ARGUMENT: u32 = 2;
++/// Exact E154 non-foreground IOGPU priority branch. `updatePriority()` checks
++/// `clientHasPrivilege(task, "foreground")`; when that privilege is absent it
++/// selects queue +0x448, whose normal constructor value is 2. Linux currently
++/// has no equivalent foreground entitlement model, so the dormant first-CL
++/// profile supports only this mechanically closed branch.
++pub(crate) const G15_J615_NONFOREGROUND_EFFECTIVE_PRIORITY: u32 = 2;
++/// Exact `chooseCLWorkQueue()` QoS argument when effective priority != 1.
++pub(crate) const G15_J615_NONFOREGROUND_CL_QOS_ARGUMENT: u32 = 2;
+ pub(crate) const G15_J615_CDM_BACKOFF_TIMEOUT: u8 = 4;
+
+ /// Exact six-field priority image written by
+diff --git a/drivers/gpu/drm/asahi/gpu.rs b/drivers/gpu/drm/asahi/gpu.rs
+index 191105500ff7..6efb2cb3bc81 100644
+--- a/drivers/gpu/drm/asahi/gpu.rs
++++ b/drivers/gpu/drm/asahi/gpu.rs
+@@ -312,6 +312,7 @@ fn new_queue(
+         g15_ualloc_range5_uncached: Option<Arc<Mutex<alloc::DefaultAllocator>>>,
+         g15_ualloc_range5_cached: Option<Arc<Mutex<alloc::DefaultAllocator>>>,
+         g15_uma_shared_pools: Option<Arc<Mutex<buffer::G15ClientUmaPoolContainerState>>>,
++        owner_pid: u32,
+         priority: u32,
+         usc_exec_base: u64,
+     ) -> Result<KBox<dyn queue::Queue>>;
+@@ -2875,6 +2876,7 @@ fn new_queue(
+         g15_ualloc_range5_uncached: Option<Arc<Mutex<alloc::DefaultAllocator>>>,
+         g15_ualloc_range5_cached: Option<Arc<Mutex<alloc::DefaultAllocator>>>,
+         g15_uma_shared_pools: Option<Arc<Mutex<buffer::G15ClientUmaPoolContainerState>>>,
++        owner_pid: u32,
+         priority: u32,
+         usc_exec_base: u64,
+     ) -> Result<KBox<dyn queue::Queue>> {
+@@ -2901,6 +2903,7 @@ fn new_queue(
+                 g15_ualloc_range5_uncached,
+                 g15_ualloc_range5_cached,
+                 g15_uma_shared_pools,
++                owner_pid,
+                 self.uat.g15_shared_bank1(),
+                 g15_mapping_notifier,
+                 g15_fw_queue_resources,
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index 1b7f32e582ca..c0b56a2039a0 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -227,19 +227,6 @@ fn base_fwva(&self) -> Result<u64> {
+     }
+ }
+
+-/// Remaining exact runtime inputs required when the dormant CL/Compute channel
+-/// itself is constructed. Resource indices/FWVAs and timestamp mode are no
+-/// longer caller inputs: E147-E153 derive them from the real global leases and
+-/// exact ordinary queue construction. These three values remain explicit until
+-/// their existing Linux producers are bridged.
+-#[derive(Clone, Copy, Debug)]
+-#[allow(dead_code)]
+-struct G15ComputeChannelInitInputs {
+-    channel_4c_value: u32,
+-    effective_priority: u32,
+-    queue_qos: u32,
+-}
+-
+ /// First phase of the E112 two-phase transaction. The rotating slots and
+ /// command-independent UMA/HWMetrics assets are known, but the SKU bytes have
+ /// not been serialized or written because the RunCompute FWVA is not known yet.
+@@ -717,6 +704,11 @@ pub(crate) struct QueueInner {
+     _g15_shared_bank1: Option<mmu::G15SharedBank1>,
+     #[ver(G == G15)]
+     _g15_mapping_notifier: Option<Arc<Mutex<mmu::G15MappingNotifier>>>,
++    // E154 exact per-client process identity captured at DRM File open. Apple
++    // copies IOGPUDevice +0x60 (proc_pid of the owning task) through command
++    // queue +0x490 into AGXChannel +0x4c / selected QueueInfo +0x50.
++    #[ver(G == G15)]
++    _g15_owner_pid: u32,
+     // E153 exact AGXCommandQueue-lifetime mapped selections from the global
+     // timestamp/scheduler stacks, initialized once during Queue construction.
+     #[ver(G == G15)]
+@@ -1132,17 +1124,17 @@ fn pool_id(&self) -> u64 {
+ #[versions(AGX)]
+ #[allow(dead_code)]
+ impl QueueInner::ver {
+-    /// Assemble the exact owner tiers required by a future lazy CL/Compute
+-    /// channel, but return only a private host object with no WorkQueue/submit
+-    /// attachment and no firmware-command writer.
+-    fn g15_assemble_unpublished_compute_channel(
++    /// Assemble the exact owner tiers for the future first normal
++    /// non-foreground J615 CL/Compute channel, but return only a private host
++    /// object with no WorkQueue/submit attachment and no firmware-command
++    /// writer. Foreground-priority policy remains a separate future bridge.
++    fn g15_assemble_unpublished_nonforeground_compute_channel(
+         &self,
+         gpu: &gpu::GpuManager::ver,
+-        channel: G15ComputeChannelInitInputs,
+     ) -> Result<G15UnpublishedComputeChannel::ver> {
+         #[ver(G != G15)]
+         {
+-            let _ = (gpu, channel);
++            let _ = gpu;
+             return Err(EINVAL);
+         }
+
+@@ -1176,11 +1168,18 @@ fn g15_assemble_unpublished_compute_channel(
+             // lifetime, using the already-initialized Queue timestamp/scheduler
+             // leases. Any later failure drops all three selections.
+             let fw_channel_resources = gpu.g15_select_channel_resources()?;
++            // E154 closes the final E127-era scalar inputs. Apple sources
++            // QueueInfo +0x50 from the owning process PID. Its normal
++            // non-foreground updatePriority() branch selects effective type 2,
++            // and chooseCLWorkQueue() then supplies literal QoS 2. Linux has no
++            // IOGPU foreground entitlement model yet, so keep the dormant path
++            // fail-closed to that exact non-foreground profile rather than
++            // inventing a foreground mapping.
+             let initialized_channel_resources = fw_channel_resources.initialize_j615_cl(
+                 &self._g15_fw_queue_resources,
+-                channel.channel_4c_value,
+-                channel.effective_priority,
+-                channel.queue_qos,
++                self._g15_owner_pid,
++                fw::workqueue::G15_J615_NONFOREGROUND_EFFECTIVE_PRIORITY,
++                fw::workqueue::G15_J615_NONFOREGROUND_CL_QOS_ARGUMENT,
+             )?;
+             let owners = {
+                 let mut range5_uncached = range5_uncached.lock();
+@@ -1465,6 +1464,7 @@ pub(crate) fn new(
+         _g15_ualloc_range5_uncached: Option<Arc<Mutex<alloc::DefaultAllocator>>>,
+         _g15_ualloc_range5_cached: Option<Arc<Mutex<alloc::DefaultAllocator>>>,
+         _g15_uma_shared_pools: Option<Arc<Mutex<buffer::G15ClientUmaPoolContainerState>>>,
++        _owner_pid: u32,
+         _g15_shared_bank1: Option<mmu::G15SharedBank1>,
+         _g15_mapping_notifier: Option<Arc<Mutex<mmu::G15MappingNotifier>>>,
+         _g15_fw_queue_resources: Option<buffer::G15FirmwareCommandQueueResourceLeases>,
+@@ -1622,6 +1622,8 @@ pub(crate) fn new(
+                 #[ver(G == G15)]
+                 _g15_mapping_notifier: g15_lazy_mapping_notifier,
+                 #[ver(G == G15)]
++                _g15_owner_pid: _owner_pid,
++                #[ver(G == G15)]
+                 _g15_fw_queue_resources: g15_fw_queue_resources,
+                 #[ver(G == G15)]
+                 g15_pm_records,
+-- 
+2.53.0
+

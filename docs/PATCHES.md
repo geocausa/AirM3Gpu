@@ -844,3 +844,17 @@ Patch 0065 validation performed on 2026-08-30:
 - ownership audit: real mapped timestamp/scheduler selections initialize at Queue lifetime; real mapped channel-state/cached/uncached selections initialize at dormant CL-channel lifetime; five E127 duplicate backing owners and local slot inputs are absent;
 - source audit: `queue/compute.rs`, `fw/compute.rs`, and `workqueue.rs` unchanged;
 - runtime: E075 gate unchanged; module not installed/not executed; no RunCompute.
+
+Patch 0066 validation performed on 2026-08-30:
+
+- base: `4a72f743dd25bcd3d50d77722c153d395a23dbad`;
+- expected commit tree: `888152d04b2997863753ed527d530040136dbe1e`;
+- patch SHA-256: `a8d9b4953646e7982d241b928cddc687c29bf548946aa9204ec7af7ee8fe40d1`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- Asahi module build: PASS at the established 24-individual-warning bring-up baseline;
+- module SHA-256: `65ee61e61d540d431a293383f9013e42dd466f0be578ea6ad21ef7c7e8b1bea9`;
+- exact PID source audit: `IOGPUDevice::init()` calls `_get_bsdtask_info` -> `_proc_pid`, stores device `+0x60`, then queue `+0x490` -> channel `+0x4c` -> selected QueueInfo `+0x50`;
+- exact priority audit: `clientHasPrivilege(task, "foreground")` selects normal non-foreground queue field `+0x448 = 2`; AGX integer argument remains 2 and `chooseCLWorkQueue()` uses literal QoS 2 for effective priority != 1;
+- source audit: old `G15ComputeChannelInitInputs` absent, renamed non-foreground unpublished assembler has zero callers, `queue/compute.rs`, `fw/compute.rs`, and `workqueue.rs` unchanged;
+- runtime: E075 gate unchanged; module not installed/not executed; no RunCompute.

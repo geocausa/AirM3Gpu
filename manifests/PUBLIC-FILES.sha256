@@ -1,10 +1,10 @@
 a94f4741e619a496034a1cfd0c0149d93cb3f74c33e024d5d7c2023f4494c605  ./.gitignore
-1911a993696dc1bb8c5cd39c52017b731eba92f0ba10fcaf488c87c188f7da64  ./README.md
-ad3a11d81f86c59b1ddc1e64b37aedf16e65f0488b904296682dbb1fd6cd3fbf  ./docs/CURRENT-STATE.md
-eb82d57ed45533b0d16d49d2da0c7cbd673c2c64391d7bc009e10c3432cea630  ./docs/PATCHES.md
+208bd79767950ef74b2193b6129441bc5f91517959877a354bbcdcfac05bd6bc  ./README.md
+f5f6737843af86e5017e7d81a29adfb850651bc02437a6521fe6b57db30638fe  ./docs/CURRENT-STATE.md
+327dbe0af1a2d447719004847ae49c2f2dbe09bfad8656299d0be58a94472c42  ./docs/PATCHES.md
 d61bf1973a6d6b3e840ef7eff94cb497eb57118a711f6891e2b0ee98ca6db461  ./docs/RECOVERY.md
 072edbe867996f268553f3da518769548159145691000f5f6dc7f888dd84cdf7  ./docs/WORKFLOW.md
-b5d50a8e42655a7a61cf588cb5a130ea58fb4ba44007e5ccef78849121697c7d  ./manifests/CURRENT-HASHES.txt
+01465a544727b6efd25b07638f5fee388c41390b5f7b52bb2317568edb50401a  ./manifests/CURRENT-HASHES.txt
 4f16537a51cf9d1ad18841ec138b5a6090407739af7b69898c933dcafdca8fea  ./patches/linux/0001-drm-asahi-checkpoint-T8122-G15-bring-up-through-RTKi.patch
 258eb0243e41b10800df1daf5671c8003f358efec31caaac405e74fc8c2cc00a  ./patches/linux/0002-drm-asahi-map-G15-RTKit-preallocated-crashlog-memory.patch
 7a0b6374402bc2fb4c75b01ae93645470385f1b671530ea9996b118915c9f961  ./patches/linux/0003-drm-asahi-stage-G15-RTKit-app-endpoint-start.patch
@@ -70,6 +70,7 @@ dbe93a8bddf28239f270d5634d77d6b9d787d7b0a90a3c26a2ba7f85bd29baf7  ./patches/linu
 97645134b0095277f2b8c6a8130bd6b0a81d9dad7f7c949406aba9742e31e029  ./patches/linux/0063-drm-asahi-gate-J615-bootstrap-mapping-notifications.patch
 760456b4cbdd39a532ac6dc4e5b52d4a01993a96bf1ccf5ed8c8b52efa1e7cff  ./patches/linux/0064-drm-asahi-integrate-J615-mapped-firmware-resource-stacks.patch
 d29abdff0f53a641bbd19d111d3c52dbee611421931ee53ec3de97ad27b78985  ./patches/linux/0065-drm-asahi-bridge-J615-global-selected-resource-state.patch
+a8d9b4953646e7982d241b928cddc687c29bf548946aa9204ec7af7ee8fe40d1  ./patches/linux/0066-drm-asahi-bridge-J615-channel-runtime-scalars.patch
 09f94cf355cb34847caf59bf33f46231748958c10fa37dcde7d35b1a2307ac2d  ./patches/mesa/0001-hk-pass-initial-load-clear-state-to-kernel.patch
 07821063a351d0306dc5cc0689979cf10c537af5a417dc5d97e390ee456ec798  ./patches/mesa/0002-hk-pass-depth-stencil-level-offsets-to-kernel.patch
 bc26f90769b09e298649b0fc8f5f6b0373c7e50c03f0b5926f5d285f562db569  ./patches/mesa/0003-hk-build-G15-EOT-state-loader-for-proven-path.patch
@@ -84,6 +85,7 @@ ab39ca9e1eb0243bc482dd4837c5fe95e9c23b5d3bff6fdf1df74ab25f517136  ./research/g15
 ac1ed8d173a245826452b06ad413aa11bf8778bf1a8617af4916c9cec64fd5a8  ./research/g15/G15-23J220-RANGE8-PAGE-POOL-STATE.md
 5aac9e56237ca88ea7ed227f2a4494af04b8c7ff20a2499611977a514c3cf265  ./research/g15/G15-CHANNEL-MEMORY-BACKING.md
 41df82e47b77ce3fb31e25ec06179443db572b8be907096e476d67680e445518  ./research/g15/G15-CHANNEL-OWNER-GRAPH.md
+a8df7b4b81016defa5ba16c97ee6bff56aaa761b3cfe68bee1c9e2d79dfbc0cc  ./research/g15/G15-CHANNEL-RUNTIME-SCALAR-PRODUCERS.md
 4bc35c1ba19f17c6e7181b2df1c3f5242c30c9184a71a79d415cbd2d33cceb2b  ./research/g15/G15-CHANNEL-STATE-BACKING.md
 39e89f928cf2f215641b1119e9df919ade2a4990d0031ab7f4594975345c731f  ./research/g15/G15-CHANNEL-STATE-GPU-BUFFER.md
 88a14baca47269c2c8a4778ac27e13f0494edc839c65a093a122ff99588df353  ./research/g15/G15-CHANNEL-STATE-RESET-PRIORITY.md
@@ -174,5 +176,5 @@ cbc9603a831808031d5f528eadd7f3302879723f06ab798243258ba9a1eace95  ./research/g15
 6c630e1e0ad344f8cdf6f2c8c7d1d5bc091de06f478aaf42971c8acc34cf1e78  ./research/g15/G15-WEAK-UMAPOOL-PROMOTION.md
 d531fda1be727de5e510ea5718ef68d3b0172d3ec4f2d3f5b039bb6c7f42e06e  ./research/g15/G15-WRAPPER-LAYOUT.md
 1e42ac959bea3032d870499ed56255d3212aaf1f794b184fc08bbb5d2504dbf4  ./research/g15/J615-POWER-CONFIG.md
-7c1bf9a6bb70b5ca454914fc8fed5e8aa901765dd8c5815afc283e0b97c98c76  ./research/g15/README.md
+22a67c0ac8cc61234fcd560b71d82f04b282d6ce5bb681d1bc10c87e91f38647  ./research/g15/README.md
 d42da0407a1a8725d538c5438cb402860139b661c347613781a5b0b4226731e6  ./research/g15/build-g15g-c0-dpe-ppt.py
