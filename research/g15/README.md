@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-FIRMWARE-RESOURCE-MODE0-LIFETIME.md` — E149 exact mode-0 backing use-count seed, last-release destruction, backing-hole and delayed-regrowth semantics; host-only bookkeeping correction, no selected FWVA or RunCompute.
 - `G15-GLOBAL-FIRMWARE-RESOURCE-LEASES.md` — E148 device-global host selector/use-count bookkeeping plus queue/channel RAII global-index leases; no global backing FWVA or RunCompute.
 - `G15-GLOBAL-FIRMWARE-RESOURCE-STACKS.md` — E147 exact device-global firmware resource-stack placement, eager backing and dynamic global selection/release; proves the five E127 local indices cannot become live constants.
 - `G15-NORMAL-COMPUTE-POOL-CLASS.md` — E146 exact normal-J615 class-1 shared Compute pool selection; dormant assembly no longer accepts an arbitrary pool class.

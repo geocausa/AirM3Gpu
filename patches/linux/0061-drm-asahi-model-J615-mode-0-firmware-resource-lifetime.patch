@@ -1,0 +1,239 @@
+From 368783dd61e2dd709d99b696feb4a8af9c7ec767 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 12:05:38 +0100
+Subject: [PATCH] drm: asahi: model J615 mode-0 firmware resource lifetime
+
+---
+ drivers/gpu/drm/asahi/buffer.rs | 150 +++++++++++++++++++++++---------
+ 1 file changed, 111 insertions(+), 39 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/buffer.rs b/drivers/gpu/drm/asahi/buffer.rs
+index 8aa4fd636a25..af869ba466e6 100644
+--- a/drivers/gpu/drm/asahi/buffer.rs
++++ b/drivers/gpu/drm/asahi/buffer.rs
+@@ -332,18 +332,17 @@ pub(crate) struct G15DeviceUmaOwnerState {
+ /// Host-side exact bitmap/use-count state for one 23J220 firmware resource
+ /// stack. Apple owns one instance per resource type under AGXFirmware.
+ ///
+-/// E148 deliberately stops before GPU backing allocation. `capacity` therefore
+-/// means the global slots represented by logically created backings, not mapped
+-/// GPU memory. The first logical backing is present eagerly, matching E147's
+-/// createInitialBacking() ordering, and further logical backings appear only
+-/// when no free global slot remains.
++/// E149 closes the target shrink mode as zero. Every backing therefore starts
++/// with allocation use-count zero, selection increments it, and releasing the
++/// last selected element immediately removes that backing from the stack. The
++/// fixed host vector below represents Apple's growable backing-pointer array;
++/// `None` entries are exact logical holes and never contribute free indices.
+ #[allow(dead_code)]
+ struct G15FirmwareResourceStackState {
+     elements_per_backing: u32,
+-    capacity: u32,
+     outer_free: u64,
+     inner_free: [u32; G15_FIRMWARE_RESOURCE_OUTER_WORDS],
+-    block_live: KVec<u32>,
++    block_live: KVec<Option<u32>>,
+ }
+ 
+ #[allow(dead_code)]
+@@ -356,21 +355,36 @@ fn new(elements_per_backing: u32) -> Result<Self> {
+         let max_backings = (G15_FIRMWARE_RESOURCE_MAX_SLOTS as usize)
+             .div_ceil(elements_per_backing as usize);
+         let mut block_live = KVec::with_capacity(max_backings, GFP_KERNEL)?;
+-        // The exact host creates the first backing during firmware allocation.
+-        block_live.push(0, GFP_KERNEL)?;
++        for _ in 0..max_backings {
++            block_live.push(None, GFP_KERNEL)?;
++        }
+ 
+-        let capacity = elements_per_backing.min(G15_FIRMWARE_RESOURCE_MAX_SLOTS);
+         let mut state = Self {
+             elements_per_backing,
+-            capacity,
+             outer_free: 0,
+             inner_free: [0; G15_FIRMWARE_RESOURCE_OUTER_WORDS],
+             block_live,
+         };
+-        state.mark_free_range(0, capacity)?;
++        // Exact createInitialBacking(): the first backing exists eagerly even
++        // though mode 0 seeds its allocation use-count at zero.
++        state.create_logical_backing(0)?;
+         Ok(state)
+     }
+ 
++    fn block_range(&self, block: usize) -> Result<(u32, u32)> {
++        let block = u32::try_from(block).map_err(|_| EOVERFLOW)?;
++        let start = block
++            .checked_mul(self.elements_per_backing)
++            .ok_or(EOVERFLOW)?;
++        if start >= G15_FIRMWARE_RESOURCE_MAX_SLOTS {
++            return Err(EINVAL);
++        }
++        let count = self
++            .elements_per_backing
++            .min(G15_FIRMWARE_RESOURCE_MAX_SLOTS - start);
++        Ok((start, count))
++    }
++
+     fn mark_free_range(&mut self, start: u32, count: u32) -> Result {
+         let end = start.checked_add(count).ok_or(EOVERFLOW)?;
+         if end > G15_FIRMWARE_RESOURCE_MAX_SLOTS {
+@@ -391,22 +405,57 @@ fn mark_free_range(&mut self, start: u32, count: u32) -> Result {
+         Ok(())
+     }
+ 
+-    /// Exact grow ordering at the bookkeeping layer: append one allocation
+-    /// block, then expose only its newly introduced global slots as free. The
+-    /// KVec is fully reserved at construction, so a failed push cannot leave
+-    /// availability bits describing a nonexistent logical backing.
+-    fn grow_logical_backing(&mut self) -> Result {
+-        if self.capacity >= G15_FIRMWARE_RESOURCE_MAX_SLOTS {
+-            return Err(ENOSPC);
++    fn clear_free_range(&mut self, start: u32, count: u32) -> Result {
++        let end = start.checked_add(count).ok_or(EOVERFLOW)?;
++        if end > G15_FIRMWARE_RESOURCE_MAX_SLOTS {
++            return Err(EINVAL);
+         }
+ 
+-        self.block_live.push(0, GFP_KERNEL)?;
+-        let start = self.capacity;
+-        let count = self
+-            .elements_per_backing
+-            .min(G15_FIRMWARE_RESOURCE_MAX_SLOTS - start);
+-        self.capacity = start.checked_add(count).ok_or(EOVERFLOW)?;
+-        self.mark_free_range(start, count)
++        // A zero-use mode-0 backing must have every element free. Validate the
++        // complete range first so an invariant failure cannot partially mutate
++        // the two-level availability map.
++        for index in start..end {
++            let outer = (index / G15_FIRMWARE_RESOURCE_INNER_BITS) as usize;
++            let inner = index % G15_FIRMWARE_RESOURCE_INNER_BITS;
++            let mask = 1u32 << inner;
++            if self.inner_free.get(outer).ok_or(EIO)? & mask == 0 {
++                return Err(EIO);
++            }
++        }
++
++        for index in start..end {
++            let outer = (index / G15_FIRMWARE_RESOURCE_INNER_BITS) as usize;
++            let inner = index % G15_FIRMWARE_RESOURCE_INNER_BITS;
++            self.inner_free[outer] &= !(1u32 << inner);
++            if self.inner_free[outer] == 0 {
++                self.outer_free &= !(1u64 << outer);
++            }
++        }
++        Ok(())
++    }
++
++    fn create_logical_backing(&mut self, block: usize) -> Result {
++        if self.block_live.get(block).ok_or(EINVAL)?.is_some() {
++            return Err(EIO);
++        }
++        let (start, count) = self.block_range(block)?;
++        self.mark_free_range(start, count)?;
++        // Exact allocateNewBlock() stores `(shrink_mode != 0)` at allocation
++        // +0x00. All five target stacks use shrink mode 0, hence zero here.
++        self.block_live[block] = Some(0);
++        Ok(())
++    }
++
++    /// Exact grow ordering at the bookkeeping layer. Apple reuses the lowest
++    /// empty backing-pointer slot before expanding its pointer array, then marks
++    /// only that backing's global element range free.
++    fn grow_logical_backing(&mut self) -> Result {
++        for block in 0..self.block_live.len() {
++            if self.block_live[block].is_none() {
++                return self.create_logical_backing(block);
++            }
++        }
++        Err(ENOSPC)
+     }
+ 
+     /// E147 exact two-level lowest-free selector. `trailing_zeros()` is the
+@@ -429,12 +478,17 @@ fn select(&mut self) -> Result<u32> {
+             .checked_mul(G15_FIRMWARE_RESOURCE_INNER_BITS)
+             .and_then(|v| v.checked_add(inner))
+             .ok_or(EOVERFLOW)?;
+-        if index >= self.capacity {
++        if index >= G15_FIRMWARE_RESOURCE_MAX_SLOTS {
+             return Err(EIO);
+         }
+ 
+         let block = index / self.elements_per_backing;
+-        let live = self.block_live.get_mut(block as usize).ok_or(EIO)?;
++        let live = self
++            .block_live
++            .get_mut(block as usize)
++            .ok_or(EIO)?
++            .as_mut()
++            .ok_or(EIO)?;
+         *live = live.checked_add(1).ok_or(EOVERFLOW)?;
+ 
+         let mask = 1u32 << inner;
+@@ -445,12 +499,14 @@ fn select(&mut self) -> Result<u32> {
+         Ok(index)
+     }
+ 
+-    /// Inverse of E147 selection at the common bitmap/use-count layer. Block
+-    /// shrink/free policy is intentionally not modeled until its exact normal
+-    /// J615 policy is separately closed; retaining a logical block is the
+-    /// conservative compile-only behavior.
++    /// Exact mode-0 release transaction. Apple first returns the selected bit
++    /// and decrements the backing use-count. If that count reaches zero,
++    /// `releaseAllocationBlockIfPossible(..., false)` removes the entire
++    /// backing and clears all of its availability bits. A later grow may reuse
++    /// the resulting backing-slot hole, but not until the remaining present
++    /// backings have no free elements.
+     fn release(&mut self, index: u32) -> Result {
+-        if index >= self.capacity {
++        if index >= G15_FIRMWARE_RESOURCE_MAX_SLOTS {
+             return Err(EINVAL);
+         }
+         let outer = (index / G15_FIRMWARE_RESOURCE_INNER_BITS) as usize;
+@@ -461,13 +517,29 @@ fn release(&mut self, index: u32) -> Result {
+         }
+ 
+         let block = index / self.elements_per_backing;
+-        let live = self.block_live.get_mut(block as usize).ok_or(EIO)?;
+-        if *live == 0 {
+-            return Err(EIO);
+-        }
+-        *live -= 1;
++        let block_usize = block as usize;
++        let becomes_zero = {
++            let live = self
++                .block_live
++                .get_mut(block_usize)
++                .ok_or(EIO)?
++                .as_mut()
++                .ok_or(EINVAL)?;
++            if *live == 0 {
++                return Err(EIO);
++            }
++            *live -= 1;
++            *live == 0
++        };
++
+         self.inner_free[outer] |= mask;
+         self.outer_free |= 1u64 << outer;
++
++        if becomes_zero {
++            let (start, count) = self.block_range(block_usize)?;
++            self.clear_free_range(start, count)?;
++            self.block_live[block_usize] = None;
++        }
+         Ok(())
+     }
+ }
+@@ -529,7 +601,7 @@ impl Drop for G15FirmwareResourceLease {
+     fn drop(&mut self) {
+         // A lease can only be constructed by a successful selection. Failure
+         // here therefore indicates an internal bookkeeping invariant violation;
+-        // there is no live GPU consumer in E148, so keep Drop infallible while
++        // E149 still has no GPU-backing consumer, so keep Drop infallible while
+         // retaining the error as a fail-closed no-op rather than panicking.
+         let _ = self.manager.0.lock().release(self.index);
+     }
+-- 
+2.53.0
+

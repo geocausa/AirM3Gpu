@@ -773,3 +773,17 @@ Patch 0060 validation performed on 2026-08-30:
 - lifetime audit: real Queue construction owns timestamp+scheduler logical leases; zero-caller unpublished Compute assembly owns independent channel-state/cached/uncached leases with RAII rollback;
 - reachability: no resource-stack GPU backing/FWVA, E127 local proof indices remain separate, `queue/compute.rs` / `fw/compute.rs` / `workqueue.rs` unchanged and no RunCompute writer;
 - runtime: module not installed/not executed; no RunCompute.
+
+Patch 0061 validation performed on 2026-08-30:
+
+- base: `1308998922f430f77c5e19ecee33dc5799bfdb8f`;
+- expected commit tree: `cebe8170d2e83af5c51d82ed2a358a7093b63205`;
+- patch SHA-256: `2bccb08fe73be8201512acedd095501b6664d2926f8f1c992d046c2e519717b7`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- Asahi module build: PASS at the established 24-individual-warning bring-up baseline;
+- module SHA-256: `9050511799b03ab7db6d81977309321aaeebc5f4e0dc8854edc39b6e6d6d3e15`;
+- exact policy audit: all five target stacks use `AGXFWPoolShrinkMode=0`; backing count seeds zero; normal release uses `force=false`; final selected release removes the complete backing/global-index range;
+- logical audit: lower backing holes stay unavailable while later present backings have free slots; growth then reuses the lowest absent backing slot; exact timestamp 0x800 partial-tail ceiling retained;
+- reachability: only `buffer.rs` changes; no mapped resource-stack backing/FWVA; `queue/compute.rs`, `fw/compute.rs`, and `workqueue.rs` unchanged;
+- runtime: module not installed/not executed; no RunCompute.

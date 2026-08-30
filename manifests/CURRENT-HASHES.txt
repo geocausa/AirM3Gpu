@@ -704,3 +704,13 @@ E148 private result sha256  90552426cb02b742c1eafc87b9b8f8e78f2770442c6044b91f8c
 E148 private bookkeeping model sha256  3bc1468177bc257f0bc18d729883149ebf44ded51196ac1072e161d1cbc25b0d
 E148 public global-resource-lease note sha256  983baa0523e08a0ea784d4cad1b77fb2041920e1b0b369d4d31209af81902ff1
 E148 closure  device-global exact logical selector/use-count state plus Queue/channel RAII global-index leases; no mapped stack backing, selected FWVA, install or RunCompute
+
+private evidence checkpoint E149  f71da09bbea04e94f31406a384b4f62ee8afeed3
+E149 Linux checkpoint  368783dd61e2dd709d99b696feb4a8af9c7ec767
+E149 Linux tree  cebe8170d2e83af5c51d82ed2a358a7093b63205
+E149 module sha256  9050511799b03ab7db6d81977309321aaeebc5f4e0dc8854edc39b6e6d6d3e15
+E149 patch 0061 sha256  2bccb08fe73be8201512acedd095501b6664d2926f8f1c992d046c2e519717b7
+E149 private result sha256  2e7b0c6c47d6c2db10d885b6938b48fbb2218ac60a655ada43deaa0b503a3c62
+E149 private mode0 backing-lifetime proof sha256  65fd130bbb6aaf5169239cbb7763882e818c0abd5bfceb74737e7a40457897ce
+E149 public mode0 lifetime note sha256  6c9ff91c68105eec6d04bb44e983469b64523d468bd0325c7b08d9b54d2700b4
+E149 closure  exact mode0 backing seed/destruction/hole-regrowth semantics; host bookkeeping corrected; no mapped backing, selected FWVA, install or RunCompute
