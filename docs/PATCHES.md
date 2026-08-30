@@ -945,3 +945,18 @@ Patch 0072 validation performed on 2026-08-30:
 - containment: no user bind/slot marker, no post-bootstrap q22 runtime mapping publication, strict GPU/firmware/kernel fault scan empty;
 - recovery: golden kernel restored; sacrificial module `a516262736853a707acf16f7639d9f6a7da40d671aa61e5713bcc00cd2c7c421`, initrd `98ac9330624aa66ceb237040abc0be8e9abfa5f7c891c7909a768661c3cf0cb0` restored exactly;
 - no RunCompute/custom GPU command.
+
+Patch 0073 validation performed on 2026-08-30:
+
+- base: `14e6cd225690021730d1723200367e0bab39fe04`;
+- expected commit tree: `6817992ccda823dfd3f41b5083288f23d50546c8`;
+- patch SHA-256: `b86a9b0926ed5274e0338573fe186c03690d5d1769c24bed08a90beda342ae26`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- clean module build: PASS at the established 24-warning baseline, SHA-256 `f34bdb261ab5db3b971edd7420ad1cf26b0c8411fc8bcf18c24c9dd40a3baaa2`;
+- static GEM audit: normal/VM-private GEM create is DRM shmem/handle state only; private GEM borrows VM reservation object; mmap-offset is CPU-side DRM metadata; no UAT bind/GPU mapping/q22 producer;
+- live probe: public + VM-private 16-KiB GEM create PASS, mmap-offset PASS, CPU mmap/write/readback PASS, Queue create exact `ENODEV`, both GEM closes PASS, VM destroy PASS;
+- repeated lifecycle: 16 additional full sequences PASS and >2 minutes candidate uptime;
+- containment: no user bind/slot marker, no post-bootstrap q22 runtime mapping publication, strict fault scan empty;
+- recovery: golden kernel and exact sacrificial module/initrd restored;
+- no RunCompute/custom GPU command.

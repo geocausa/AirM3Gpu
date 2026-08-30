@@ -836,3 +836,15 @@ E160 private VM lifetime audit sha256  e3b68b78bee5b07f4f2d9b3454787279dde505d03
 E160 private source audit sha256  47003770d2ea38e9f21c652b70ac768ed6b87d258a7c60f1ff89551949350c35
 E160 public private-VM note sha256  a6ae6aec8e2a7881111490daceb846589e0548e859b88aa4a116a6ed5f0583d5
 E160 closure  private bank-0 VM create/destroy live-proven with no user UAT bind/q22 runtime publication; GEM/Queue/submission remain gated; no RunCompute
+
+private evidence checkpoint E161  c26eeb438715259cea7e23b2c8268f64909c08e1
+E161 Linux checkpoint  34848b4519467fa079402e117f97fe653e32b833
+E161 Linux tree  6817992ccda823dfd3f41b5083288f23d50546c8
+E161 module sha256  f34bdb261ab5db3b971edd7420ad1cf26b0c8411fc8bcf18c24c9dd40a3baaa2
+E161 patch 0073 sha256  b86a9b0926ed5274e0338573fe186c03690d5d1769c24bed08a90beda342ae26
+E161 private result sha256  76e5419d6de2ccac89c499410fc67b9369eecb15946c240d3a422c618e88e97b
+E161 private live proof sha256  6fefbc4f31c00295533c7624be530aa9fdf043c59b319d5cb7352ecf96a99a72
+E161 private GEM host-lifetime audit sha256  1bc2b3a8967560284f17c956be1dc8dc473784703dbd68be563e1eede983fb1b
+E161 private source audit sha256  f41f206a684bb187f5ab3fb2da08fe902c8c79a12fa0a4f979366cd14ecd52eb
+E161 public host-GEM note sha256  1ccc685a00e9cf24c678ca9219e0b2301abb047f1929aeb2a970cdd3ca4a7182
+E161 closure  public/private host GEM create+mmap live-proven; VM_BIND/Queue/submission gated; no user UAT bind/q22 runtime publication or RunCompute

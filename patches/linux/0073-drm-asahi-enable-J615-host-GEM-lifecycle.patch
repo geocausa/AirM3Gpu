@@ -1,0 +1,68 @@
+From 34848b4519467fa079402e117f97fe653e32b833 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 17:19:45 +0100
+Subject: [PATCH] drm: asahi: enable J615 host GEM lifecycle
+
+---
+ drivers/gpu/drm/asahi/driver.rs | 8 ++++----
+ drivers/gpu/drm/asahi/file.rs   | 8 +++-----
+ 2 files changed, 7 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/driver.rs b/drivers/gpu/drm/asahi/driver.rs
+index 27eab86ed947..6c0e8b4de520 100644
+--- a/drivers/gpu/drm/asahi/driver.rs
++++ b/drivers/gpu/drm/asahi/driver.rs
+@@ -366,13 +366,13 @@ fn probe(
+ 
+             (*drm).gpu.init()?;
+ 
+-            // E160 keeps discovery live and opens only private VM create/destroy.
+-            // GEM, VM mapping, Queue/QueueInfo, q22 runtime publication, channel
+-            // construction, and submission remain independently fail-closed.
++            // E161 opens only host GEM create/mmap-offset on top of E160.
++            // VM GPU mapping, special binding, Queue/QueueInfo, q22 runtime
++            // publication, channel construction, and submission remain blocked.
+             drm::driver::Registration::new_foreign_owned(&drm, pdev.as_ref(), 0)?;
+             dev_info!(
+                 pdev.as_ref(),
+-                "T8122 G15 E160 persistent manager + private VM lifecycle PASS; Queue/submission blocked\n"
++                "T8122 G15 E161 persistent manager + VM/GEM host lifecycle PASS; GPU mapping/Queue/submission blocked\n"
+             );
+             return Ok(Self { drm });
+         }
+diff --git a/drivers/gpu/drm/asahi/file.rs b/drivers/gpu/drm/asahi/file.rs
+index b5ac77aa114c..d9e573b08591 100644
+--- a/drivers/gpu/drm/asahi/file.rs
++++ b/drivers/gpu/drm/asahi/file.rs
+@@ -261,9 +261,9 @@ fn as_raw(&self) -> *mut bindings::drm_file {
+ unsafe impl AnyBitPattern for uapi::drm_asahi_gem_bind_op {}
+ 
+ impl File {
+-    /// E160 G15 userspace gate beyond the private VM-lifecycle boundary. File
+-    /// discovery plus VM create/destroy are allowed, while GEM, mapping, Queue,
+-    /// publication, and submission operations remain fail-closed pre-mutation.
++    /// E161 G15 userspace gate beyond the host GEM-lifecycle boundary. File
++    /// discovery, private VM lifecycle, GEM_CREATE and GEM_MMAP_OFFSET are
++    /// allowed; GPU mapping/publication, Queue, and submission stay fail-closed.
+     fn reject_g15_client_mutation(device: &AsahiDevice) -> Result<()> {
+         if device.gpu.get_cfg().gpu_gen == hw::GpuGen::G15 {
+             Err(ENODEV)
+@@ -544,7 +544,6 @@ pub(crate) fn gem_create(
+         data: &mut uapi::drm_asahi_gem_create,
+         file: &DrmFile,
+     ) -> Result<u32> {
+-        Self::reject_g15_client_mutation(device)?;
+         mod_dev_dbg!(
+             device,
+             "[File {}]: IOCTL: gem_create size={:#x?}\n",
+@@ -600,7 +599,6 @@ pub(crate) fn gem_mmap_offset(
+         data: &mut uapi::drm_asahi_gem_mmap_offset,
+         file: &DrmFile,
+     ) -> Result<u32> {
+-        Self::reject_g15_client_mutation(device)?;
+         mod_dev_dbg!(
+             device,
+             "[File {}]: IOCTL: gem_mmap_offset handle={:#x?}\n",
+-- 
+2.53.0
+
