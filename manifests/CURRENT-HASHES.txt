@@ -666,3 +666,13 @@ E144 private result sha256  989630bb12c23d9a303755f7a1eab6073363ebf07671fee61d1b
 E144 private context proof sha256  4ac007329f937f467832bf1528118932df7c2f1b01247c3af56b5130540a8d8a
 E144 public lazy Compute-channel context note sha256  fc091fd38ea19c22c2ef00c0530d861652d86dc6445ae643b555b87e977d98f9
 E144 closure  QueueInner retains exact client range5 cached/uncached plus bank1/q22 handles beside shared-pool container; constructors remain uncalled; no pool ID, install or RunCompute
+
+private evidence checkpoint E145  f2a9d8e625eef815a31ed5a330b99e24fb7da6db
+E145 Linux checkpoint  899f1b6b8ba7bbf81b33c7aa75dcbdd56a1c9ed4
+E145 Linux tree  1d826ecb520897149f09a2b2336fee7c93ab38d2
+E145 module sha256  22f09c1223e162a6465c96b4d1ff6d8eabcbf37b52a4c0c3987b48b9b8aebb82
+E145 patch 0058 sha256  815c348bb9a61aec72eacad6626a354c01641c04931928ddc0dabc406d3da74d
+E145 private result sha256  ec166bd1b991c87042a11b0c23f18581fa2c70faebe919ef24f31613d76a3ec6
+E145 private assembly proof sha256  a7bc08cd91d84285da6a6c35702b01e99e9b8be69c9739bc36d04c3466cac448
+E145 public dormant-channel-assembly note sha256  b1b814f017e9a3a4cfb539854ac0d4899a04aa76bc296d7ea41ec8ff5e695d3a
+E145 closure  zero-caller bundle type-connects client weak-pool selection, device-global UMA identity/FList construction and channel-local exact owners; arbitrary host owner-cookie removed; no live pool creation, install or RunCompute

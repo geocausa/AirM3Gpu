@@ -1,0 +1,207 @@
+From 899f1b6b8ba7bbf81b33c7aa75dcbdd56a1c9ed4 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 10:15:26 +0100
+Subject: [PATCH] drm: asahi: assemble dormant J615 Compute channel owners
+
+---
+ drivers/gpu/drm/asahi/buffer.rs    |  6 +-
+ drivers/gpu/drm/asahi/gpu.rs       | 52 +++++++++++++++++
+ drivers/gpu/drm/asahi/queue/mod.rs | 92 ++++++++++++++++++++++++++++++
+ 3 files changed, 148 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/buffer.rs b/drivers/gpu/drm/asahi/buffer.rs
+index 9c1ebe846a61..fae8f65d3657 100644
+--- a/drivers/gpu/drm/asahi/buffer.rs
++++ b/drivers/gpu/drm/asahi/buffer.rs
+@@ -1068,7 +1068,6 @@ impl G15SharedComputeUmaPoolOwner {
+     pub(crate) fn new_j615_unprepared(
+         dev: &crate::driver::AsahiDevice,
+         device_uma: &mut G15DeviceUmaOwnerState,
+-        owner_cookie: u64,
+         priority_class: u32,
+         range5_list_alloc: &mut alloc::DefaultAllocator,
+         bank1: mmu::G15SharedBank1,
+@@ -1081,10 +1080,13 @@ pub(crate) fn new_j615_unprepared(
+         // Apple assigns pool +0x80 before constructing/initializing the FList.
+         // Do not roll this counter back if a later allocation fails.
+         let pool_identity = device_uma.allocate_pool_identity()?;
++        // `owner_cookie` is Linux-only sticky-ID bookkeeping, not Apple ABI.
++        // The globally ordered pool identity is already unique/nonzero and is
++        // therefore the exact lifetime identity to reuse for this host cookie.
+         let flist = G15FListResourceOwner::new_j615_unprepared(
+             dev,
+             device_uma.hardware_buffer_ids(),
+-            owner_cookie,
++            pool_identity.value(),
+             pool_identity.value(),
+             range5_list_alloc,
+             bank1,
+diff --git a/drivers/gpu/drm/asahi/gpu.rs b/drivers/gpu/drm/asahi/gpu.rs
+index dd94462c3584..7dd9a5c49cca 100644
+--- a/drivers/gpu/drm/asahi/gpu.rs
++++ b/drivers/gpu/drm/asahi/gpu.rs
+@@ -2289,6 +2289,58 @@ pub(crate) fn core_masks_packed(&self) -> &[u32] {
+         self.dyncfg.id.core_masks_packed.as_slice()
+     }
+ 
++    /// Definition-only E145 bridge from one client-VM weak-pool container to
++    /// the accelerator/device-global UMA namespace. The client-container mutex
++    /// is held by `select_or_create_compute_channel()` across the create closure,
++    /// matching exact AGXChannel::init() replacement serialization. Pool/FList
++    /// construction then consumes the global pool identity and cached range-5
++    /// allocator only on the absent/dead-slot path. There is no live caller.
++    #[allow(dead_code, clippy::too_many_arguments)]
++    pub(crate) fn g15_select_or_create_compute_pool(
++        &self,
++        container: &Arc<Mutex<buffer::G15ClientUmaPoolContainerState>>,
++        priority_class: u32,
++        range5_cached: &Arc<Mutex<alloc::DefaultAllocator>>,
++        bank1: mmu::G15SharedBank1,
++        mapping_notifier: Arc<Mutex<mmu::G15MappingNotifier>>,
++    ) -> Result<buffer::G15ClientUmaComputeChannelRef> {
++        #[ver(G != G15)]
++        {
++            let _ = (
++                container,
++                priority_class,
++                range5_cached,
++                bank1,
++                mapping_notifier,
++            );
++            return Err(EINVAL);
++        }
++
++        #[ver(G == G15)]
++        {
++            buffer::G15ClientUmaPoolContainerState::select_or_create_compute_channel(
++                container,
++                priority_class,
++                || {
++                    // Exact host ordering holds the shared-container lock while
++                    // replacement construction runs. The wider UMA namespace
++                    // and this VM's cached range-5 allocator are nested only on
++                    // that replacement path.
++                    let mut device_uma = self.g15_uma.lock();
++                    let mut range5 = range5_cached.lock();
++                    buffer::G15SharedComputeUmaPoolOwner::new_j615_unprepared(
++                        &self.dev,
++                        &mut device_uma,
++                        priority_class,
++                        &mut range5,
++                        bank1,
++                        Some(mapping_notifier),
++                    )
++                },
++            )
++        }
++    }
++
+     /// Mirror Apple's runtime command-submission gate. The exact Apple G15
+     /// lifecycle boots q4 +0x070 as zero, then AGXAccelerator::
+     /// setCommandSubmissionEnabled(true) updates this firmware-visible word
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index c0035eee73ee..21e43a2ee97b 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -1691,6 +1691,98 @@ fn scrub_completed(&mut self) {
+     }
+ }
+ 
++/// One fully assembled but unpublished J615 Compute-channel host lifetime.
++///
++/// E145 couples the E142 shared-pool channel reference to the E127 channel/
++/// command owners and E110 retirement guards. The pool itself remains owned by
++/// the client-VM selection container and is reached only through the identity-
++/// checked channel reference. Dropping this object therefore tears down channel
++/// resources and then releases the modeled direct/active pool references without
++/// any RunCompute publication.
++#[versions(AGX)]
++#[allow(dead_code)]
++struct G15UnpublishedComputeChannel {
++    // Keep channel-local resources/guards physically ahead of the pool
++    // reference so normal Rust field-drop order releases the direct pool
++    // lifetime only after the channel-side ownership has been torn down.
++    owners: G15StockEmptyComputeChannelOwners,
++    guards: G15StockEmptyAssetGuards::ver,
++    pool: buffer::G15ClientUmaComputeChannelRef,
++}
++
++#[versions(AGX)]
++#[allow(dead_code)]
++impl G15UnpublishedComputeChannel::ver {
++    fn pool_id(&self) -> u64 {
++        self.pool.pool_id()
++    }
++}
++
++#[versions(AGX)]
++#[allow(dead_code)]
++impl QueueInner::ver {
++    /// Assemble the exact owner tiers required by a future lazy CL/Compute
++    /// channel, but return only a private host object with no WorkQueue/submit
++    /// attachment and no firmware-command writer.
++    fn g15_assemble_unpublished_compute_channel(
++        &self,
++        gpu: &gpu::GpuManager::ver,
++        priority_class: u32,
++    ) -> Result<G15UnpublishedComputeChannel::ver> {
++        #[ver(G != G15)]
++        {
++            let _ = (gpu, priority_class);
++            return Err(EINVAL);
++        }
++
++        #[ver(G == G15)]
++        {
++            let container = self._g15_uma_shared_pools.as_ref().ok_or(EINVAL)?;
++            let range5_cached = self._g15_range5_cached.as_ref().ok_or(EINVAL)?;
++            let range5_uncached = self._g15_range5_uncached.as_ref().ok_or(EINVAL)?;
++            let bank1 = self._g15_shared_bank1.as_ref().ok_or(EINVAL)?.clone();
++            let mapping_notifier = self
++                ._g15_mapping_notifier
++                .as_ref()
++                .ok_or(EINVAL)?
++                .clone();
++
++            // Pool selection/replacement is one client-container transaction.
++            // A reused pool consumes no new identity; a replacement consumes the
++            // next device-global identity before FList construction, as Apple.
++            let pool = gpu.g15_select_or_create_compute_pool(
++                container,
++                priority_class,
++                range5_cached,
++                bank1.clone(),
++                mapping_notifier.clone(),
++            )?;
++
++            // Exact AGXChannel::init() releases the shared-container selection
++            // lock before continuing with channel-local resources. `pool` now
++            // owns the modeled direct/active reference while this allocation
++            // proceeds independently. Any failure drops that reference.
++            let owners = {
++                let mut range5_uncached = range5_uncached.lock();
++                G15StockEmptyComputeChannelOwners::new_unpublished(
++                    &self.dev,
++                    gpu.initdata.runtime_pointers.g15_stats_comp.weak_pointer(),
++                    &mut range5_uncached,
++                    bank1,
++                    mapping_notifier,
++                )?
++            };
++            let guards = G15StockEmptyAssetGuards::ver::new()?;
++
++            Ok(G15UnpublishedComputeChannel::ver {
++                pool,
++                owners,
++                guards,
++            })
++        }
++    }
++}
++
+ #[versions(AGX)]
+ pub(crate) struct QueueJob {
+     dev: AsahiDevRef,
+-- 
+2.53.0
+

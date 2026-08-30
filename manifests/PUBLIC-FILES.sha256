@@ -1,10 +1,10 @@
 a94f4741e619a496034a1cfd0c0149d93cb3f74c33e024d5d7c2023f4494c605  ./.gitignore
-30c4c7a9a7e66607d308244d0399d2f014bfbf3b5dbce56bfe32d749ace5699c  ./README.md
-a085ac1bf73d0a2ec0fbca05d27c1b06ab228c72456e27ca2130e0b988510350  ./docs/CURRENT-STATE.md
-dc11c7cd0942f69e5645441234bd86fa3134a3a76e0b2752566d6c9b1d35250a  ./docs/PATCHES.md
+10a94d19d14766cd27a478448218dfd0fb5f7bc35b1f906b2f31190fae0d7235  ./README.md
+353d5f63a7843a39bfb47cd2baf8032be3e3f8fcafee6d6ebf3bc8934ff3f8f8  ./docs/CURRENT-STATE.md
+d867d5d942abbdb217d866fa364aced01adaf3ff5122bd3d76f3339265ed41bd  ./docs/PATCHES.md
 d61bf1973a6d6b3e840ef7eff94cb497eb57118a711f6891e2b0ee98ca6db461  ./docs/RECOVERY.md
 072edbe867996f268553f3da518769548159145691000f5f6dc7f888dd84cdf7  ./docs/WORKFLOW.md
-0fdec01bb9dc51d4b85d2b3adb88137bfff539b547791341bc47b36e12ef91a5  ./manifests/CURRENT-HASHES.txt
+6cef6ab67d0731c709258a36230c23be35577ddeb9f10caaeaf6b602478732a1  ./manifests/CURRENT-HASHES.txt
 4f16537a51cf9d1ad18841ec138b5a6090407739af7b69898c933dcafdca8fea  ./patches/linux/0001-drm-asahi-checkpoint-T8122-G15-bring-up-through-RTKi.patch
 258eb0243e41b10800df1daf5671c8003f358efec31caaac405e74fc8c2cc00a  ./patches/linux/0002-drm-asahi-map-G15-RTKit-preallocated-crashlog-memory.patch
 7a0b6374402bc2fb4c75b01ae93645470385f1b671530ea9996b118915c9f961  ./patches/linux/0003-drm-asahi-stage-G15-RTKit-app-endpoint-start.patch
@@ -62,6 +62,7 @@ e90b953a3ef2e6549a7973ad2ef0e6b7d7b4fdb6e260fc6375522ae235a17f2d  ./patches/linu
 9ab879b373f5ff5c9191ab5bace4c8d32f11d325928c64d5c3094dd84c77f783  ./patches/linux/0055-drm-asahi-couple-J615-shared-UMAPool-transaction.patch
 d1e0d2724a77fe1a46d33b0af557d7023eed61b6f149ac4aadcb059ea4a4acb0  ./patches/linux/0056-drm-asahi-retain-J615-client-UMA-queue-context.patch
 826d187ed1077baeb9a42c04725f81da20e3651f603644cbd09fa738790a7556  ./patches/linux/0057-drm-asahi-retain-J615-lazy-channel-context.patch
+815c348bb9a61aec72eacad6626a354c01641c04931928ddc0dabc406d3da74d  ./patches/linux/0058-drm-asahi-assemble-dormant-J615-Compute-channel-owners.patch
 09f94cf355cb34847caf59bf33f46231748958c10fa37dcde7d35b1a2307ac2d  ./patches/mesa/0001-hk-pass-initial-load-clear-state-to-kernel.patch
 07821063a351d0306dc5cc0689979cf10c537af5a417dc5d97e390ee456ec798  ./patches/mesa/0002-hk-pass-depth-stencil-level-offsets-to-kernel.patch
 bc26f90769b09e298649b0fc8f5f6b0373c7e50c03f0b5926f5d285f562db569  ./patches/mesa/0003-hk-build-G15-EOT-state-loader-for-proven-path.patch
@@ -92,6 +93,7 @@ f22a1fd0df6e1ec299bdf1c487da0c1a04a0ee836a0826173c17f8bc35439a59  ./research/g15
 4fe8283362173ca30c4bc908d4178b18d01652ede8b0df52cc487af9e2b7e9a9  ./research/g15/G15-COMPUTE-SKU-STREAM.md
 9628e938471e90b359a369c448788d3e41fa5b737250820eb13e51b404b1d4df  ./research/g15/G15-CONTROL-STATE.md
 ac85ddbce26ebf53653bdca6fedd071a844001d05db3d7f52638f25568c84258  ./research/g15/G15-DEVICE-GLOBAL-UMA-HOST-STATE.md
+b1b814f017e9a3a4cfb539854ac0d4899a04aa76bc296d7ea41ec8ff5e695d3a  ./research/g15/G15-DORMANT-COMPUTE-CHANNEL-ASSEMBLY.md
 bf93fb8a6eda6af0eee9f06070330168b7edf662675e758595309caecc7e1dc7  ./research/g15/G15-EMPTY-COMPUTE-CONTAINER.md
 d3c7b33009bd8c43cafd2ed69d4a138efede6f99090da5d7e08f36a333237c8a  ./research/g15/G15-EMPTY-COMPUTE-REGISTERARRAY.md
 3e39baa7d17b11d3493f1c433c9062fe74ae090f903919573a1ec9ae746c9679  ./research/g15/G15-EVENT-CONTROL-BACKING-OWNER.md
@@ -157,5 +159,5 @@ cbc9603a831808031d5f528eadd7f3302879723f06ab798243258ba9a1eace95  ./research/g15
 6c630e1e0ad344f8cdf6f2c8c7d1d5bc091de06f478aaf42971c8acc34cf1e78  ./research/g15/G15-WEAK-UMAPOOL-PROMOTION.md
 d531fda1be727de5e510ea5718ef68d3b0172d3ec4f2d3f5b039bb6c7f42e06e  ./research/g15/G15-WRAPPER-LAYOUT.md
 1e42ac959bea3032d870499ed56255d3212aaf1f794b184fc08bbb5d2504dbf4  ./research/g15/J615-POWER-CONFIG.md
-d9ef3363df0c2bf1327095cf04ea456023c01565eda0f3627f1d2c9892e0396b  ./research/g15/README.md
+1a6390c0fa5587826ecf3dae91592ca5bbbce8141e4a6d9e756c64621e228817  ./research/g15/README.md
 d42da0407a1a8725d538c5438cb402860139b661c347613781a5b0b4226731e6  ./research/g15/build-g15g-c0-dpe-ppt.py

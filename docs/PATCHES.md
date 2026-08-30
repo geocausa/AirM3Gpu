@@ -733,3 +733,16 @@ Patch 0057 validation performed on 2026-08-30:
 - ownership audit: QueueInner privately retains the E143 container plus per-client range-5 cached/uncached and shared bank1/q22 handles required by the dormant pool/channel owners;
 - reachability: no shared-pool selection/constructor call, no channel-owner constructor call, no pool-ID consumption and no Compute/RunCompute source change;
 - runtime: module not installed/not executed; no RunCompute.
+
+Patch 0058 validation performed on 2026-08-30:
+
+- base: `6c65dc3a73c6c724d198015b6addfcf3bdfce5f3`;
+- expected commit tree: `1d826ecb520897149f09a2b2336fee7c93ab38d2`;
+- patch SHA-256: `815c348bb9a61aec72eacad6626a354c01641c04931928ddc0dabc406d3da74d`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- Asahi module build: PASS at the established 24-individual-warning bring-up baseline;
+- module SHA-256: `22f09c1223e162a6465c96b4d1ff6d8eabcbf37b52a4c0c3987b48b9b8aebb82`;
+- ownership audit: client-container replacement transaction now reaches device-global pool identity plus cached range-5 FList construction; channel-local owners are assembled only after selection returns; host-only sticky-ID cookie derives from pool identity;
+- reachability: assembly helper has zero callers, `queue/compute.rs` unchanged, no live pool-ID consumer and no RunCompute writer;
+- runtime: module not installed/not executed; no RunCompute.
