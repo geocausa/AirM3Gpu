@@ -1,0 +1,181 @@
+From a244a846e3014b9eebdec580f852e39d27a1a50d Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 03:04:30 +0100
+Subject: [PATCH] drm: asahi: arm J615 two-phase fence transaction
+
+
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index c2061b6d7137..31775d710c56 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -1342,6 +1342,59 @@ fn command_complete(self: &FenceObject<Self>) {
+     }
+ }
+
++/// Definition-only RAII command reference for the dormant G15 two-phase
++/// transaction. E112 requires the submission fence to be armed before rotating
++/// event/SKU state is reserved, but every constructor/finalizer failure must
++/// release that reference. Keeping the decrement in Drop makes those rollback
++/// paths structural rather than caller-convention dependent.
++#[versions(AGX)]
++#[allow(dead_code)]
++struct G15CommandFenceArm {
++    fence: UserFence<JobFence::ver>,
++}
++
++#[versions(AGX)]
++#[allow(dead_code)]
++impl G15CommandFenceArm::ver {
++    fn new(fence: &UserFence<JobFence::ver>) -> Self {
++        let fence = fence.clone();
++        fence.add_command();
++        Self { fence }
++    }
++
++    fn fence(&self) -> &UserFence<JobFence::ver> {
++        &self.fence
++    }
++}
++
++#[versions(AGX)]
++impl Drop for G15CommandFenceArm::ver {
++    fn drop(&mut self) {
++        self.fence.command_complete();
++    }
++}
++
++/// E134 pairs phase-1 ownership with the command fence reference that made the
++/// rotating-slot bindings legitimately in-flight. The arm survives every
++/// successful intermediate stage and rolls itself back automatically if any
++/// later construction path returns an error.
++#[versions(AGX)]
++#[allow(dead_code)]
++struct G15ArmedUnpublishedStockEmptyPrepare {
++    arm: G15CommandFenceArm::ver,
++    prepared: G15UnpublishedStockEmptyPrepare,
++}
++
++/// Final host-only E134 transaction token. The command reference remains armed
++/// until this token is consumed at the future completion boundary; dropping it
++/// on any unpublished/error path decrements the pending count automatically.
++#[versions(AGX)]
++#[allow(dead_code)]
++struct G15ArmedUnpublishedRunComputeFieldStage {
++    arm: G15CommandFenceArm::ver,
++    stage: G15UnpublishedRunComputeFieldStage,
++}
++
+ #[versions(AGX)]
+ #[vtable]
+ impl dma_fence::FenceOps for JobFence::ver {
+@@ -1518,10 +1571,10 @@ fn new() -> Result<Self> {
+         })
+     }
+
+-    /// Phase 1: bind both exact rotating lifetimes to an already-armed Linux
+-    /// submission fence, then reserve command-independent assets without
+-    /// serializing or writing SKU bytes. On failure fresh guard entries roll
+-    /// back while the exact rotation positions remain conservative.
++    /// Phase 1: acquire the command fence reference first, then bind both exact
++    /// rotating lifetimes and reserve command-independent assets without
++    /// serializing or writing SKU bytes. The returned token owns the fence arm;
++    /// every error path drops it after fresh slot/FList rollback.
+     fn prepare_unpublished_phase1(
+         &mut self,
+         owners: &mut G15StockEmptyComputeOwnerGraph,
+@@ -1529,10 +1582,8 @@ fn prepare_unpublished_phase1(
+         state_sequence: u32,
+         priority: u32,
+         channel: G15ChannelPrepareInputs,
+-    ) -> Result<G15UnpublishedStockEmptyPrepare> {
+-        if fence.pending.load(Ordering::Acquire) == 0 {
+-            return Err(EINVAL);
+-        }
++    ) -> Result<G15ArmedUnpublishedStockEmptyPrepare::ver> {
++        let arm = G15CommandFenceArm::ver::new(fence);
+
+         // Apple selects exactly the next command-buffer state and waits for
+         // that state to finish; it does not skip a busy event-control slot.
+@@ -1543,9 +1594,9 @@ fn prepare_unpublished_phase1(
+         if owners._event_control.advance_index() != event_index {
+             return Err(EIO);
+         }
+-        self.event.bind_inflight(event_index, fence)?;
++        self.event.bind_inflight(event_index, arm.fence())?;
+
+-        let sku_index = match self.sku.select_and_bind(fence) {
++        let sku_index = match self.sku.select_and_bind(arm.fence()) {
+             Ok(index) => index,
+             Err(err) => {
+                 self.event.rollback_bound(event_index);
+@@ -1560,7 +1611,7 @@ fn prepare_unpublished_phase1(
+             priority,
+             channel,
+         ) {
+-            Ok(prepared) => Ok(prepared),
++            Ok(prepared) => Ok(G15ArmedUnpublishedStockEmptyPrepare::ver { arm, prepared }),
+             Err(err) => {
+                 self.event.rollback_bound(event_index);
+                 self.sku.rollback_bound(sku_index);
+@@ -1570,19 +1621,20 @@ fn prepare_unpublished_phase1(
+     }
+
+     /// Phase 2: once a future caller has an initialized RunCompute image and
+-    /// its FWVA, finalize the reserved slot from that same command. This still
+-    /// returns only the host-only E111 stage and has no command writer.
++    /// its FWVA, finalize the reserved slot from that same command while keeping
++    /// the command reference armed. This still has no firmware-command writer.
+     fn finalize_unpublished(
+         &mut self,
+         owners: &mut G15StockEmptyComputeOwnerGraph,
+-        prepared: G15UnpublishedStockEmptyPrepare,
++        armed: G15ArmedUnpublishedStockEmptyPrepare::ver,
+         command_fwva: u64,
+         command: &fw::compute::raw::RunComputeG15V14_7<'_>,
+-    ) -> Result<G15UnpublishedRunComputeFieldStage> {
++    ) -> Result<G15ArmedUnpublishedRunComputeFieldStage::ver> {
++        let G15ArmedUnpublishedStockEmptyPrepare::ver { arm, prepared } = armed;
+         let event_index = prepared.event_index;
+         let sku_index = prepared.sku.index();
+         match owners.finalize_unpublished(prepared, command_fwva, command) {
+-            Ok(stage) => Ok(stage),
++            Ok(stage) => Ok(G15ArmedUnpublishedRunComputeFieldStage::ver { arm, stage }),
+             Err(err) => {
+                 self.event.rollback_bound(event_index);
+                 self.sku.rollback_bound(sku_index);
+@@ -1594,13 +1646,30 @@ fn finalize_unpublished(
+     fn abort_unpublished(
+         &mut self,
+         owners: &G15StockEmptyComputeOwnerGraph,
+-        prepared: G15UnpublishedStockEmptyPrepare,
++        armed: G15ArmedUnpublishedStockEmptyPrepare::ver,
+     ) -> Result<bool> {
++        let G15ArmedUnpublishedStockEmptyPrepare::ver { arm, prepared } = armed;
+         let event_index = prepared.event_index;
+         let sku_index = prepared.sku.index();
+         self.event.rollback_bound(event_index);
+         self.sku.rollback_bound(sku_index);
+-        owners.abort_unpublished(prepared)
++        let result = owners.abort_unpublished(prepared);
++        core::mem::drop(arm);
++        result
++    }
++
++    /// Future completion boundary: release the FList HardwareBuffer epoch and
++    /// then let the armed token's Drop decrement the submission-fence command
++    /// reference. There is still no live caller in E134.
++    fn complete_staged(
++        &mut self,
++        owners: &G15StockEmptyComputeOwnerGraph,
++        armed: G15ArmedUnpublishedRunComputeFieldStage::ver,
++    ) -> Result<bool> {
++        let G15ArmedUnpublishedRunComputeFieldStage::ver { arm, stage } = armed;
++        let result = owners.complete_staged(stage);
++        core::mem::drop(arm);
++        result
+     }
+
+     fn scrub_completed(&mut self) {
+-- 
+2.53.0
+

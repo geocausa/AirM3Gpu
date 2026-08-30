@@ -3,9 +3,9 @@ Last live checkpoint: 2026-08-27
 
 SOURCE REVISIONS
 linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
-linux previous public head  251a60a085f3bb9bfdcb04f1d6fd28f24dbf2cbb
-linux current checkpoint    f09bed89530e5fa482240c55653545a3bed3e292
-linux current tree          6e3a8f1ed53a8890f0f6c1437db18a5a541e221d
+linux previous public head  f09bed89530e5fa482240c55653545a3bed3e292
+linux current checkpoint    a244a846e3014b9eebdec580f852e39d27a1a50d
+linux current tree          179518d4f4d3d41ce658800f2f0e92ad7b2d176e
 mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
 mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
 
@@ -569,3 +569,13 @@ E133 patch 0049 sha256  9ecc99bd4273bd2e894c88dc73cfb95d80909cdd98987d96fb58bf23
 E133 private result sha256  795d021f10c31ee2b2817fef5d990d2f3390f2883530b58e237b5387c1bca565
 E133 public pre-micro raw-source note sha256  1df99809d819af1f21bc98aea31f99fc43511505e4e2c05fbd569ca9fd89b405
 E133 closure  exact caller/prologue tracing corrects RunCompute +0x740/+0x748/+0x750 from queue-state aliases to raw Compute +0xc0/+0xd8; matching 23J220 stock-empty producer proves all three values zero; Linux bytes unchanged, semantic names/comments corrected; no install/RunCompute
+
+
+private evidence checkpoint E134  ef1eeade54c62ea7f89cce4d590f8d1479b2bdef
+E134 Linux checkpoint  a244a846e3014b9eebdec580f852e39d27a1a50d
+E134 Linux tree  179518d4f4d3d41ce658800f2f0e92ad7b2d176e
+E134 module sha256  b6f65074d982472119d326a1eebb286a0680aa57c002fda0c9f0ec32ef9747e9
+E134 patch 0050 sha256  4c0ea24e0581fc0f4ce8e6de1fc9ed1fce25cffb91d68ae3a628fc58f3bacbd0
+E134 private result sha256  f2da44daa128f46127de5e165a787297f355096cc1ac599304701cd645740e88
+E134 public two-phase fence-arm note sha256  cbc9603a831808031d5f528eadd7f3302879723f06ab798243258ba9a1eace95
+E134 closure  dormant two-phase phase1 now acquires one RAII JobFence command reference before event/SKU retirement binding and carries it through finalize; explicit failure/abort/completion asset rollback precedes pending-count release; live submit_compute and RunCompute bytes unchanged; no install/RunCompute
