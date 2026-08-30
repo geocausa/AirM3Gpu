@@ -579,3 +579,9 @@ E134 patch 0050 sha256  4c0ea24e0581fc0f4ce8e6de1fc9ed1fce25cffb91d68ae3a628fc58
 E134 private result sha256  f2da44daa128f46127de5e165a787297f355096cc1ac599304701cd645740e88
 E134 public two-phase fence-arm note sha256  cbc9603a831808031d5f528eadd7f3302879723f06ab798243258ba9a1eace95
 E134 closure  dormant two-phase phase1 now acquires one RAII JobFence command reference before event/SKU retirement binding and carries it through finalize; explicit failure/abort/completion asset rollback precedes pending-count release; live submit_compute and RunCompute bytes unchanged; no install/RunCompute
+
+
+private evidence checkpoint E135  a125e34c17580e9ef01315d91927a9087e1e55b9
+E135 private result sha256  5fef175bdee32993407502c8e202f97bad90e012b512f8848161a4393037945b
+E135 public shared-Compute UMA placement note sha256  f8b935f54fa07cd8cea22a03d9d9affb5dd2905b6aef783b7ce8045c83a2317b
+E135 closure  accelerator +0x2a08 owns one 0x100-entry UMAPool HardwareBuffer-ID namespace; normal CL channels select/reuse shared Compute pools by priority class; UMAPool +0x80 pool ID is global creation-order state, not a Compute constant; direct per-Queue all-in-one owner-graph placement blocked; Linux E134 unchanged; no install/RunCompute

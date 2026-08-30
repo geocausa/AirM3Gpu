@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-SHARED-COMPUTE-UMA-PLACEMENT.md` — E135 exact accelerator-global UMAPool HardwareBuffer-ID namespace, shared/reusable Compute-pool selection, global-order pool ID, and the resulting block on naïve per-Queue owner-graph placement.
 - `G15-TWO-PHASE-FENCE-ARM.md` — E134 private RAII JobFence command arm carried across dormant two-phase prepare/finalize; failure/abort/completion pending-count lifetime closed without a live RunCompute writer.
 - `G15-STOCK-EMPTY-PRE-MICRO-RAW-SOURCES.md` — E133 exact correction of pre-micro `+0x740/+0x748/+0x750` to raw Compute `+0xc0/+0xd8`; stock-empty zeros proven exact, integration still dormant.
 - `G15-STOCK-EMPTY-JOBPARAMS2-23J220.md` — E132 exact same-build 23J220 stock-empty JobParameters2/Compute-JobMeta defaults; E133 subsequently corrects and closes the then-open pre-micro source.
