@@ -860,3 +860,15 @@ E162 private source audit sha256  534628fe89846530a84d5078ac19e47a84987f76f316fe
 E162 restored-artifact proof sha256  6ddd0807a659a3f0b37d03ff59e6846fc728f7f063003352a97801a7ca28b4de
 E162 public unbound-VM note sha256  c9f7796b42a7dd4bf50e13822fd5d438691cd976dcc8ffb7e102c1bea3800a87
 E162 closure  private bank-0 VM_BIND/unbind live-proven while firmware context/Queue/q22/channel/submission remain blocked; no RunCompute
+
+private evidence checkpoint E163  aed31c62ab1515635aaec6ac7c2ccbfcb1685bd0
+E163 Linux checkpoint  0e43b64df4bf8c2c1b56f45e8077232510159448
+E163 Linux tree  b27c301d33790e9d38dc4bf6268bc2fa8a4166fe
+E163 module sha256  04dec44fefaa1fe5038fc0c99dcd0a439116411d9f761a579910d25a9f8ee35f
+E163 patch 0075 sha256  4bc79fc615e0e75ed3f6e94716a0c2a07a538dc63b670a21e9f89b6374deccc6
+E163 private result sha256  89815c9855b70b3f94fa65aea7c1429af70104dcda4f7e6bde47d5ed7f823522
+E163 private live proof sha256  a1a582f2d986c433811529227ec69f29a0a8e53eb5a247c516c4391a64da0d96
+E163 private source audit sha256  723501683f445ec394060a47e8fa067954f3e1d2892e741fb56943a06aabd73b
+E163 restored-artifact proof sha256  6ddd0807a659a3f0b37d03ff59e6846fc728f7f063003352a97801a7ca28b4de
+E163 public passive-Queue note sha256  0a969350ac880bb38f577e074e6b49c5d57656922534d4bd22980b616cd19af2
+E163 closure  passive Queue create/destroy + bounded q22-backed resource lifetime live-proven; context/QueueInfo/channel/submission still blocked; q22 read-cursor proof next; no RunCompute

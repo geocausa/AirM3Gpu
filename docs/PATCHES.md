@@ -974,3 +974,18 @@ Patch 0074 validation performed on 2026-08-30:
 - runtime evidence: no firmware-visible bind/slot marker, no post-bootstrap q22 runtime publication, and strict GPU/firmware/kernel fault evidence empty;
 - recovery: golden kernel restored and sacrificial module/initrd returned byte-for-byte to baseline;
 - no RunCompute/custom GPU command.
+
+Patch 0075 validation performed on 2026-08-30:
+
+- base: `87bcd27a516d0fc8d6b81e32c034c1fc2b2795d5`;
+- expected commit tree: `b27c301d33790e9d38dc4bf6268bc2fa8a4166fe`;
+- patch SHA-256: `4bc79fc615e0e75ed3f6e94716a0c2a07a538dc63b670a21e9f89b6374deccc6`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- module build: PASS at the established 24-warning baseline, SHA-256 `04dec44fefaa1fe5038fc0c99dcd0a439116411d9f761a579910d25a9f8ee35f`;
+- containment: Queue create/destroy allowed; special binding and every G15 `SUBMIT` remain pre-gated; `Queue::new()` does not bind the VM, publish QueueInfo, call E156 lazy-channel ensure, or write RunCompute;
+- live probe: initial Queue lifecycle PASS, zero SUBMIT exact `ENODEV`, 16 additional Queue create/destroy cycles PASS, final cycle after >3 minutes PASS;
+- runtime evidence: firmware-visible context/QueueInfo markers empty, q22 error/pressure markers empty, strict GPU/firmware/kernel fault evidence empty;
+- q22 scope: bounded runtime map/unmap lifetime proven stable; firmware `read_idx` advancement deliberately not claimed yet;
+- recovery: golden kernel and exact sacrificial module/initrd restored;
+- no RunCompute/custom GPU command.

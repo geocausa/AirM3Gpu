@@ -1,0 +1,73 @@
+From 0e43b64df4bf8c2c1b56f45e8077232510159448 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 17:48:40 +0100
+Subject: [PATCH] drm: asahi: enable J615 passive Queue lifecycle
+
+---
+ drivers/gpu/drm/asahi/driver.rs |  8 ++++----
+ drivers/gpu/drm/asahi/file.rs   | 10 ++++------
+ 2 files changed, 8 insertions(+), 10 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/driver.rs b/drivers/gpu/drm/asahi/driver.rs
+index bfb9b9129fa4..082e3ce3d763 100644
+--- a/drivers/gpu/drm/asahi/driver.rs
++++ b/drivers/gpu/drm/asahi/driver.rs
+@@ -366,13 +366,13 @@ fn probe(
+ 
+             (*drm).gpu.init()?;
+ 
+-            // E162 opens only unbound private-root VM_BIND on top of E161.
+-            // Special/shared bindings, Queue/QueueInfo context publication,
+-            // channel construction, q22 runtime publication and submit stay blocked.
++            // E163 opens passive Queue create/destroy on top of E162. Queue
++            // construction may exercise q22-tracked resource map/unmap, but no
++            // firmware context/QueueInfo publication, channel ensure, or submit.
+             drm::driver::Registration::new_foreign_owned(&drm, pdev.as_ref(), 0)?;
+             dev_info!(
+                 pdev.as_ref(),
+-                "T8122 G15 E162 persistent manager + unbound VM mapping PASS; Queue/context/submission blocked\n"
++                "T8122 G15 E163 passive Queue lifecycle PASS; context/channel/submission blocked\n"
+             );
+             return Ok(Self { drm });
+         }
+diff --git a/drivers/gpu/drm/asahi/file.rs b/drivers/gpu/drm/asahi/file.rs
+index ff68c2178f15..de3c9298bec0 100644
+--- a/drivers/gpu/drm/asahi/file.rs
++++ b/drivers/gpu/drm/asahi/file.rs
+@@ -261,9 +261,9 @@ fn as_raw(&self) -> *mut bindings::drm_file {
+ unsafe impl AnyBitPattern for uapi::drm_asahi_gem_bind_op {}
+ 
+ impl File {
+-    /// E162 G15 userspace gate beyond the unbound VM-mapping boundary. Normal
+-    /// VM_BIND may edit only the private bank-0 root; special shared mappings,
+-    /// Queue/context publication, and submission remain fail-closed.
++    /// E163 G15 userspace gate beyond passive Queue lifetime. Queue creation
++    /// may allocate private/unpublished QueueInfo state and q22-tracked resource
++    /// mappings, but special shared-object binding and submission remain blocked.
+     fn reject_g15_client_mutation(device: &AsahiDevice) -> Result<()> {
+         if device.gpu.get_cfg().gpu_gen == hw::GpuGen::G15 {
+             Err(ENODEV)
+@@ -981,7 +981,6 @@ pub(crate) fn queue_create(
+         data: &mut uapi::drm_asahi_queue_create,
+         file: &DrmFile,
+     ) -> Result<u32> {
+-        Self::reject_g15_client_mutation(device)?;
+         let file_id = file.inner().id;
+ 
+         mod_dev_dbg!(
+@@ -1041,11 +1040,10 @@ pub(crate) fn queue_create(
+ 
+     /// IOCTL: queue_destroy: Destroy a command submission queue.
+     pub(crate) fn queue_destroy(
+-        device: &AsahiDevice,
++        _device: &AsahiDevice,
+         data: &mut uapi::drm_asahi_queue_destroy,
+         file: &DrmFile,
+     ) -> Result<u32> {
+-        Self::reject_g15_client_mutation(device)?;
+         // grab the queue so the xarray spinlock is dropped first
+         let queue = file.inner().queues().remove(data.queue_id as usize);
+         if queue.is_none() {
+-- 
+2.53.0
+
