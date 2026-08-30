@@ -824,3 +824,15 @@ E159 private live proof sha256  204ceff930cdd3952b3502eb1bc31a4b56349393fab6ec07
 E159 private source audit sha256  39f7cad0ca61eeb07cc265e56fffe09bcc94e777c8224e2e4c0c0d057360fae4
 E159 public discovery-file note sha256  a4f90e8a2519e26a798f3cec8162cc6cd7d643e1f6ac757c75f8aa424f5227bd
 E159 closure  persistent bootstrap + DRM + File discovery live-proven; only GET_PARAMS/GET_TIME allowed, all client mutation pre-gated; no q22 runtime publication or RunCompute
+
+private evidence checkpoint E160  1c5cf774c5c519e829fb4888d3275f249c0353d6
+E160 Linux checkpoint  14e6cd225690021730d1723200367e0bab39fe04
+E160 Linux tree  a1522ab12d9d1749e54e55cf97a6b4e811b1d547
+E160 module sha256  8b68f6f3f0da915c64f3349a8b4a7f457c7b802ddd37aa925177178ca64eaeab
+E160 patch 0072 sha256  3be7565a0df0c4043969d12c0f5995927b6915199827a8be0cee9b7e39db1498
+E160 private result sha256  7714de18edf70fea1ad80128668f4c94ed5e73566ad2e546df41a9de8f27879c
+E160 private live proof sha256  5a6e88fae8e2f7a23ca463482a30585f72829226354210eb89fb3c6a502110c1
+E160 private VM lifetime audit sha256  e3b68b78bee5b07f4f2d9b3454787279dde505d039b0045bbc05fc6704e95444
+E160 private source audit sha256  47003770d2ea38e9f21c652b70ac768ed6b87d258a7c60f1ff89551949350c35
+E160 public private-VM note sha256  a6ae6aec8e2a7881111490daceb846589e0548e859b88aa4a116a6ed5f0583d5
+E160 closure  private bank-0 VM create/destroy live-proven with no user UAT bind/q22 runtime publication; GEM/Queue/submission remain gated; no RunCompute

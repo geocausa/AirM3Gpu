@@ -1,0 +1,74 @@
+From 14e6cd225690021730d1723200367e0bab39fe04 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 17:09:04 +0100
+Subject: [PATCH] drm: asahi: enable J615 private VM lifecycle
+
+---
+ drivers/gpu/drm/asahi/driver.rs |  9 ++++-----
+ drivers/gpu/drm/asahi/file.rs   | 10 ++++------
+ 2 files changed, 8 insertions(+), 11 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/driver.rs b/drivers/gpu/drm/asahi/driver.rs
+index bb4347604aa1..27eab86ed947 100644
+--- a/drivers/gpu/drm/asahi/driver.rs
++++ b/drivers/gpu/drm/asahi/driver.rs
+@@ -366,14 +366,13 @@ fn probe(
+ 
+             (*drm).gpu.init()?;
+ 
+-            // E159 keeps E158 DRM registration after q21-ready/q22-active,
+-            // but now permits discovery-only G15 File opens. Every ioctl that
+-            // creates, destroys, maps, publishes, or submits client state is
+-            // independently fail-closed before its first mutation.
++            // E160 keeps discovery live and opens only private VM create/destroy.
++            // GEM, VM mapping, Queue/QueueInfo, q22 runtime publication, channel
++            // construction, and submission remain independently fail-closed.
+             drm::driver::Registration::new_foreign_owned(&drm, pdev.as_ref(), 0)?;
+             dev_info!(
+                 pdev.as_ref(),
+-                "T8122 G15 E159 persistent manager + DRM discovery PASS; client mutations blocked\n"
++                "T8122 G15 E160 persistent manager + private VM lifecycle PASS; Queue/submission blocked\n"
+             );
+             return Ok(Self { drm });
+         }
+diff --git a/drivers/gpu/drm/asahi/file.rs b/drivers/gpu/drm/asahi/file.rs
+index d0c56b1c902f..b5ac77aa114c 100644
+--- a/drivers/gpu/drm/asahi/file.rs
++++ b/drivers/gpu/drm/asahi/file.rs
+@@ -261,9 +261,9 @@ fn as_raw(&self) -> *mut bindings::drm_file {
+ unsafe impl AnyBitPattern for uapi::drm_asahi_gem_bind_op {}
+ 
+ impl File {
+-    /// E159 discovery-only G15 userspace gate. File open plus GET_PARAMS/GET_TIME
+-    /// are host-only, but every ioctl that creates, destroys, maps, publishes, or
+-    /// submits client state remains fail-closed before its first mutation.
++    /// E160 G15 userspace gate beyond the private VM-lifecycle boundary. File
++    /// discovery plus VM create/destroy are allowed, while GEM, mapping, Queue,
++    /// publication, and submission operations remain fail-closed pre-mutation.
+     fn reject_g15_client_mutation(device: &AsahiDevice) -> Result<()> {
+         if device.gpu.get_cfg().gpu_gen == hw::GpuGen::G15 {
+             Err(ENODEV)
+@@ -386,7 +386,6 @@ pub(crate) fn vm_create(
+         data: &mut uapi::drm_asahi_vm_create,
+         file: &DrmFile,
+     ) -> Result<u32> {
+-        Self::reject_g15_client_mutation(device)?;
+         let kernel_range = data.kernel_start..data.kernel_end;
+ 
+         // Validate requested kernel range
+@@ -527,11 +526,10 @@ pub(crate) fn vm_create(
+ 
+     /// IOCTL: vm_destroy: Destroy a `Vm`.
+     pub(crate) fn vm_destroy(
+-        device: &AsahiDevice,
++        _device: &AsahiDevice,
+         data: &mut uapi::drm_asahi_vm_destroy,
+         file: &DrmFile,
+     ) -> Result<u32> {
+-        Self::reject_g15_client_mutation(device)?;
+         let vm = file.inner().vms().remove(data.vm_id as usize);
+         if vm.is_none() {
+             Err(ENOENT)
+-- 
+2.53.0
+

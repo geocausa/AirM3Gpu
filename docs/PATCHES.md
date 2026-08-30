@@ -930,3 +930,18 @@ Patch 0071 validation performed on 2026-08-30:
 - repeated probe after >2 minutes PASS; no post-bootstrap q22 mapping/pressure publication and no panic/Oops/SError/DART/IOMMU/GPU fault, firmware/RTKit crash, or MTR alarm;
 - recovery: returned to golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`; module restored to `a516262736853a707acf16f7639d9f6a7da40d671aa61e5713bcc00cd2c7c421`, initrd to `98ac9330624aa66ceb237040abc0be8e9abfa5f7c891c7909a768661c3cf0cb0`;
 - no RunCompute/custom GPU command.
+
+Patch 0072 validation performed on 2026-08-30:
+
+- base: `d2fd43167928898a8bca816454fe7e4a3e53c93f`;
+- expected commit tree: `a1522ab12d9d1749e54e55cf97a6b4e811b1d547`;
+- patch SHA-256: `3be7565a0df0c4043969d12c0f5995927b6915199827a8be0cee9b7e39db1498`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- clean module build: PASS at the established 24-warning baseline, SHA-256 `8b68f6f3f0da915c64f3349a8b4a7f457c7b802ddd37aa925177178ca64eaeab`;
+- static VM audit: `new_vm()` creates only a private bank-0 root/host state; firmware-visible publication remains behind Queue-side `Uat::bind()`; range-5 allocators are constructor-only and the client UMA container is empty;
+- live VM probe: valid VM_CREATE PASS, GEM_CREATE and QUEUE_CREATE exact `ENODEV` while VM exists, VM_DESTROY PASS, repeat destroy exact `ENOENT`;
+- repeated lifecycle: 16 additional create/destroy cycles PASS and >3 minutes candidate uptime;
+- containment: no user bind/slot marker, no post-bootstrap q22 runtime mapping publication, strict GPU/firmware/kernel fault scan empty;
+- recovery: golden kernel restored; sacrificial module `a516262736853a707acf16f7639d9f6a7da40d671aa61e5713bcc00cd2c7c421`, initrd `98ac9330624aa66ceb237040abc0be8e9abfa5f7c891c7909a768661c3cf0cb0` restored exactly;
+- no RunCompute/custom GPU command.
