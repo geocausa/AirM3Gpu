@@ -1,0 +1,99 @@
+From 848a9d426b2d1bb25a3f917ed37b15300b6d7f53 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 09:52:23 +0100
+Subject: [PATCH] drm: asahi: retain J615 client UMA queue context
+
+---
+ drivers/gpu/drm/asahi/file.rs      | 5 ++++-
+ drivers/gpu/drm/asahi/gpu.rs       | 3 +++
+ drivers/gpu/drm/asahi/queue/mod.rs | 9 +++++++++
+ 3 files changed, 16 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/asahi/file.rs b/drivers/gpu/drm/asahi/file.rs
+index d1caa616a3ff..860960d39f5e 100644
+--- a/drivers/gpu/drm/asahi/file.rs
++++ b/drivers/gpu/drm/asahi/file.rs
+@@ -1003,7 +1003,9 @@ pub(crate) fn queue_create(
+         let ualloc_priv = file_vm.ualloc_priv.clone();
+         let g15_ualloc_range5_uncached = file_vm.g15_ualloc_range5_uncached.clone();
+         let g15_ualloc_range5_cached = file_vm.g15_ualloc_range5_cached.clone();
+-        // Drop the vms lock eagerly
++        let g15_uma_shared_pools = file_vm._g15_uma_shared_pools.clone();
++        // Drop the vms lock eagerly. The Arc above is the exact client-VM
++        // lifetime bridge retained by a future lazy G15 channel transaction.
+         let _ = file_vm;
+         core::mem::drop(guard);
+ 
+@@ -1013,6 +1015,7 @@ pub(crate) fn queue_create(
+             ualloc_priv,
+             g15_ualloc_range5_uncached,
+             g15_ualloc_range5_cached,
++            g15_uma_shared_pools,
+             // TODO: Plumb deeper the enum
+             uapi::drm_asahi_priority_DRM_ASAHI_PRIORITY_REALTIME - data.priority,
+             data.usc_exec_base,
+diff --git a/drivers/gpu/drm/asahi/gpu.rs b/drivers/gpu/drm/asahi/gpu.rs
+index ae33199c480f..dd94462c3584 100644
+--- a/drivers/gpu/drm/asahi/gpu.rs
++++ b/drivers/gpu/drm/asahi/gpu.rs
+@@ -305,6 +305,7 @@ fn new_queue(
+         ualloc_priv: Arc<Mutex<alloc::DefaultAllocator>>,
+         g15_ualloc_range5_uncached: Option<Arc<Mutex<alloc::DefaultAllocator>>>,
+         g15_ualloc_range5_cached: Option<Arc<Mutex<alloc::DefaultAllocator>>>,
++        g15_uma_shared_pools: Option<Arc<Mutex<buffer::G15ClientUmaPoolContainerState>>>,
+         priority: u32,
+         usc_exec_base: u64,
+     ) -> Result<KBox<dyn queue::Queue>>;
+@@ -2769,6 +2770,7 @@ fn new_queue(
+         ualloc_priv: Arc<Mutex<alloc::DefaultAllocator>>,
+         g15_ualloc_range5_uncached: Option<Arc<Mutex<alloc::DefaultAllocator>>>,
+         g15_ualloc_range5_cached: Option<Arc<Mutex<alloc::DefaultAllocator>>>,
++        g15_uma_shared_pools: Option<Arc<Mutex<buffer::G15ClientUmaPoolContainerState>>>,
+         priority: u32,
+         usc_exec_base: u64,
+     ) -> Result<KBox<dyn queue::Queue>> {
+@@ -2787,6 +2789,7 @@ fn new_queue(
+                 ualloc_priv,
+                 g15_ualloc_range5_uncached,
+                 g15_ualloc_range5_cached,
++                g15_uma_shared_pools,
+                 self.uat.g15_shared_bank1(),
+                 g15_mapping_notifier,
+                 self.event_manager.clone(),
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index 6c35a0600cef..5a4f713612ba 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -1296,6 +1296,12 @@ pub(crate) struct QueueInner {
+     // disabled; retaining the allocation here only reconstructs channel state.
+     #[ver(G == G15)]
+     g15_ta_object_payload: GpuArray<u8>,
++    // Exact E139-E142 AGXShared/client address-space bridge. This retains only
++    // the per-VM shared-pool selection container so future G15 Compute channel
++    // creation can stay lazy. E143 performs no pool selection/construction and
++    // consumes no device-global pool ID.
++    #[ver(G == G15)]
++    _g15_uma_shared_pools: Option<Arc<Mutex<buffer::G15ClientUmaPoolContainerState>>>,
+     // Exact 0x2800 GPU-facing PM record backing. Apple uses range 5 with
+     // compact PTE class 0x300; the separate 0x40 tail is intentionally absent.
+     #[ver(G == G15)]
+@@ -1936,6 +1942,7 @@ pub(crate) fn new(
+         ualloc_priv: Arc<Mutex<alloc::DefaultAllocator>>,
+         _g15_ualloc_range5_uncached: Option<Arc<Mutex<alloc::DefaultAllocator>>>,
+         _g15_ualloc_range5_cached: Option<Arc<Mutex<alloc::DefaultAllocator>>>,
++        _g15_uma_shared_pools: Option<Arc<Mutex<buffer::G15ClientUmaPoolContainerState>>>,
+         _g15_shared_bank1: Option<mmu::G15SharedBank1>,
+         _g15_mapping_notifier: Option<Arc<Mutex<mmu::G15MappingNotifier>>>,
+         event_manager: Arc<event::EventManager>,
+@@ -2068,6 +2075,8 @@ pub(crate) fn new(
+                 #[ver(G == G15)]
+                 g15_ta_object_payload,
+                 #[ver(G == G15)]
++                _g15_uma_shared_pools,
++                #[ver(G == G15)]
+                 g15_pm_records,
+                 #[ver(G == G15)]
+                 _g15_pm_page_metrics: g15_pm_page_metrics,
+-- 
+2.53.0
+

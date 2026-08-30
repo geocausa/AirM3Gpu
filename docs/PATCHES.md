@@ -707,3 +707,16 @@ Patch 0055 validation performed on 2026-08-30:
 - transaction audit: exact 23J220 keeps the client-container lock across failed try-retain, new UMAPool factory/init, accelerator-list insertion and slot publication; Linux create closure is serialized under the same modeled transaction;
 - reachability: per-VM container still has no Queue accessor, shared-pool constructor has zero callers, ordinary `submit_compute()` unchanged and no RunCompute writer;
 - runtime: module not installed/not executed; no RunCompute.
+
+Patch 0056 validation performed on 2026-08-30:
+
+- base: `594d39b1b85e35ae315d048d60528cfe9a8b0d10`;
+- expected commit tree: `198d50e59b1e8a238d8ff39d49f6627a118f05cf`;
+- patch SHA-256: `d1e0d2724a77fe1a46d33b0af557d7023eed61b6f149ac4aadcb059ea4a4acb0`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- Asahi module build: PASS at the established 24-individual-warning bring-up baseline;
+- module SHA-256: `31e59ac611927530043b2352fe753faa4c178adaa9ec79498a50c6b2971164c3`;
+- ownership audit: the per-file::Vm shared-pool container Arc is retained through GpuManager into private G15 QueueInner, matching exact command-queue -> AGXShared -> +0x1b8 provenance;
+- reachability: no selection/create caller, no shared-pool constructor caller, no global pool-ID consumption and no Compute/RunCompute source change;
+- runtime: module not installed/not executed; no RunCompute.

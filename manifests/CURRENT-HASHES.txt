@@ -646,3 +646,13 @@ E142 private result sha256  f51d733cfe172373727fd7889d9231efe297b459c411fb5d949e
 E142 private transaction proof sha256  59903734eafb5f188b946e98d1a2d584e4e85617e9043f20c44c4258b0b25c9f
 E142 public shared-UMAPool transaction note sha256  45310bd8f3cb183837f9094c0ea12a78e344c29746b8b15c0288d29b7d98b182
 E142 closure  exact container lock spans failed promotion through new shared-pool construction and slot publication; Linux actual-pool storage is logically weak and dropped at final zero; no Queue accessor/caller, pool ID, install or RunCompute
+
+private evidence checkpoint E143  12f41994bd500a046348b1a9917cb45bbfe3a6f5
+E143 Linux checkpoint  848a9d426b2d1bb25a3f917ed37b15300b6d7f53
+E143 Linux tree  198d50e59b1e8a238d8ff39d49f6627a118f05cf
+E143 module sha256  31e59ac611927530043b2352fe753faa4c178adaa9ec79498a50c6b2971164c3
+E143 patch 0056 sha256  d1e0d2724a77fe1a46d33b0af557d7023eed61b6f149ac4aadcb059ea4a4acb0
+E143 private result sha256  9b58010d2a66bcf8feeccadd3406c358b075f95f39744b581174751930f30235
+E143 private placement proof sha256  bd5298a1007e0c0ca47e54350861c26e80066778fbe3dd72dabbd056d5ed90fb
+E143 public client UMA Queue-context note sha256  19179b3e54079ba9078c0695e7724794ea95a9e456bcfbabe279e9d221152b95
+E143 closure  exact command queue +0x488 shared object feeds AGXShared +0x1b8 at lazy channel init; Linux retains same per-VM container in QueueInner only; no pool selection/construction, pool ID, install or RunCompute
