@@ -745,3 +745,15 @@ E152 private result sha256  72daf7efbde14cf715a8dc3b9f9a4b69dfd34654294209775655
 E152 private lifetime-order proof sha256  99967910f3646a162011e6c5cbeeb337b2e3b22eda30df39c2fd610c446c4317
 E152 public activation note sha256  9eb8cd24eac7c71ec9b3701779938dad894654b792e4b61bad43d4330345ab6e
 E152 closure  mapped global resource owners integrated at manager lifetime; q22 activates after firmware_ready before DRM; E075 gate/install/RunCompute remain closed
+
+private evidence checkpoint E153  c0890f6447f6f95c863ba08497f4d99df89f9daf
+E153 Linux checkpoint  4a72f743dd25bcd3d50d77722c153d395a23dbad
+E153 Linux tree  064d0af89ea546355d8112963d850147d4f18ba4
+E153 module sha256  94fa75a5e3c103661333429030517e89fdd18f293920f16f685fb157797a4dc5
+E153 patch 0065 sha256  d29abdff0f53a641bbd19d111d3c52dbee611421931ee53ec3de97ad27b78985
+E153 private result sha256  eb063a1251d5697923e4c698e536e49d150dcc9290840bd531b5be585abd2531
+E153 private timestamp producer sha256  3efb7cf7920fc38c7e7e1ea5403e5afb558faded35b4f506a6863f06bd4541fd
+E153 private selected-state bridge sha256  f3ebd40dac5b9a83157c6b0d24cdccc8b0c313cd2a70361ebe45cdf3a87549f7
+E153 private byte-audit output sha256  be97c5ed2f819567960a7a18d62ba0d13d3f513392aa9914c8b4c966c47dba6c
+E153 public selected-state note sha256  72fd0deb91805fe4f4face4ce707afda282c8ca182b56f3b2db1b1910a015990
+E153 closure  exact ordinary timestamp mode false; real global selected states initialized at Queue/channel lifetime; E127 duplicate backing/slot layer removed; no install/RunCompute

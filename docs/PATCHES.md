@@ -830,3 +830,17 @@ Patch 0064 validation performed on 2026-08-30:
 - teardown audit: inactive bootstrap mappings unmap silently; active mappings publish q22 unmap and preserve PTE/VA on publication failure;
 - reachability: retained E075 G15 `ENODEV` probe gate unchanged; `queue/compute.rs`, `fw/compute.rs`, and `workqueue.rs` unchanged; selected FWVAs still have no RunCompute writer;
 - runtime: module not installed/not executed; no RunCompute.
+
+Patch 0065 validation performed on 2026-08-30:
+
+- base: `d9f5cf4cddeb2a109cc9c074fff080102d5d89dd`;
+- expected commit tree: `064d0af89ea546355d8112963d850147d4f18ba4`;
+- patch SHA-256: `d29abdff0f53a641bbd19d111d3c52dbee611421931ee53ec3de97ad27b78985`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- Asahi module build: PASS at the established 24-individual-warning bring-up baseline;
+- module SHA-256: `94fa75a5e3c103661333429030517e89fdd18f293920f16f685fb157797a4dc5`;
+- exact producer audit: normal Metal descriptor `_openGLQueue=0` -> IOGPU new-queue args `+0x404=0` -> kernel queue `+0x439=0` -> `AGXTimeStampQueue::setUpdateMode(false)` -> selected timestamp state `+0x10=0`;
+- ownership audit: real mapped timestamp/scheduler selections initialize at Queue lifetime; real mapped channel-state/cached/uncached selections initialize at dormant CL-channel lifetime; five E127 duplicate backing owners and local slot inputs are absent;
+- source audit: `queue/compute.rs`, `fw/compute.rs`, and `workqueue.rs` unchanged;
+- runtime: E075 gate unchanged; module not installed/not executed; no RunCompute.
