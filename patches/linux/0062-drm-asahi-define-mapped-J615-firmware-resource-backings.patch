@@ -1,0 +1,527 @@
+From f17014117d4a77e7029a7f61abf85bf8c5aea5cf Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 12:20:43 +0100
+Subject: [PATCH] drm: asahi: define mapped J615 firmware resource backings
+
+---
+ drivers/gpu/drm/asahi/alloc.rs  |  24 +++
+ drivers/gpu/drm/asahi/buffer.rs | 339 ++++++++++++++++++++++++++++++--
+ 2 files changed, 342 insertions(+), 21 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/alloc.rs b/drivers/gpu/drm/asahi/alloc.rs
+index 50634ed88362..e5a3b32f7131 100644
+--- a/drivers/gpu/drm/asahi/alloc.rs
++++ b/drivers/gpu/drm/asahi/alloc.rs
+@@ -632,6 +632,30 @@ pub(crate) fn new_range7_hwmetrics(
+         }
+     }
+ 
++    /// Dedicated special eGartRange-8 allocator for exact G15
++    /// `_AGFIChannelState` resource-stack backings. E116 proves compact option
++    /// 0x003 / leaf 0x...0443, with a distinct semantic ownership boundary
++    /// from FList Page-Pool-State despite the bit-identical protection shape.
++    #[allow(dead_code)]
++    pub(crate) fn new_range8_channel_state(
++        dev: &AsahiDevice,
++        bank1: mmu::G15SharedBank1,
++        min_align: usize,
++        mut cpu_maps: bool,
++        notifier: Option<Arc<Mutex<mmu::G15MappingNotifier>>>,
++    ) -> Self {
++        if debug_enabled(DebugFlags::ForceCPUMaps) { cpu_maps = true; }
++        Self {
++            dev: dev.into(),
++            bank1,
++            aperture: mmu::G15SharedBank1Aperture::Range8,
++            prot: mmu::PROT_G15_RANGE8_FW,
++            min_align,
++            cpu_maps,
++            notifier,
++        }
++    }
++
+     /// Dedicated special eGartRange-8 allocator for exact G15 cached
+     /// firmware channel-memory resource-stack backings. E122 proves compact
+     /// option 0x003 / leaf 0x...0443, identical to the established range-8
+diff --git a/drivers/gpu/drm/asahi/buffer.rs b/drivers/gpu/drm/asahi/buffer.rs
+index af869ba466e6..3d186ff89d04 100644
+--- a/drivers/gpu/drm/asahi/buffer.rs
++++ b/drivers/gpu/drm/asahi/buffer.rs
+@@ -33,6 +33,7 @@
+ //! to the most common value used by macOS.
+ 
+ use crate::debug::*;
++use crate::driver::{AsahiDevRef, AsahiDevice};
+ use crate::fw::buffer;
+ use crate::fw::types::*;
+ use crate::util::*;
+@@ -329,6 +330,155 @@ pub(crate) struct G15DeviceUmaOwnerState {
+ const G15_FIRMWARE_RESOURCE_OUTER_WORDS: usize =
+     G15_FIRMWARE_RESOURCE_MAX_SLOTS as usize / G15_FIRMWARE_RESOURCE_INNER_BITS as usize;
+ 
++/// Exact target stack identity needed to construct a mapped backing with the
++/// already-proven range/protection class and element geometry. E150 keeps this
++/// private to the dormant mapped-stack constructor; the live E149 selector still
++/// uses host-only logical backings.
++#[derive(Clone, Copy, Debug)]
++#[allow(dead_code)]
++enum G15FirmwareResourceKind {
++    TimestampQueue,
++    SchedulerState,
++    ChannelState,
++    UncachedChannelMemory,
++    CachedChannelMemory,
++}
++
++#[allow(dead_code)]
++impl G15FirmwareResourceKind {
++    const fn elements_per_backing(self) -> u32 {
++        match self {
++            Self::TimestampQueue => fw::workqueue::G15_TIMESTAMP_QUEUE_STATES_PER_BACKING as u32,
++            Self::SchedulerState => fw::workqueue::G15_SCHEDULER_STATES_PER_BACKING as u32,
++            Self::ChannelState => fw::workqueue::G15_CHANNEL_STATE_SLOTS_PER_BACKING as u32,
++            Self::UncachedChannelMemory | Self::CachedChannelMemory => {
++                fw::workqueue::G15_J615_CHANNEL_MEMORY_SLOTS_PER_BACKING as u32
++            }
++        }
++    }
++
++    const fn element_bytes(self) -> usize {
++        match self {
++            Self::TimestampQueue => fw::workqueue::G15_TIMESTAMP_QUEUE_STATE_BYTES,
++            Self::SchedulerState => fw::workqueue::G15_SCHEDULER_STATE_BYTES,
++            Self::ChannelState => fw::workqueue::G15_CHANNEL_STATE_BYTES,
++            Self::UncachedChannelMemory | Self::CachedChannelMemory => {
++                fw::workqueue::G15_J615_CHANNEL_MEMORY_BYTES
++            }
++        }
++    }
++
++    const fn backing_bytes(self) -> usize {
++        match self {
++            Self::TimestampQueue => fw::workqueue::G15_TIMESTAMP_QUEUE_BACKING_BYTES,
++            Self::SchedulerState => fw::workqueue::G15_SCHEDULER_STATE_BACKING_BYTES,
++            Self::ChannelState => fw::workqueue::G15_CHANNEL_STATE_BACKING_BYTES,
++            Self::UncachedChannelMemory | Self::CachedChannelMemory => {
++                fw::workqueue::G15_J615_CHANNEL_MEMORY_BACKING_BYTES
++            }
++        }
++    }
++}
++
++/// Inputs retained by a future mapped device-global resource stack. E125/E126/
++/// E122/E116 already close each range/protection class and exact block geometry.
++/// E150 merely type-connects those proven allocators to E149's dynamic backing
++/// slots; no current `GpuManager` constructor calls this factory.
++#[allow(dead_code)]
++struct G15FirmwareResourceBackingFactory {
++    dev: AsahiDevRef,
++    bank1: mmu::G15SharedBank1,
++    mapping_notifier: Arc<Mutex<mmu::G15MappingNotifier>>,
++    kind: G15FirmwareResourceKind,
++}
++
++#[allow(dead_code)]
++impl G15FirmwareResourceBackingFactory {
++    fn new(
++        dev: &AsahiDevice,
++        bank1: mmu::G15SharedBank1,
++        mapping_notifier: Arc<Mutex<mmu::G15MappingNotifier>>,
++        kind: G15FirmwareResourceKind,
++    ) -> Self {
++        Self {
++            dev: dev.into(),
++            bank1,
++            mapping_notifier,
++            kind,
++        }
++    }
++
++    fn allocate(&self) -> Result<alloc::G15SharedGpuArray<u8>> {
++        let notifier = Some(self.mapping_notifier.clone());
++        let mut allocator = match self.kind {
++            G15FirmwareResourceKind::TimestampQueue => {
++                alloc::G15SharedBank1Allocator::new_range7_timestamp_queue(
++                    &self.dev,
++                    self.bank1.clone(),
++                    mmu::UAT_PGSZ,
++                    true,
++                    notifier,
++                )
++            }
++            G15FirmwareResourceKind::SchedulerState => {
++                alloc::G15SharedBank1Allocator::new_range8_scheduler_state(
++                    &self.dev,
++                    self.bank1.clone(),
++                    mmu::UAT_PGSZ,
++                    true,
++                    notifier,
++                )
++            }
++            G15FirmwareResourceKind::ChannelState => {
++                alloc::G15SharedBank1Allocator::new_range8_channel_state(
++                    &self.dev,
++                    self.bank1.clone(),
++                    mmu::UAT_PGSZ,
++                    true,
++                    notifier,
++                )
++            }
++            G15FirmwareResourceKind::UncachedChannelMemory => {
++                alloc::G15SharedBank1Allocator::new_range7_channel_memory(
++                    &self.dev,
++                    self.bank1.clone(),
++                    mmu::UAT_PGSZ,
++                    true,
++                    notifier,
++                )
++            }
++            G15FirmwareResourceKind::CachedChannelMemory => {
++                alloc::G15SharedBank1Allocator::new_range8_channel_memory(
++                    &self.dev,
++                    self.bank1.clone(),
++                    mmu::UAT_PGSZ,
++                    true,
++                    notifier,
++                )
++            }
++        };
++        let backing = allocator.array_empty_shared_data::<u8>(self.kind.backing_bytes())?;
++        let base: u64 = backing.weak_pointer().into();
++        if backing.len() != self.kind.backing_bytes()
++            || base == 0
++            || base & (mmu::UAT_PGSZ as u64 - 1) != 0
++        {
++            return Err(EIO);
++        }
++        Ok(backing)
++    }
++}
++
++/// One logical backing slot plus its optional real mapped owner. E149's live
++/// host-only bookkeeping keeps `backing=None`; E150's dormant mapped constructor
++/// stores the exact page-base range-7/range-8 allocation here so last-use mode-0
++/// reclamation drops both the logical slot and GPU mapping atomically.
++#[allow(dead_code)]
++struct G15FirmwareResourceBackingSlot {
++    live: u32,
++    backing: Option<alloc::G15SharedGpuArray<u8>>,
++}
++
+ /// Host-side exact bitmap/use-count state for one 23J220 firmware resource
+ /// stack. Apple owns one instance per resource type under AGXFirmware.
+ ///
+@@ -342,31 +492,59 @@ struct G15FirmwareResourceStackState {
+     elements_per_backing: u32,
+     outer_free: u64,
+     inner_free: [u32; G15_FIRMWARE_RESOURCE_OUTER_WORDS],
+-    block_live: KVec<Option<u32>>,
++    blocks: KVec<Option<G15FirmwareResourceBackingSlot>>,
++    backing_factory: Option<G15FirmwareResourceBackingFactory>,
+ }
+ 
+ #[allow(dead_code)]
+ impl G15FirmwareResourceStackState {
+     fn new(elements_per_backing: u32) -> Result<Self> {
++        Self::new_inner(elements_per_backing, None)
++    }
++
++    fn new_mapped(
++        dev: &AsahiDevice,
++        bank1: mmu::G15SharedBank1,
++        mapping_notifier: Arc<Mutex<mmu::G15MappingNotifier>>,
++        kind: G15FirmwareResourceKind,
++    ) -> Result<Self> {
++        Self::new_inner(
++            kind.elements_per_backing(),
++            Some(G15FirmwareResourceBackingFactory::new(
++                dev,
++                bank1,
++                mapping_notifier,
++                kind,
++            )),
++        )
++    }
++
++    fn new_inner(
++        elements_per_backing: u32,
++        backing_factory: Option<G15FirmwareResourceBackingFactory>,
++    ) -> Result<Self> {
+         if elements_per_backing == 0 || elements_per_backing > G15_FIRMWARE_RESOURCE_MAX_SLOTS {
+             return Err(EINVAL);
+         }
+ 
+         let max_backings = (G15_FIRMWARE_RESOURCE_MAX_SLOTS as usize)
+             .div_ceil(elements_per_backing as usize);
+-        let mut block_live = KVec::with_capacity(max_backings, GFP_KERNEL)?;
++        let mut blocks = KVec::with_capacity(max_backings, GFP_KERNEL)?;
+         for _ in 0..max_backings {
+-            block_live.push(None, GFP_KERNEL)?;
++            blocks.push(None, GFP_KERNEL)?;
+         }
+ 
+         let mut state = Self {
+             elements_per_backing,
+             outer_free: 0,
+             inner_free: [0; G15_FIRMWARE_RESOURCE_OUTER_WORDS],
+-            block_live,
++            blocks,
++            backing_factory,
+         };
+         // Exact createInitialBacking(): the first backing exists eagerly even
+-        // though mode 0 seeds its allocation use-count at zero.
++        // though mode 0 seeds its allocation use-count at zero. The mapped E150
++        // constructor performs the proven GPU allocation here; the current live
++        // E149 constructor remains host-only.
+         state.create_logical_backing(0)?;
+         Ok(state)
+     }
+@@ -435,14 +613,24 @@ fn clear_free_range(&mut self, start: u32, count: u32) -> Result {
+     }
+ 
+     fn create_logical_backing(&mut self, block: usize) -> Result {
+-        if self.block_live.get(block).ok_or(EINVAL)?.is_some() {
++        if self.blocks.get(block).ok_or(EINVAL)?.is_some() {
+             return Err(EIO);
+         }
++        // Exact grow ordering allocates the backing before publishing its slot
++        // and free bits. Any allocation failure therefore leaves the selector
++        // namespace unchanged.
++        let backing = match self.backing_factory.as_ref() {
++            Some(factory) => Some(factory.allocate()?),
++            None => None,
++        };
+         let (start, count) = self.block_range(block)?;
+         self.mark_free_range(start, count)?;
+         // Exact allocateNewBlock() stores `(shrink_mode != 0)` at allocation
+         // +0x00. All five target stacks use shrink mode 0, hence zero here.
+-        self.block_live[block] = Some(0);
++        self.blocks[block] = Some(G15FirmwareResourceBackingSlot {
++            live: 0,
++            backing,
++        });
+         Ok(())
+     }
+ 
+@@ -450,8 +638,8 @@ fn create_logical_backing(&mut self, block: usize) -> Result {
+     /// empty backing-pointer slot before expanding its pointer array, then marks
+     /// only that backing's global element range free.
+     fn grow_logical_backing(&mut self) -> Result {
+-        for block in 0..self.block_live.len() {
+-            if self.block_live[block].is_none() {
++        for block in 0..self.blocks.len() {
++            if self.blocks[block].is_none() {
+                 return self.create_logical_backing(block);
+             }
+         }
+@@ -460,7 +648,7 @@ fn grow_logical_backing(&mut self) -> Result {
+ 
+     /// E147 exact two-level lowest-free selector. `trailing_zeros()` is the
+     /// direct semantic equivalent of Apple's rbit/clz sequence.
+-    fn select(&mut self) -> Result<u32> {
++    fn select(&mut self) -> Result<(u32, Option<u64>)> {
+         if self.outer_free == 0 {
+             self.grow_logical_backing()?;
+         }
+@@ -483,20 +671,39 @@ fn select(&mut self) -> Result<u32> {
+         }
+ 
+         let block = index / self.elements_per_backing;
+-        let live = self
+-            .block_live
++        let element = index % self.elements_per_backing;
++        let element_bytes = self
++            .backing_factory
++            .as_ref()
++            .map(|factory| factory.kind.element_bytes());
++        let slot = self
++            .blocks
+             .get_mut(block as usize)
+             .ok_or(EIO)?
+             .as_mut()
+             .ok_or(EIO)?;
+-        *live = live.checked_add(1).ok_or(EOVERFLOW)?;
++        let fwva = match (&slot.backing, element_bytes) {
++            (Some(backing), Some(element_bytes)) => {
++                let base: u64 = backing.weak_pointer().into();
++                let offset = (element as usize)
++                    .checked_mul(element_bytes)
++                    .ok_or(EOVERFLOW)?;
++                Some(base.checked_add(offset as u64).ok_or(EOVERFLOW)?)
++            }
++            (None, None) => None,
++            _ => return Err(EIO),
++        };
++        // Commit the selection only after all mapped-address arithmetic has
++        // succeeded, so an impossible geometry error cannot consume a live
++        // reference while leaving the availability bit set.
++        slot.live = slot.live.checked_add(1).ok_or(EOVERFLOW)?;
+ 
+         let mask = 1u32 << inner;
+         self.inner_free[outer as usize] &= !mask;
+         if self.inner_free[outer as usize] == 0 {
+             self.outer_free &= !(1u64 << outer);
+         }
+-        Ok(index)
++        Ok((index, fwva))
+     }
+ 
+     /// Exact mode-0 release transaction. Apple first returns the selected bit
+@@ -519,17 +726,17 @@ fn release(&mut self, index: u32) -> Result {
+         let block = index / self.elements_per_backing;
+         let block_usize = block as usize;
+         let becomes_zero = {
+-            let live = self
+-                .block_live
++            let slot = self
++                .blocks
+                 .get_mut(block_usize)
+                 .ok_or(EIO)?
+                 .as_mut()
+                 .ok_or(EINVAL)?;
+-            if *live == 0 {
++            if slot.live == 0 {
+                 return Err(EIO);
+             }
+-            *live -= 1;
+-            *live == 0
++            slot.live -= 1;
++            slot.live == 0
+         };
+ 
+         self.inner_free[outer] |= mask;
+@@ -538,7 +745,9 @@ fn release(&mut self, index: u32) -> Result {
+         if becomes_zero {
+             let (start, count) = self.block_range(block_usize)?;
+             self.clear_free_range(start, count)?;
+-            self.block_live[block_usize] = None;
++            // Dropping the slot also drops the mapped backing in E150's
++            // dormant mapped mode, matching exact mode-0 freeAllocationBlock().
++            self.blocks[block_usize] = None;
+         }
+         Ok(())
+     }
+@@ -556,10 +765,11 @@ pub(crate) struct G15FirmwareResourceStackManager(
+ #[allow(dead_code)]
+ impl G15FirmwareResourceStackManager {
+     fn select(&self) -> Result<G15FirmwareResourceLease> {
+-        let index = self.0.lock().select()?;
++        let (index, fwva) = self.0.lock().select()?;
+         Ok(G15FirmwareResourceLease {
+             manager: self.clone(),
+             index,
++            fwva,
+         })
+     }
+ }
+@@ -568,6 +778,7 @@ fn select(&self) -> Result<G15FirmwareResourceLease> {
+ pub(crate) struct G15FirmwareResourceLease {
+     manager: G15FirmwareResourceStackManager,
+     index: u32,
++    fwva: Option<u64>,
+ }
+ 
+ #[allow(dead_code)]
+@@ -575,6 +786,12 @@ impl G15FirmwareResourceLease {
+     pub(crate) fn index(&self) -> u32 {
+         self.index
+     }
++
++    /// Available only from E150's zero-caller mapped stack constructor. The
++    /// live E149 host-only manager intentionally returns no firmware address.
++    fn mapped_fwva(&self) -> Result<u64> {
++        self.fwva.ok_or(EINVAL)
++    }
+ }
+ 
+ /// Exact command-queue-lifetime resource selections. E147 proves the scheduler
+@@ -680,6 +897,86 @@ pub(crate) fn new_device_global() -> Result<Self> {
+         })
+     }
+ 
++    /// Definition-only E150 mapped variant. It eagerly allocates one exact
++    /// first backing for each stack, and later growth/release owns real mapped
++    /// blocks behind E149's mode-0 slot transaction. No current GpuManager path
++    /// calls this constructor; boot-time q22 publication ordering remains the
++    /// next gate before replacing `new_device_global()`.
++    pub(crate) fn new_mapped_device_global(
++        dev: &AsahiDevice,
++        bank1: mmu::G15SharedBank1,
++        mapping_notifier: Arc<Mutex<mmu::G15MappingNotifier>>,
++    ) -> Result<Self> {
++        let timestamp_queue = G15FirmwareResourceStackManager(Arc::pin_init(
++            new_mutex!(
++                G15FirmwareResourceStackState::new_mapped(
++                    dev,
++                    bank1.clone(),
++                    mapping_notifier.clone(),
++                    G15FirmwareResourceKind::TimestampQueue,
++                )?,
++                "g15_fw_timestamp_queue_mapped"
++            ),
++            GFP_KERNEL,
++        )?);
++        let scheduler_state = G15FirmwareResourceStackManager(Arc::pin_init(
++            new_mutex!(
++                G15FirmwareResourceStackState::new_mapped(
++                    dev,
++                    bank1.clone(),
++                    mapping_notifier.clone(),
++                    G15FirmwareResourceKind::SchedulerState,
++                )?,
++                "g15_fw_scheduler_state_mapped"
++            ),
++            GFP_KERNEL,
++        )?);
++        let channel_state = G15FirmwareResourceStackManager(Arc::pin_init(
++            new_mutex!(
++                G15FirmwareResourceStackState::new_mapped(
++                    dev,
++                    bank1.clone(),
++                    mapping_notifier.clone(),
++                    G15FirmwareResourceKind::ChannelState,
++                )?,
++                "g15_fw_channel_state_mapped"
++            ),
++            GFP_KERNEL,
++        )?);
++        let uncached_channel_memory = G15FirmwareResourceStackManager(Arc::pin_init(
++            new_mutex!(
++                G15FirmwareResourceStackState::new_mapped(
++                    dev,
++                    bank1.clone(),
++                    mapping_notifier.clone(),
++                    G15FirmwareResourceKind::UncachedChannelMemory,
++                )?,
++                "g15_fw_uncached_channel_memory_mapped"
++            ),
++            GFP_KERNEL,
++        )?);
++        let cached_channel_memory = G15FirmwareResourceStackManager(Arc::pin_init(
++            new_mutex!(
++                G15FirmwareResourceStackState::new_mapped(
++                    dev,
++                    bank1,
++                    mapping_notifier,
++                    G15FirmwareResourceKind::CachedChannelMemory,
++                )?,
++                "g15_fw_cached_channel_memory_mapped"
++            ),
++            GFP_KERNEL,
++        )?);
++
++        Ok(Self {
++            timestamp_queue,
++            scheduler_state,
++            channel_state,
++            uncached_channel_memory,
++            cached_channel_memory,
++        })
++    }
++
+     pub(crate) fn select_timestamp_queue(&self) -> Result<G15FirmwareResourceLease> {
+         self.timestamp_queue.select()
+     }
+-- 
+2.53.0
+

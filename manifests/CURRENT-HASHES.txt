@@ -714,3 +714,13 @@ E149 private result sha256  2e7b0c6c47d6c2db10d885b6938b48fbb2218ac60a655ada43de
 E149 private mode0 backing-lifetime proof sha256  65fd130bbb6aaf5169239cbb7763882e818c0abd5bfceb74737e7a40457897ce
 E149 public mode0 lifetime note sha256  6c9ff91c68105eec6d04bb44e983469b64523d468bd0325c7b08d9b54d2700b4
 E149 closure  exact mode0 backing seed/destruction/hole-regrowth semantics; host bookkeeping corrected; no mapped backing, selected FWVA, install or RunCompute
+
+private evidence checkpoint E150  fe7563ae9858bfbed814ba7e2740e77ff0360fb3
+E150 Linux checkpoint  f17014117d4a77e7029a7f61abf85bf8c5aea5cf
+E150 Linux tree  592a70d8a512843c61cb5d36ad6f72d9ff62a03b
+E150 module sha256  952ee4dc51157f01de43ec1f404da8e71dba5ba12a2dab63c0f8fe09e7905e8a
+E150 patch 0062 sha256  9405244ada3d6e47d7d120edc31a10520a7f7611cb4dc87e975633084e875f5a
+E150 private result sha256  cfb59b19562cc3398bd350c31e04a212a2dd7a773001b859c5fd1af89f752e50
+E150 private exact-provenance sha256  2fe050d84dd1fe0b62cc3804b1b11ec165b669979b034a802ca67fd1cc27fce4
+E150 public mapped-resource note sha256  0d128f2c58f127677e17a5e74fc33aa01f4377db29a942633acf65d4ebd97818
+E150 closure  exact mapped backing definitions and private selected-FWVA arithmetic bound to global mode0 slots; constructor/accessor zero-caller, no runtime map/install/RunCompute

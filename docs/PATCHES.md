@@ -787,3 +787,17 @@ Patch 0061 validation performed on 2026-08-30:
 - logical audit: lower backing holes stay unavailable while later present backings have free slots; growth then reuses the lowest absent backing slot; exact timestamp 0x800 partial-tail ceiling retained;
 - reachability: only `buffer.rs` changes; no mapped resource-stack backing/FWVA; `queue/compute.rs`, `fw/compute.rs`, and `workqueue.rs` unchanged;
 - runtime: module not installed/not executed; no RunCompute.
+
+Patch 0062 validation performed on 2026-08-30:
+
+- base: `368783dd61e2dd709d99b696feb4a8af9c7ec767`;
+- expected commit tree: `592a70d8a512843c61cb5d36ad6f72d9ff62a03b`;
+- patch SHA-256: `9405244ada3d6e47d7d120edc31a10520a7f7611cb4dc87e975633084e875f5a`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- Asahi module build: PASS at the established 24-individual-warning bring-up baseline;
+- module SHA-256: `952ee4dc51157f01de43ec1f404da8e71dba5ba12a2dab63c0f8fe09e7905e8a`;
+- geometry audit: exact five resource kinds, backing sizes, per-backing element counts, 0x800 global ceiling/tails and selected `base + local_index * element_size` arithmetic;
+- lifetime audit: optional real mapped backing is owned by E149's dynamic mode-0 backing slot and is dropped on final-use block removal;
+- reachability: `new_mapped_device_global()` and `mapped_fwva()` are definition-only; live `GpuManager` construction remains on `new_device_global()`; `gpu.rs`, `queue/compute.rs`, `fw/compute.rs`, and `workqueue.rs` unchanged;
+- runtime: module not installed/not executed; no new resource mapping and no RunCompute.

@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-MAPPED-GLOBAL-FIRMWARE-RESOURCE-BACKINGS.md` — E150 zero-caller real range-7/range-8 backing factory plus selected-FWVA derivation bound to E149 dynamic global slots; runtime constructor still host-only.
 - `G15-FIRMWARE-RESOURCE-MODE0-LIFETIME.md` — E149 exact mode-0 backing use-count seed, last-release destruction, backing-hole and delayed-regrowth semantics; host-only bookkeeping correction, no selected FWVA or RunCompute.
 - `G15-GLOBAL-FIRMWARE-RESOURCE-LEASES.md` — E148 device-global host selector/use-count bookkeeping plus queue/channel RAII global-index leases; no global backing FWVA or RunCompute.
 - `G15-GLOBAL-FIRMWARE-RESOURCE-STACKS.md` — E147 exact device-global firmware resource-stack placement, eager backing and dynamic global selection/release; proves the five E127 local indices cannot become live constants.
