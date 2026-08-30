@@ -900,3 +900,18 @@ Patch 0069 validation performed on 2026-08-30:
 - idle observation: more than two minutes with no panic/Oops/SError/DART/IOMMU/GPU fault, firmware/RTKit crash, MTR alarm, watchdog or BUG marker;
 - containment: `/dev/dri/renderD128` absent, no File/VM/Queue/QueueInfo/channel/submission path reachable, no RunCompute/custom GPU command;
 - recovery: returned to golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`; candidate module restored to `a516262736853a707acf16f7639d9f6a7da40d671aa61e5713bcc00cd2c7c421` and initrd restored to `98ac9330624aa66ceb237040abc0be8e9abfa5f7c891c7909a768661c3cf0cb0`.
+
+Patch 0070 validation performed on 2026-08-30:
+
+- base: `1ec97a9499cefbcd5ade19ea7bc61202478bff75`;
+- expected commit tree: `3de2f1a6e88b34dbc9e2fad767d71a630b5d5b9c`;
+- patch SHA-256: `c0a9c76a9f93da4c5b80b027e19030af2be0cfb0bc86385e116f43d30d2869cd`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- module build: PASS at the established 24-warning baseline, SHA-256 `74068c785dc4daf0479e806f3463b753d47d9f9d7aa975c1fd627c0856293abf`;
+- source containment: only `driver.rs` and `file.rs` change; G15 DRM registration is restored after q21-ready/q22-active, while `File::open()` returns `ENODEV` before File state; E156 ensure remains zero-caller and Compute/WorkQueue writers are unchanged;
+- one-shot live kernel: `7.1.6-gc6fa9b794ba9`; exact E158 registration marker PASS and `/dev/dri/renderD128` present;
+- root render-node open: exact `ENODEV (19)`; zero successful `DRM device opened` markers;
+- idle observation: more than two minutes with no panic/Oops/SError/DART/IOMMU/GPU fault, firmware/RTKit crash, MTR alarm, or GPU command execution;
+- recovery: returned to golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`; sacrificial module restored to `a516262736853a707acf16f7639d9f6a7da40d671aa61e5713bcc00cd2c7c421` and initrd to `98ac9330624aa66ceb237040abc0be8e9abfa5f7c891c7909a768661c3cf0cb0`;
+- no RunCompute/custom GPU command.

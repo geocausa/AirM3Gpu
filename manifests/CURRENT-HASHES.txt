@@ -801,3 +801,15 @@ E157 private live proof sha256  2d665ea7a04ad70d858799a72462b824342eecaefd0d4f30
 E157 private source audit sha256  6d491264bcd417443bcc700a3a5ea2aef05eacd1d8ef379f78125d8ccfd7e3e7
 E157 public persistent-manager note sha256  b74f99516ff012a4b8292e9be4e24666ddc606fe4736a380b0923f3a86fe4248
 E157 closure  current E147-E152 mapped global resource graph live-proven through RTKit q21-ready/q22-active and >2 min fault-free idle; DRM deliberately unregistered, E156 ensure zero-caller, no RunCompute
+
+private evidence checkpoint E158  78e3c7971094a1d2ac3a4bbae1f9ebd6ae81b173
+E158 Linux checkpoint  f73850e8fe51096c74d2b98e419eb06d491bd6a0
+E158 Linux tree  3de2f1a6e88b34dbc9e2fad767d71a630b5d5b9c
+E158 module sha256  74068c785dc4daf0479e806f3463b753d47d9f9d7aa975c1fd627c0856293abf
+E158 patch 0070 sha256  c0a9c76a9f93da4c5b80b027e19030af2be0cfb0bc86385e116f43d30d2869cd
+E158 private result sha256  795a9233cd6078a3b67fa24c6ff6b90f3d592cb65fedb9ff66f72b2309ac0d56
+E158 private live proof sha256  92c5e9358e87a0c25103b397aa1219efce4ee2557f8a9fb5201dd6f8a059f1c1
+E158 private source audit sha256  0782b202b3ad229f9c8c143fd1edd7fd45b1520448321451ea2170a5ed47a719
+E158 restored-artifact proof sha256  6ddd0807a659a3f0b37d03ff59e6846fc728f7f063003352a97801a7ca28b4de
+E158 public DRM-open-gate note sha256  510f2ee80623cb0a4a63df9c717586cda636416a95f3f4007787126a3a1dd40f
+E158 closure  current persistent graph plus DRM registration live-proven with render node present; hard G15 File-open ENODEV contains all client/VM/Queue/channel/submission state; no RunCompute
