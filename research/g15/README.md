@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-CL-WORKQUEUE-CHANNEL-LIFETIME.md` — E155 exact lazy CL WorkQueue -> channel ownership/finalize/free order plus dormant Linux WorkQueue lifetime anchor; slot remains empty/no setter, no RunCompute.
 - `G15-CHANNEL-RUNTIME-SCALAR-PRODUCERS.md` — E154 exact owning-process PID source plus non-foreground priority/QoS tuple; final dormant scalar input bag removed, unpublished helper remains zero-caller.
 - `G15-GLOBAL-SELECTED-RESOURCE-STATE.md` — E153 exact ordinary timestamp-mode=false producer plus direct initialization of the real mapped global Queue/channel resource selections; five E127 local backing owners/slot inputs removed, no RunCompute.
 - `G15-MAPPED-FIRMWARE-RESOURCE-ACTIVATION.md` — E152 manager integration of the five mapped global resource stacks plus q21-ready q22 activation ordering; E075 hardware gate and RunCompute remain closed.

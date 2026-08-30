@@ -1,0 +1,139 @@
+From 440e026d0d9c3a04555a9f9446bf35cd1a364e15 Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 15:23:14 +0100
+Subject: [PATCH] drm: asahi: anchor J615 CL channel to WorkQueue lifetime
+
+---
+ drivers/gpu/drm/asahi/queue/mod.rs | 34 +++++++++++++++++++++++++++++-
+ drivers/gpu/drm/asahi/workqueue.rs |  9 ++++++++
+ 2 files changed, 42 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/asahi/queue/mod.rs b/drivers/gpu/drm/asahi/queue/mod.rs
+index c0b56a2039a0..189966562abe 100644
+--- a/drivers/gpu/drm/asahi/queue/mod.rs
++++ b/drivers/gpu/drm/asahi/queue/mod.rs
+@@ -9,6 +9,7 @@
+ use kernel::prelude::*;
+ use kernel::{
+     c_str,
++    new_mutex,
+     dma_fence,
+     drm::sched,
+     macros::versions,
+@@ -78,6 +79,14 @@ fn submit(
+ 
+ #[versions(AGX)]
+ struct SubQueue {
++    // E155 exact AGXCLWorkQueue lifetime anchor. The concrete slot is also
++    // retained opaquely by the WorkQueue itself, so WorkQueue::Job/Event Arc
++    // clones cannot outlive an activated channel. Keep this host-side clone
++    // physically before `wq`; if this is the last external slot reference it
++    // is dropped before the WorkQueue Arc, while the WorkQueue's own anchor
++    // still preserves exact channel-before-base-WorkQueue destruction.
++    #[ver(G == G15)]
++    _g15_compute_channel: Option<Arc<Mutex<Option<G15UnpublishedComputeChannel::ver>>>>,
+     wq: Arc<workqueue::WorkQueue::ver>,
+ }
+ 
+@@ -1640,12 +1649,15 @@ pub(crate) fn new(
+         ret.inner.buffer.ensure_blocks(tvb_blocks)?;
+ 
+         ret.q_vtx = Some(SubQueue::ver {
++            #[ver(G == G15)]
++            _g15_compute_channel: None,
+             wq: workqueue::WorkQueue::ver::new(
+                 dev,
+                 alloc,
+                 event_manager.clone(),
+                 ret.inner.gpu_context.clone(),
+                 ret.inner.notifier_list.clone(),
++                None,
+                 channel::PipeType::Vertex,
+                 id,
+                 priority,
+@@ -1654,12 +1666,15 @@ pub(crate) fn new(
+         });
+ 
+         ret.q_frag = Some(SubQueue::ver {
++            #[ver(G == G15)]
++            _g15_compute_channel: None,
+             wq: workqueue::WorkQueue::ver::new(
+                 dev,
+                 alloc,
+                 event_manager.clone(),
+                 ret.inner.gpu_context.clone(),
+                 ret.inner.notifier_list.clone(),
++                None,
+                 channel::PipeType::Fragment,
+                 id,
+                 priority,
+@@ -1667,14 +1682,31 @@ pub(crate) fn new(
+             )?,
+         });
+ 
+-        // Compute structures
++        // Compute structures. Exact 23J220 AGXCLWorkQueue owns its channel;
++        // create only an empty lifetime slot here. E155 deliberately provides
++        // no setter and makes no call to the unpublished channel assembler.
++        #[ver(G == G15)]
++        let g15_compute_channel = Arc::pin_init(
++            new_mutex!(None, "g15_compute_channel_lifetime"),
++            GFP_KERNEL,
++        )?;
++        #[ver(G == G15)]
++        let g15_compute_wq_lifetime = Some(
++            g15_compute_channel.clone() as Arc<dyn core::any::Any + Send + Sync>
++        );
++        #[ver(G != G15)]
++        let g15_compute_wq_lifetime = None;
++
+         ret.q_comp = Some(SubQueue::ver {
++            #[ver(G == G15)]
++            _g15_compute_channel: Some(g15_compute_channel),
+             wq: workqueue::WorkQueue::ver::new(
+                 dev,
+                 alloc,
+                 event_manager,
+                 ret.inner.gpu_context.clone(),
+                 ret.inner.notifier_list.clone(),
++                g15_compute_wq_lifetime,
+                 channel::PipeType::Compute,
+                 id,
+                 priority,
+diff --git a/drivers/gpu/drm/asahi/workqueue.rs b/drivers/gpu/drm/asahi/workqueue.rs
+index 9f8fc67b3bbc..7fa2b8042fae 100644
+--- a/drivers/gpu/drm/asahi/workqueue.rs
++++ b/drivers/gpu/drm/asahi/workqueue.rs
+@@ -299,6 +299,13 @@ struct WorkQueueInner {
+ #[versions(AGX)]
+ #[pin_data]
+ pub(crate) struct WorkQueue {
++    // E155 exact CL WorkQueue -> channel strong ownership. The type is opaque
++    // here to keep the generic WorkQueue layer independent of Queue's G15
++    // channel implementation, but the anchor is intentionally the first field:
++    // the final WorkQueue Arc therefore releases the channel lifetime before
++    // any base WorkQueue state is torn down. Every Job/Event WorkQueue Arc clone
++    // implicitly retains this same anchor.
++    _g15_owned_channel_lifetime: Option<Arc<dyn core::any::Any + Send + Sync>>,
+     info_pointer: GpuWeakPointer<QueueInfo::ver>,
+     #[pin]
+     inner: Mutex<WorkQueueInner::ver>,
+@@ -704,6 +711,7 @@ pub(crate) fn new(
+         event_manager: Arc<event::EventManager>,
+         gpu_context: Arc<GpuContext>,
+         notifier_list: Arc<GpuObject<fw::event::NotifierList>>,
++        g15_owned_channel_lifetime: Option<Arc<dyn core::any::Any + Send + Sync>>,
+         pipe_type: PipeType,
+         id: u64,
+         priority: u32,
+@@ -800,6 +808,7 @@ pub(crate) fn new(
+ 
+         Arc::pin_init(
+             pin_init!(Self {
++                _g15_owned_channel_lifetime: g15_owned_channel_lifetime,
+                 info_pointer,
+                 inner <- match pipe_type {
+                     PipeType::Vertex => new_mutex!(inner, "WorkQueue::inner (Vertex)"),
+-- 
+2.53.0
+

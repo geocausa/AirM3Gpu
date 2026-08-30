@@ -768,3 +768,14 @@ E154 private scalar-producer proof sha256  e12fae2458b4171ce513b5aacfc4955ab2b1a
 E154 private Linux bridge sha256  d7da93da3a6965b8acbaa7f5014e615789eeafeda6154e1d5a5766fcda7a9549
 E154 public channel-scalar note sha256  a8df7b4b81016defa5ba16c97ee6bff56aaa761b3cfe68bee1c9e2d79dfbc0cc
 E154 closure  exact process-PID QueueInfo source and non-foreground priority/QoS tuple bridged internally; final scalar input bag removed; assembler still zero-caller, no install/RunCompute
+
+private evidence checkpoint E155  049700723764c36befc624d2e3688a2dac9ca1a3
+E155 Linux checkpoint  440e026d0d9c3a04555a9f9446bf35cd1a364e15
+E155 Linux tree  b3dc7d0b8ee9f9418a1d8f6f492ec251ad648dc8
+E155 module sha256  91bb534a91af0c566677b1a62844d2df011ddd9a79231af3a602ef1f96e8fb93
+E155 patch 0067 sha256  adf6581faf35dd0cf82794b110485fadb515b436d0d2e50e96bfd74ae5c39823
+E155 private result sha256  710e7e65b0de91a79156cac08fac3349698c0b922d67d888885f5f31f8db13b3
+E155 private lifetime audit sha256  e7dd8fde563a2622fc0a000a96ec5d4aaf714019bf60021b0e0dcb764fa4a71d
+E155 private exact lifetime chain sha256  9ae8ea1d7082af726134cc29e0ad0c716ca0ed5cff9a661a990ebd915a652cc0
+E155 public WorkQueue/channel lifetime note sha256  054a8f9634d98769919482425b10ab0fc22207a1b1f15a92f0a09e3aed825d4e
+E155 closure  exact CL WorkQueue owns channel and releases it before base teardown; Linux WorkQueue Arc lifetime anchored to empty dormant channel slot; no setter/install/RunCompute

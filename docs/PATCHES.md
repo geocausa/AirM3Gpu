@@ -858,3 +858,17 @@ Patch 0066 validation performed on 2026-08-30:
 - exact priority audit: `clientHasPrivilege(task, "foreground")` selects normal non-foreground queue field `+0x448 = 2`; AGX integer argument remains 2 and `chooseCLWorkQueue()` uses literal QoS 2 for effective priority != 1;
 - source audit: old `G15ComputeChannelInitInputs` absent, renamed non-foreground unpublished assembler has zero callers, `queue/compute.rs`, `fw/compute.rs`, and `workqueue.rs` unchanged;
 - runtime: E075 gate unchanged; module not installed/not executed; no RunCompute.
+
+Patch 0067 validation performed on 2026-08-30:
+
+- base: `1e74793c7d14144b70f1c5e383e25fe1397eba08`;
+- expected commit tree: `b3dc7d0b8ee9f9418a1d8f6f492ec251ad648dc8`;
+- patch SHA-256: `adf6581faf35dd0cf82794b110485fadb515b436d0d2e50e96bfd74ae5c39823`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- Asahi module build: PASS at the established 24-individual-warning bring-up baseline;
+- module SHA-256: `91bb534a91af0c566677b1a62844d2df011ddd9a79231af3a602ef1f96e8fb93`;
+- exact lifetime audit: lazy channel stored at CL WorkQueue `+0x1e8`; reverse channel `+0x1d8` cleared under lock during finalize; channel released before inherited WorkQueue free; failure cleanup uses the same order;
+- Linux lifetime audit: Compute WorkQueue retains an opaque clone of its empty channel slot, so independent WorkQueue Job/Event Arc clones preserve the channel lifetime;
+- reachability: slot remains `None`, no setter exists, unpublished channel assembler remains definition-only, `queue/compute.rs` and `fw/compute.rs` unchanged;
+- runtime: E075 gate unchanged; module not installed/not executed; no RunCompute.
