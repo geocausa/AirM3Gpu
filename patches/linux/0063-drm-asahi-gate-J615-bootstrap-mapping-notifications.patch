@@ -1,0 +1,320 @@
+From 823fb161085e61788585bdfb57fdf0e8481d6aea Mon Sep 17 00:00:00 2001
+From: MacBook M3 Audio Lab <macmac@localhost>
+Date: Sun, 30 Aug 2026 12:59:27 +0100
+Subject: [PATCH] drm: asahi: gate J615 bootstrap mapping notifications
+
+---
+ drivers/gpu/drm/asahi/alloc.rs  |  22 +++++++
+ drivers/gpu/drm/asahi/buffer.rs |  10 ++-
+ drivers/gpu/drm/asahi/mmu.rs    | 104 ++++++++++++++++++++++++--------
+ 3 files changed, 107 insertions(+), 29 deletions(-)
+
+diff --git a/drivers/gpu/drm/asahi/alloc.rs b/drivers/gpu/drm/asahi/alloc.rs
+index e5a3b32f7131..2d6967f048dc 100644
+--- a/drivers/gpu/drm/asahi/alloc.rs
++++ b/drivers/gpu/drm/asahi/alloc.rs
+@@ -458,6 +458,7 @@ pub(crate) struct G15SharedBank1Allocator {
+     min_align: usize,
+     cpu_maps: bool,
+     notifier: Option<Arc<Mutex<mmu::G15MappingNotifier>>>,
++    notify_mode: mmu::G15MappingNotifyMode,
+ }
+ 
+ impl G15SharedBank1Allocator {
+@@ -513,6 +514,7 @@ pub(crate) fn new(
+             min_align,
+             cpu_maps,
+             notifier,
++            notify_mode: mmu::G15MappingNotifyMode::Immediate,
+         }
+     }
+ 
+@@ -536,6 +538,7 @@ pub(crate) fn new_range7_event(
+             min_align,
+             cpu_maps,
+             notifier,
++            notify_mode: mmu::G15MappingNotifyMode::Immediate,
+         }
+     }
+ 
+@@ -559,6 +562,7 @@ pub(crate) fn new_range7_timestamp_queue(
+             min_align,
+             cpu_maps,
+             notifier,
++            notify_mode: mmu::G15MappingNotifyMode::Immediate,
+         }
+     }
+ 
+@@ -583,6 +587,7 @@ pub(crate) fn new_range7_channel_memory(
+             min_align,
+             cpu_maps,
+             notifier,
++            notify_mode: mmu::G15MappingNotifyMode::Immediate,
+         }
+     }
+ 
+@@ -606,6 +611,7 @@ pub(crate) fn new_range7_flist(
+             min_align,
+             cpu_maps,
+             notifier,
++            notify_mode: mmu::G15MappingNotifyMode::Immediate,
+         }
+     }
+ 
+@@ -629,6 +635,7 @@ pub(crate) fn new_range7_hwmetrics(
+             min_align,
+             cpu_maps,
+             notifier,
++            notify_mode: mmu::G15MappingNotifyMode::Immediate,
+         }
+     }
+ 
+@@ -653,6 +660,7 @@ pub(crate) fn new_range8_channel_state(
+             min_align,
+             cpu_maps,
+             notifier,
++            notify_mode: mmu::G15MappingNotifyMode::Immediate,
+         }
+     }
+ 
+@@ -677,6 +685,7 @@ pub(crate) fn new_range8_channel_memory(
+             min_align,
+             cpu_maps,
+             notifier,
++            notify_mode: mmu::G15MappingNotifyMode::Immediate,
+         }
+     }
+ 
+@@ -701,6 +710,7 @@ pub(crate) fn new_range8_scheduler_state(
+             min_align,
+             cpu_maps,
+             notifier,
++            notify_mode: mmu::G15MappingNotifyMode::Immediate,
+         }
+     }
+ 
+@@ -724,8 +734,19 @@ pub(crate) fn new_range8(
+             min_align,
+             cpu_maps,
+             notifier,
++            notify_mode: mmu::G15MappingNotifyMode::Immediate,
+         }
+     }
++
++    /// Exact 23J220 bootstrap resource policy: the PTE exists before the q22
++    /// producer gate is enabled, so the initial map is intentionally silent.
++    /// Once the shared notifier is activated, later growth and eventual
++    /// teardown use ordinary q22 map/unmap publication.
++    #[allow(dead_code)]
++    pub(crate) fn after_q22_activation(mut self) -> Self {
++        self.notify_mode = mmu::G15MappingNotifyMode::AfterActivation;
++        self
++    }
+ }
+ 
+ impl Allocator for G15SharedBank1Allocator {
+@@ -748,6 +769,7 @@ fn alloc(&mut self, size: usize, align: usize) -> Result<Self::Raw> {
+             self.prot,
+             true,
+             self.notifier.clone(),
++            self.notify_mode,
+         )?;
+         let iova = mapping.iova();
+         let ptr = unsafe { p.add(offset) };
+diff --git a/drivers/gpu/drm/asahi/buffer.rs b/drivers/gpu/drm/asahi/buffer.rs
+index 3d186ff89d04..4a93b3f91bb1 100644
+--- a/drivers/gpu/drm/asahi/buffer.rs
++++ b/drivers/gpu/drm/asahi/buffer.rs
+@@ -382,8 +382,11 @@ const fn backing_bytes(self) -> usize {
+ 
+ /// Inputs retained by a future mapped device-global resource stack. E125/E126/
+ /// E122/E116 already close each range/protection class and exact block geometry.
+-/// E150 merely type-connects those proven allocators to E149's dynamic backing
+-/// slots; no current `GpuManager` constructor calls this factory.
++/// E150 type-connects those proven allocators to E149's dynamic backing slots.
++/// E151 additionally marks these exact firmware-resource allocations as
++/// pre-q22 bootstrap mappings: initial PTEs are silent until the producer gate
++/// becomes active, while post-activation growth/teardown remains q22-visible.
++/// No current `GpuManager` constructor calls this factory.
+ #[allow(dead_code)]
+ struct G15FirmwareResourceBackingFactory {
+     dev: AsahiDevRef,
+@@ -456,7 +459,8 @@ fn allocate(&self) -> Result<alloc::G15SharedGpuArray<u8>> {
+                     notifier,
+                 )
+             }
+-        };
++        }
++        .after_q22_activation();
+         let backing = allocator.array_empty_shared_data::<u8>(self.kind.backing_bytes())?;
+         let base: u64 = backing.weak_pointer().into();
+         if backing.len() != self.kind.backing_bytes()
+diff --git a/drivers/gpu/drm/asahi/mmu.rs b/drivers/gpu/drm/asahi/mmu.rs
+index 55815422c3f3..10e79b46b228 100644
+--- a/drivers/gpu/drm/asahi/mmu.rs
++++ b/drivers/gpu/drm/asahi/mmu.rs
+@@ -1670,6 +1670,10 @@ fn ttb(&self) -> PhysicalAddr {
+ pub(crate) struct G15MappingNotifier {
+     dev: driver::AsahiDevRef,
+     backing: alloc::G15SharedGpuObject<fw::initdata::G15MappingRingBacking>,
++    // Exact 23J220 firmware+0x1288 gate semantics are monotonic for the
++    // reconstructed startup/runtime lifetime: bootstrap resource mappings are
++    // established while false; later dynamic changes are q22-visible once true.
++    active: bool,
+ }
+ 
+ /// Cloneable, debug-safe strong owner for the q22 producer. Kernel Mutex does
+@@ -1733,7 +1737,30 @@ pub(crate) fn new(
+         dev: &driver::AsahiDevice,
+         backing: alloc::G15SharedGpuObject<fw::initdata::G15MappingRingBacking>,
+     ) -> Self {
+-        Self { dev: dev.into(), backing }
++        Self {
++            dev: dev.into(),
++            backing,
++            active: false,
++        }
++    }
++
++    /// Arm q22 publication after the bootstrap mapping set is complete. The
++    /// transition is one-way so a mapping created after activation can never
++    /// later lose its required unmap notification.
++    #[allow(dead_code)]
++    pub(crate) fn activate(&mut self) -> Result {
++        if self.active {
++            return Ok(());
++        }
++        if !self.is_empty() {
++            return Err(EBUSY);
++        }
++        self.active = true;
++        Ok(())
++    }
++
++    pub(crate) fn is_active(&self) -> bool {
++        self.active
+     }
+ 
+     pub(crate) fn state_gpu_va(&self) -> u64 {
+@@ -1923,6 +1950,7 @@ pub(crate) struct G15SharedBank1Mapping {
+     node: Option<mm::Node<(), G15SharedBank1MappingInner>>,
+     inner: Arc<UatInner>,
+     notifier: Option<Arc<Mutex<G15MappingNotifier>>>,
++    notify_mode: G15MappingNotifyMode,
+     phys_pages: KVec<u64>,
+ }
+ 
+@@ -1939,7 +1967,12 @@ fn drop(&mut self) {
+         let iova = node.start();
+         let size = node.mapped_size;
+         if let Some(notifier) = self.notifier.as_ref() {
+-            if notifier.lock().publish_unmapping(iova, &self.phys_pages).is_err() {
++            let mut notifier = notifier.lock();
++            let publish = match self.notify_mode {
++                G15MappingNotifyMode::Immediate => true,
++                G15MappingNotifyMode::AfterActivation => notifier.is_active(),
++            };
++            if publish && notifier.publish_unmapping(iova, &self.phys_pages).is_err() {
+                 pr_err!(
+                     "MMU: failed to publish G15 shared bank-1 unmapping {:#x}:{:#x}; preserving PTE and VA reservation\n",
+                     iova,
+@@ -1983,6 +2016,16 @@ fn drop(&mut self) {
+ /// Disjoint Apple G15 bank-1 VA classes. Keeping the allocator arenas
+ /// separate prevents a range-8 Page-Pool-State allocation from consuming a
+ /// PM/range-7 VA (or vice versa) even though both share one page-table root.
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub(crate) enum G15MappingNotifyMode {
++    /// Ordinary runtime mapping: q22 publication is part of map/unmap.
++    Immediate,
++    /// Apple bootstrap resource backing: suppress q22 traffic until the
++    /// monotonic producer gate is activated, then publish subsequent map/unmap
++    /// changes normally.
++    AfterActivation,
++}
++
+ #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+ pub(crate) enum G15SharedBank1Aperture {
+     /// PM/q22 resource class, compact SecureGart option 0x007.
+@@ -2013,6 +2056,7 @@ pub(crate) fn map(
+         prot: Prot,
+         guard: bool,
+         notifier: Option<Arc<Mutex<G15MappingNotifier>>>,
++        notify_mode: G15MappingNotifyMode,
+     ) -> Result<G15SharedBank1Mapping> {
+         let sgt = gem.owned_sg_table()?;
+         if size & UAT_PGMSK != 0 {
+@@ -2119,32 +2163,39 @@ pub(crate) fn map(
+         mem::sync();
+ 
+         if let Some(q22) = notifier.as_ref() {
+-            if let Err(err) = q22.lock().publish_mapping(base, &phys_pages) {
+-                // Native G15 ordering is secure-GART map first, q22 publication
+-                // second. If publication fails, undo the just-created PTEs before
+-                // allowing the VA reservation to be released/reused.
+-                let rollback = {
+-                    let mut shared = self.inner.lock();
+-                    match shared.g15_shared_bank1.as_mut() {
+-                        Some(bank1) => bank1
+-                            .page_table
+-                            .unmap_pages(base..(base + size as u64)),
+-                        None => Err(EINVAL),
++            let mut q22 = q22.lock();
++            let publish = match notify_mode {
++                G15MappingNotifyMode::Immediate => true,
++                G15MappingNotifyMode::AfterActivation => q22.is_active(),
++            };
++            if publish {
++                if let Err(err) = q22.publish_mapping(base, &phys_pages) {
++                    // Native G15 ordering is secure-GART map first, q22 publication
++                    // second. If publication fails, undo the just-created PTEs before
++                    // allowing the VA reservation to be released/reused.
++                    let rollback = {
++                        let mut shared = self.inner.lock();
++                        match shared.g15_shared_bank1.as_mut() {
++                            Some(bank1) => bank1
++                                .page_table
++                                .unmap_pages(base..(base + size as u64)),
++                            None => Err(EINVAL),
++                        }
++                    };
++                    fence(Ordering::SeqCst);
++                    mem::tlbi_all();
++                    mem::sync();
++                    if rollback.is_err() {
++                        dev_err!(
++                            self.dev.as_ref(),
++                            "MMU: failed to roll back unpublished G15 shared bank-1 mapping {:#x}:{:#x}; leaking VA reservation\n",
++                            base,
++                            size
++                        );
++                        core::mem::forget(node);
+                     }
+-                };
+-                fence(Ordering::SeqCst);
+-                mem::tlbi_all();
+-                mem::sync();
+-                if rollback.is_err() {
+-                    dev_err!(
+-                        self.dev.as_ref(),
+-                        "MMU: failed to roll back unpublished G15 shared bank-1 mapping {:#x}:{:#x}; leaking VA reservation\n",
+-                        base,
+-                        size
+-                    );
+-                    core::mem::forget(node);
++                    return Err(err);
+                 }
+-                return Err(err);
+             }
+         }
+ 
+@@ -2152,6 +2203,7 @@ pub(crate) fn map(
+             node: Some(node),
+             inner: self.inner.clone(),
+             notifier,
++            notify_mode,
+             phys_pages,
+         })
+     }
+-- 
+2.53.0
+

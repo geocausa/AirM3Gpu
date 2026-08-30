@@ -801,3 +801,17 @@ Patch 0062 validation performed on 2026-08-30:
 - lifetime audit: optional real mapped backing is owned by E149's dynamic mode-0 backing slot and is dropped on final-use block removal;
 - reachability: `new_mapped_device_global()` and `mapped_fwva()` are definition-only; live `GpuManager` construction remains on `new_device_global()`; `gpu.rs`, `queue/compute.rs`, `fw/compute.rs`, and `workqueue.rs` unchanged;
 - runtime: module not installed/not executed; no new resource mapping and no RunCompute.
+
+Patch 0063 validation performed on 2026-08-30:
+
+- base: `f17014117d4a77e7029a7f61abf85bf8c5aea5cf`;
+- expected commit tree: `fcf4097b98e20b6c341e010468039056d2b7c6f8`;
+- patch SHA-256: `97645134b0095277f2b8c6a8130bd6b0a81d9dad7f7c949406aba9742e31e029`;
+- exact-tree reconstruction: PASS;
+- strict source-diff checkpatch: 0 errors, 0 warnings, 0 checks;
+- Asahi module build: PASS at the established 24-individual-warning bring-up baseline;
+- module SHA-256: `7de35a06a1a2f038cb4392f07429651d05d30499a089e068740b18a10a84e556`;
+- exact ordering audit: all five global resource stacks eagerly create first backings while constructor-zero firmware `+0x1288` suppresses q22 mapping publication; successful `prepareFirmwareData()` sets that gate to one before `initFirmwareData()` and `bootFirmware()`;
+- notification-policy audit: existing mappings remain immediate; only the dormant mapped firmware-resource factory uses `AfterActivation`, retaining post-activation growth/unmap publication without replaying bootstrap maps;
+- reachability: notifier activation, `new_mapped_device_global()` and `mapped_fwva()` remain zero-caller; `gpu.rs` is unchanged and no new runtime mapping is created;
+- runtime: module not installed/not executed; no RunCompute.

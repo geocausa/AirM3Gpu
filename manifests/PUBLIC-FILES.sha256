@@ -1,10 +1,10 @@
 a94f4741e619a496034a1cfd0c0149d93cb3f74c33e024d5d7c2023f4494c605  ./.gitignore
-1c3efe05f82094497a05f7144c42358a715e8efef3fd9c95e5c295327590f5d0  ./README.md
-ee7d662ce313fba341f9c2576b224591d5fe4a33a4565f568c289b1abcea2c24  ./docs/CURRENT-STATE.md
-30ec8ab3e4e358a3553a6efe0b72c0e1a85a0ce88190bd44b62000c0fa498b1c  ./docs/PATCHES.md
+1aa0bcdde1393ffc3f4002f832e39a6383117affc2ea0c9d7a98fc6f6835e9e6  ./README.md
+927aab051049384738b6878166bf1416e48cde2763bc4c4b2ef67fc517b05f6c  ./docs/CURRENT-STATE.md
+53d329df7ab847dcbe0e3fa6275dd960d5ec40a0751bb99a4b779eae0ecd685c  ./docs/PATCHES.md
 d61bf1973a6d6b3e840ef7eff94cb497eb57118a711f6891e2b0ee98ca6db461  ./docs/RECOVERY.md
 072edbe867996f268553f3da518769548159145691000f5f6dc7f888dd84cdf7  ./docs/WORKFLOW.md
-da1eb2e8e97ef027352f631ce746fe9c1b6b802a9bd9d246bb8869ac1fbb3cf2  ./manifests/CURRENT-HASHES.txt
+202d1ad18c0ce2eada286df58a343e65c5a5be8d80117bc47a9e1d523d1801c9  ./manifests/CURRENT-HASHES.txt
 4f16537a51cf9d1ad18841ec138b5a6090407739af7b69898c933dcafdca8fea  ./patches/linux/0001-drm-asahi-checkpoint-T8122-G15-bring-up-through-RTKi.patch
 258eb0243e41b10800df1daf5671c8003f358efec31caaac405e74fc8c2cc00a  ./patches/linux/0002-drm-asahi-map-G15-RTKit-preallocated-crashlog-memory.patch
 7a0b6374402bc2fb4c75b01ae93645470385f1b671530ea9996b118915c9f961  ./patches/linux/0003-drm-asahi-stage-G15-RTKit-app-endpoint-start.patch
@@ -67,6 +67,7 @@ d1e0d2724a77fe1a46d33b0af557d7023eed61b6f149ac4aadcb059ea4a4acb0  ./patches/linu
 dbe93a8bddf28239f270d5634d77d6b9d787d7b0a90a3c26a2ba7f85bd29baf7  ./patches/linux/0060-drm-asahi-model-global-J615-firmware-resource-leases.patch
 2bccb08fe73be8201512acedd095501b6664d2926f8f1c992d046c2e519717b7  ./patches/linux/0061-drm-asahi-model-J615-mode-0-firmware-resource-lifetime.patch
 9405244ada3d6e47d7d120edc31a10520a7f7611cb4dc87e975633084e875f5a  ./patches/linux/0062-drm-asahi-define-mapped-J615-firmware-resource-backings.patch
+97645134b0095277f2b8c6a8130bd6b0a81d9dad7f7c949406aba9742e31e029  ./patches/linux/0063-drm-asahi-gate-J615-bootstrap-mapping-notifications.patch
 09f94cf355cb34847caf59bf33f46231748958c10fa37dcde7d35b1a2307ac2d  ./patches/mesa/0001-hk-pass-initial-load-clear-state-to-kernel.patch
 07821063a351d0306dc5cc0689979cf10c537af5a417dc5d97e390ee456ec798  ./patches/mesa/0002-hk-pass-depth-stencil-level-offsets-to-kernel.patch
 bc26f90769b09e298649b0fc8f5f6b0373c7e50c03f0b5926f5d285f562db569  ./patches/mesa/0003-hk-build-G15-EOT-state-loader-for-proven-path.patch
@@ -130,6 +131,7 @@ f1b98c16082d7185265dbc0fd15d50e6e318ecd9c255af05cf4114090b28c43e  ./research/g15
 b0a133eb6498b79e25464ad1d280a80cb47e6dfddf8095e32237f7687e9a954d  ./research/g15/G15-PIPE-SUBMISSION-BOUNDARY.md
 21f59d82c417dcde7f775ef79101ab3046d17f50329546b953e9aac4b27db18c  ./research/g15/G15-PRE-MSG-INIT-AUDIT.md
 dd373757d08ded2aa09dfd0af4449253d7cef01fa93ac38e42a1352957e7d4df  ./research/g15/G15-PUBLIC-M1N1-SEMANTIC-CROSSCHECK.md
+8b8f274bd838ee8dcb098c345fe37b24514179da7440d3916b3236e13a56f9d2  ./research/g15/G15-Q22-BOOTSTRAP-MAPPING-ORDERING.md
 c4d40a415d5921204ea16517f6af87d3f5e20c607b8113f6d516f47d43de0b5b  ./research/g15/G15-Q22-RANGE8-SPECIAL.md
 e4c7398008dd5cf04abc7953075b7682b95c4c5f4f389c930488c920fa77f7c6  ./research/g15/G15-Q4-Q21-LAYOUT.md
 c0a9643509b7050f0b3c0718a5060fd0c592235250b22f7e47dd18614aef7ddc  ./research/g15/G15-QUEUE-REGISTRATION-LIFECYCLE.md
@@ -168,5 +170,5 @@ cbc9603a831808031d5f528eadd7f3302879723f06ab798243258ba9a1eace95  ./research/g15
 6c630e1e0ad344f8cdf6f2c8c7d1d5bc091de06f478aaf42971c8acc34cf1e78  ./research/g15/G15-WEAK-UMAPOOL-PROMOTION.md
 d531fda1be727de5e510ea5718ef68d3b0172d3ec4f2d3f5b039bb6c7f42e06e  ./research/g15/G15-WRAPPER-LAYOUT.md
 1e42ac959bea3032d870499ed56255d3212aaf1f794b184fc08bbb5d2504dbf4  ./research/g15/J615-POWER-CONFIG.md
-a3819f3986b9314f6d09b82bb351a6c011a6a3d47acb48aba2bfaf68dd28fb54  ./research/g15/README.md
+e9d9ccf232f45be4c0c8aa94842acdfaa04476a03105f1c3c189b63a6044d1ad  ./research/g15/README.md
 d42da0407a1a8725d538c5438cb402860139b661c347613781a5b0b4226731e6  ./research/g15/build-g15g-c0-dpe-ppt.py

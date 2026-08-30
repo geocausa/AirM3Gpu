@@ -724,3 +724,14 @@ E150 private result sha256  cfb59b19562cc3398bd350c31e04a212a2dd7a773001b859c5fd
 E150 private exact-provenance sha256  2fe050d84dd1fe0b62cc3804b1b11ec165b669979b034a802ca67fd1cc27fce4
 E150 public mapped-resource note sha256  0d128f2c58f127677e17a5e74fc33aa01f4377db29a942633acf65d4ebd97818
 E150 closure  exact mapped backing definitions and private selected-FWVA arithmetic bound to global mode0 slots; constructor/accessor zero-caller, no runtime map/install/RunCompute
+
+private evidence checkpoint E151  0251b8f217610ab097cc9cfd7100687e308887f5
+E151 Linux checkpoint  823fb161085e61788585bdfb57fdf0e8481d6aea
+E151 Linux tree  fcf4097b98e20b6c341e010468039056d2b7c6f8
+E151 module sha256  7de35a06a1a2f038cb4392f07429651d05d30499a089e068740b18a10a84e556
+E151 patch 0063 sha256  97645134b0095277f2b8c6a8130bd6b0a81d9dad7f7c949406aba9742e31e029
+E151 private result sha256  4c71f07ee41e7b060aa745d0253ec69e2077cc0fa0dd5d28cb3150626da5dd79
+E151 private exact bootstrap-order proof sha256  aea9ffa0f99d261a09553ba994cca697bc34bbb3f70f17c90341afb3d9294d5a
+E151 private exact-provenance sha256  72ce12e2817dc3cf89c9b6c26045724855c4eb5480740843731891fc6d1e8c5a
+E151 public q22-bootstrap-order note sha256  8b8f274bd838ee8dcb098c345fe37b24514179da7440d3916b3236e13a56f9d2
+E151 closure  exact constructor-zero q22 gate and eager pre-prepare resource mappings; dormant monotonic activation policy added, mapped owner/activation zero-caller, no runtime map/install/RunCompute
