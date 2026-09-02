@@ -58,15 +58,15 @@ They should not be used as the forward live baseline.
 - `0x1a510` and the four preemption/state tail addresses belong to the command/DataBuffer allocation family; moving them to range-5 executable storage is not justified.
 - Exact production direct-launch dword 3 remains `0x40000000`; the manual `0x40` value is not a replacement for the production contract.
 
-## Current static frontier — E279
+## Current static frontier — E280
 
-E279 is intentionally static and is not yet closed by a final result document.
+E279 is now statically closed.
 
 Exact 23J220 `ProgramVariantESLState::setupDirectESL()` constructs a generated state-load program from multiple possible load forms (immediate, absolute, gather/user/indirect/SCS), finishes pending rounds, explicitly calls `appendLdshdr()`, appends USC profile-control state-loader instructions, and then `ESLStateLoadEncoderGen2::finish()` emits LoadShader plus conditional additional state/branch instructions.
 
 This is materially richer than treating the independently successful hand-written M3 entry sequence as necessarily equivalent to Apple's production ComputeProgramVariant entry program.
 
-**Highest-value next task:** finish E279 and mechanically reconstruct the smallest production 23J220 entry/state-loader program applicable to the bounded direct workload. Compare that byte/semantic contract against E274 before permitting another GPU command.
+**Highest-value next task:** E280 must obtain an exact 23J220 compiler/driver-generated minimal Compute entry oracle (compiler/deserialized reply plus generated ESL bytes), then compare it mechanically against E274 before permitting another GPU command.
 
 ## Repository checkpoint
 

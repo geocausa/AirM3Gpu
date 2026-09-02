@@ -19,7 +19,8 @@ This index covers the execution-focused phase after generic J615 Compute complet
 | E276 | LIVE FAIL, reset class | `1c0ec35ca0e7` | Hand-written `0x40` launch control rejected; production `0x40000000` remains preferred. |
 | E277 | STATIC PASS | no source delta | Keep preemption/data-buffer backing in command/DataBuffer storage family. |
 | E278 | LIVE FAIL, reset class | `f8306c6f90b0` | Separate CDM in shared-RW also regresses; reject unchanged. |
-| E279 | IN PROGRESS / static only | no source delta yet | Reconstruct exact production 23J220 entry/state-loader contract. |
+| E279 | STATIC PASS | no source delta | Production entry is generated/state-dependent; neither manual entry sequence is a universal 23J220 oracle. |
+| E280 | IN PROGRESS / oracle only | no source delta | Obtain exact 23J220 compiler/driver-generated minimal Compute entry bytes and metadata. |
 
 ## Current comparison boundary
 
@@ -27,4 +28,4 @@ E199 tells us what is *not* broken: queue transport, RunCompute publication, fir
 
 E274 tells us where a real launch currently stops: after scheduler acceptance but before engine completion.
 
-E279 therefore focuses on the production `ComputeProgramVariant` entry/state-loader program rather than changing more envelope fields without a mechanically proven delta.
+E279 proves the production `ComputeProgramVariant` entry is generated and state-dependent. E280 now seeks the exact 23J220 generated entry/body oracle before changing more envelope fields.

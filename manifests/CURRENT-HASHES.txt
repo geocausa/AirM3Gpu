@@ -5,7 +5,8 @@ Current implementation branch: wip/g15-e278-cdm-shared-rw
 Current implementation commit: f8306c6f90b0fcc561298488f6185a2055496a0b
 Preferred real-launch live baseline: wip/g15-e274-working-body-order @ bcc062a1c864491b1b4286fea86c828c9f658733
 Known-good terminate-only Compute: E199
-Static frontier: E279 production entry/state-loader contract
+Static closure: E279 production entry/state-loader contract
+Current frontier: E280 exact compiler/driver generated entry oracle
 Persistent Golden kernel: 7.1.6-ubuntu-m3-usbpd-gc5037a961e4d
 Sacrificial baseline asahi.ko: 141d23bc64eba8ebf37ef6078fb8f319697db50f35cd5f6a81006f2b289bbe40
 Sacrificial baseline initrd: 37743993c3e1c60b9b9d996df470abffc2fdf18998a4fd4ac4654b5cf9d13776
