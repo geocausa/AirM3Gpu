@@ -1,0 +1,40 @@
+AirM3Gpu local preservation audit -- 2026-09-02
+
+Canonical public project clone:
+  /home/macmac/AirM3Gpu-public
+  HEAD: 1d4ef786e22380a4765c6dd2e959b79f1a309818
+  remote: https://github.com/geocausa/AirM3Gpu.git
+
+Kernel implementation worktree:
+  /home/macmac/src/linux-m3-gpu-e265
+  HEAD: f8306c6f90b0fcc561298488f6185a2055496a0b
+  branch: wip/g15-e278-cdm-shared-rw
+  upstream: geocausa/wip/g15-e278-cdm-shared-rw
+
+Raw/private evidence workspace:
+  /home/macmac/m3-gpu-lab
+  tracked HEAD: fe69c7fa5c055520bf5efd0a04a817aaff6e3b35
+  branch: main
+  remote count: 0
+  experiment directories: 309
+  tracked experiment top-level names: 141
+  git porcelain entries: 555
+
+Important local-only frontier:
+  E279-g15-production-entry-contract exists and currently has no RESULT.md.
+
+Selected result SHA-256 values:
+40d3fe68a3bb553f9925bf1fb83a3c24b914d6b200df7232b52c6cdb0175605c  experiments/E199-g15-retry-exact-stock-empty/RESULT.md
+eae7f1b09c84ab8723cfb8124d0fe5fb33c17a2e7b3ed08a3a5ba6c3b5af5e1a  experiments/E260-g15-engine-completion-resource-state/RESULT.md
+b5cf3868fdb191e2d6d9e28e17d7c2346e1b035431f1b3cc808d71579f11d3db  experiments/E261-g15-rtkit-register-tail/RESULT.md
+bf8191adbbefbcbcee2e344799fda915fe419e290567f5b7f955bf515ceb64a7  experiments/E265-g15-full-entry-state-program/RESULT.md
+7c83d044cf56506ef77b71986e169c2bd331d5fac27fbde91fe84d81b9ab60a5  experiments/E272-g15-separate-result-buffer/RESULT.md
+35930cc6cdf68fb62972d3e4f73882a312f73d75f30d72e4445f26bc19ce23db  experiments/E273-g15-range5-result-class/RESULT.md
+3ac7596c07da78202b9eec9d497c3e953ed3477f71174f849c331aa883903a0e  experiments/E274-g15-working-body-order/RESULT.md
+9f8556a5f8336441ca39e547f9f7552b184ff282d8cd13857902b4dd3e1eb23b  experiments/E275-g15-separate-cdm-allocation/RESULT.md
+bfb87397c25255edd51ce71ee34b5bfc2775166bb419b5ffc64d5c58fe243742  experiments/E276-g15-handwritten-launch-control/RESULT.md
+da7f03023dfc77a3e0767f1b7e93f00ddb8097242f6b5fad064ddb16417fdefa  experiments/E277-g15-databuffer-backing-class/RESULT.md
+9ff3fb75b12eb150ed2d828be58172c070d26dd58c9037dfa537e21aeebb83cb  experiments/E278-g15-cdm-shared-rw/RESULT.md
+
+Preservation note:
+  The raw lab contains proprietary/raw/reverse-engineering evidence that is intentionally not mirrored wholesale to either public Git repository. Do not delete or clean untracked lab data until a separate private archival destination is explicitly chosen.
