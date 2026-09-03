@@ -56,16 +56,18 @@ Goal: obtain an exact 23J220 minimal direct-Compute compiler/deserialized reply 
 
 Already present in E280:
 - exact 23J220 compiler-service/lifecycle analysis;
+- exact 23J220 `MTLCompiler` codegen-service/plugin bridge and BuildRequest forwarding ABI;
 - exact profile/state-loader decompilation;
 - exact LDIMM, B/BL, SETPROFILECTL and LoadShader emitter reconstruction;
-- prepared minimal Metal compute source and cautious interposer/capture tooling;
-- one newer-macOS (25F84) cross-check path, which is **not** exact-target evidence.
+- live newer-macOS capture of the source/library (`0x0d`) and backend executable (`1`) request classes for a minimal Compute pipeline;
+- proof that alternate-cache selection alone is **not** exact-target evidence, plus a traced current-dyld/23J220-libdyld helper-ABI incompatibility for private old-cache mapping.
 
 Next required outputs:
-1. exact 23J220 minimal compiler reply / ShaderInfo;
-2. exact generated ESL entry bytes + LoadShader mode;
-3. exact body bytes/metadata relevant to launch;
-4. semantic/byte diff vs E274.
+1. replay the captured backend request through the exact 23J220 service + exact AGX compiler plugin;
+2. exact 23J220 minimal compiler reply / ShaderInfo;
+3. exact generated ESL entry bytes + LoadShader mode;
+4. exact body bytes/metadata relevant to launch;
+5. semantic/byte diff vs E274.
 
 **Do not issue another Linux GPU real-launch command until E280 produces a concrete execution-facing delta.**
 

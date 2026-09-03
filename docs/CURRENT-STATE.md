@@ -66,7 +66,9 @@ Exact 23J220 `ProgramVariantESLState::setupDirectESL()` constructs a generated s
 
 This is materially richer than treating the independently successful hand-written M3 entry sequence as necessarily equivalent to Apple's production ComputeProgramVariant entry program.
 
-**Highest-value next task:** E280 must obtain an exact 23J220 compiler/driver-generated minimal Compute entry oracle (compiler/deserialized reply plus generated ESL bytes), then compare it mechanically against E274 before permitting another GPU command.
+E280 has now recovered the exact 23J220 `MTLCompiler` service/plugin bridge. The exact service ABI is mechanically known: plugin registration carries the opaque driver configuration blob, request submission carries `(plugin index, request type, bytes, size, completion block)`, and the plugin interface forwards to the driver BuildRequest family. A newer-macOS live cross-check produces matching source/library (`0x0d`) and backend executable (`1`) request classes. Alternate-cache-only runs are explicitly not accepted as exact-target proof because UUID checks showed current components can still be selected, and a forced private old-cache mapping hits a real current-dyld/23J220-libdyld helper-ABI mismatch. See `research/g15/G15-23J220-MTLCOMPILER-BRIDGE.md`.
+
+**Highest-value next task:** execute the captured backend request through the exact 23J220 service + AGX compiler plugin, capture the exact serialized reply, feed it through the recovered exact direct-ESL builder, and compare generated entry bytes mechanically against E274 before permitting another GPU command.
 
 ## Repository checkpoint
 

@@ -20,7 +20,7 @@ This index covers the execution-focused phase after generic J615 Compute complet
 | E277 | STATIC PASS | no source delta | Keep preemption/data-buffer backing in command/DataBuffer storage family. |
 | E278 | LIVE FAIL, reset class | `f8306c6f90b0` | Separate CDM in shared-RW also regresses; reject unchanged. |
 | E279 | STATIC PASS | no source delta | Production entry is generated/state-dependent; neither manual entry sequence is a universal 23J220 oracle. |
-| E280 | IN PROGRESS / oracle only | no source delta | Obtain exact 23J220 compiler/driver-generated minimal Compute entry bytes and metadata. |
+| E280 | IN PROGRESS / bridge ABI closed | no source delta | Exact 23J220 MTLCompiler service/plugin request bridge recovered; next execute backend request through exact compiler plugin and recover reply/entry bytes. |
 
 ## Current comparison boundary
 
