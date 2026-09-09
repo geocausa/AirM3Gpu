@@ -8,6 +8,8 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-23J220-PRODUCTION-STATE-LOADER.md` — E280-E283 exact compiler/body/state-loader closure; E283 preserves the scheduler-timeout signature and narrows the next discriminator to exact 23J220 pre-shader byte generation.
+- `G15-23J220-MTLCOMPILER-BRIDGE.md` — exact compiler-service ABI, exact-target execution caveats, and the exact 23J220 backend-reply recovery path used by E280.
 - `G15-23J220-COMPUTE-REAL-DISPATCH-TRANSFER.md` — E256 exact userspace raw-Compute → kernel descriptor → RunCompute/RegisterArray transfer closure; isolates the remaining real-dispatch producer-state boundary with no Linux mutation.
 - `G15-VM-CONTEXT-GPTBAT-PUBLICATION.md` — E165 signed zero-payload live proof of banked user GPTBAT publication/teardown with ordinary SUBMIT, QueueInfo, channel and commands still blocked.
 - `G15-Q22-FIRMWARE-CURSOR-CONSUMPTION.md` — E164 live proof that the native q22 pressure path advances firmware `read_idx` from 0 to 194 after exact 0xc0 occupancy, while QueueInfo/context/channel/submission remain blocked.
