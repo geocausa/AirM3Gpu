@@ -4,11 +4,13 @@ Research state: **2026-09-29**
 
 Target: MacBook Air M3 J615 / T8122, GPU G15G C0, exact macOS reference build 23J220 (14.8.3 ABI).
 
-## 2026-09-29 update — E346
+## 2026-09-29 update — E349
 
-A protected terminate-only bisection has isolated a later regression to the E298 direct-CDM mapping change. E297 still completes; E298 times out. Keeping the E298 independent CDM allocation but restoring the old low-VA code PTE completes, while applying the modeled range-5-uncached PTE at that same low VA fails. Replacing only that PTE with ordinary GPU-only RW + uncached completes again. Thus allocation separation, VA placement, and the uncached memory attribute are cleared; the remaining discrepancy is the access/XN encoding in the currently modeled Apple pool-0x16 class. See `research/g15/G15-E329-E346-CDM-PTE-BISECTION.md`.
+A protected terminate-only bisection isolated the first later regression to E298's direct-CDM mapping change. E297 completes; E298 times out. Allocation separation, low-vs-high range-5 VA placement and the uncached memory attribute have all been cleared. E348 further isolates the live failure to the AP field: the same low-VA uncached read-only CDM mapping completes with AP=2 and times out with AP=0.
 
-**Current next gate:** isolate AP/UXN one variable at a time and re-audit exact 23J220 SecureGart/UAT reduction before changing production mapping policy.
+E349 re-audited the exact 23J220 low-level UAT path and reconfirmed that Apple really does encode the matching bank-0 leaf with AP=0 (`0x0080000000000008` protection bits). The earlier reduction had an imprecise vtable-slot description, but the raw leaf arithmetic was correct. The contradiction therefore moves to G15's surrounding UAT permission mode/context: current Linux execution behaves like the older AP permission matrix even though Apple G15 uses a non-legacy interpretation. See `research/g15/G15-E329-E349-CDM-PTE-BISECTION.md`.
+
+**Current next gate:** statically close the G15 UAT-mode/context activation contract—firmware mode consumer, GPTBAT/context setup, and any separate protected/runtime programming—before changing production PTE policy or issuing another GPU command.
 
 ## Current headline
 
