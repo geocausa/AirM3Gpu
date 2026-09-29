@@ -1,8 +1,14 @@
 # Current G15 Bring-up State
 
-Research state: **2026-09-02**
+Research state: **2026-09-29**
 
 Target: MacBook Air M3 J615 / T8122, GPU G15G C0, exact macOS reference build 23J220 (14.8.3 ABI).
+
+## 2026-09-29 update — E346
+
+A protected terminate-only bisection has isolated a later regression to the E298 direct-CDM mapping change. E297 still completes; E298 times out. Keeping the E298 independent CDM allocation but restoring the old low-VA code PTE completes, while applying the modeled range-5-uncached PTE at that same low VA fails. Replacing only that PTE with ordinary GPU-only RW + uncached completes again. Thus allocation separation, VA placement, and the uncached memory attribute are cleared; the remaining discrepancy is the access/XN encoding in the currently modeled Apple pool-0x16 class. See `research/g15/G15-E329-E346-CDM-PTE-BISECTION.md`.
+
+**Current next gate:** isolate AP/UXN one variable at a time and re-audit exact 23J220 SecureGart/UAT reduction before changing production mapping policy.
 
 ## Current headline
 
