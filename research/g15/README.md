@@ -8,6 +8,8 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- G15-E328-WORKING-ENTRY-CORRECTED-MAP.md — E327/E328 retest of an independently known-working M3 entry on the fully corrected mapping baseline; same post-RunWorkQueue timeout, moving the frontier outside entry-program bytes.
+
 - G15-E326-PROFILE-HELPER-LIVE-DISCRIMINATOR.md — E325/E326 exact profile-helper mapping correction and protected live failure; both direct CodeHeap allocations now match exact 23J220 while the engine still stalls after RunWorkQueue acceptance.
 
 - `G15-E324-CODEHEAP-BODY-LIVE-DISCRIMINATOR.md` — E324 protected live test of the exact CodeHeap body mapping; STOP still times out after scheduler acceptance, and the next one-variable discriminator is the inactive-profile helper mapping class.
