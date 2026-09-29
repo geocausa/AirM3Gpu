@@ -8,6 +8,7 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-23J220-OUTPUT-BUFFER-MAPPING.md` — E318/E319 exact 23J220 shared application-output parent mapping closure and the corresponding one-variable Linux range-5-uncached candidate.
 - `G15-23J220-PRODUCTION-STATE-LOADER.md` — E280-E283 exact compiler/body/state-loader closure; E283 preserves the scheduler-timeout signature and narrows the next discriminator to exact 23J220 pre-shader byte generation.
 - `G15-23J220-MTLCOMPILER-BRIDGE.md` — exact compiler-service ABI, exact-target execution caveats, and the exact 23J220 backend-reply recovery path used by E280.
 - `G15-23J220-COMPUTE-REAL-DISPATCH-TRANSFER.md` — E256 exact userspace raw-Compute → kernel descriptor → RunCompute/RegisterArray transfer closure; isolates the remaining real-dispatch producer-state boundary with no Linux mutation.
