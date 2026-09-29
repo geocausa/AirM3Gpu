@@ -8,6 +8,8 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- `G15-E324-CODEHEAP-BODY-LIVE-DISCRIMINATOR.md` — E324 protected live test of the exact CodeHeap body mapping; STOP still times out after scheduler acceptance, and the next one-variable discriminator is the inactive-profile helper mapping class.
+
 - G15-23J220-CODEHEAP-BODY-MAPPING.md — E323 exact direct-Compute __TEXT/CodeHeap ownership and bank-0 range-5-uncached PTE closure; establishes the E321 body-class mismatch and next one-variable discriminator.
 - `G15-STOP-BODY-DISCRIMINATOR.md` — E321/E322 STOP-only live discriminator; failure survives removal of production-body semantics and moves earlier to LoadShader/program activation or engine-side execution state.
 - `G15-23J220-OUTPUT-BUFFER-MAPPING.md` — E318/E319 exact 23J220 shared application-output parent mapping closure and the corresponding one-variable Linux range-5-uncached candidate.
