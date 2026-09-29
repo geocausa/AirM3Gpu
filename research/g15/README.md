@@ -8,6 +8,8 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- G15-E326-PROFILE-HELPER-LIVE-DISCRIMINATOR.md — E325/E326 exact profile-helper mapping correction and protected live failure; both direct CodeHeap allocations now match exact 23J220 while the engine still stalls after RunWorkQueue acceptance.
+
 - `G15-E324-CODEHEAP-BODY-LIVE-DISCRIMINATOR.md` — E324 protected live test of the exact CodeHeap body mapping; STOP still times out after scheduler acceptance, and the next one-variable discriminator is the inactive-profile helper mapping class.
 
 - G15-23J220-CODEHEAP-BODY-MAPPING.md — E323 exact direct-Compute __TEXT/CodeHeap ownership and bank-0 range-5-uncached PTE closure; establishes the E321 body-class mismatch and next one-variable discriminator.
