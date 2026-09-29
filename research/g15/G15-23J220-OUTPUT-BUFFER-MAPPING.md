@@ -57,3 +57,18 @@ This closes the previously open production application-output PTE class. Future
 real-launch testing can therefore treat both the copied UserBuffer argument table
 and the shared application result buffer as range-5 uncached without relying on a
 cross-version macOS observation.
+
+
+## E320 live discriminator
+
+E319 was tested once on the protected sacrificial candidate slot. The bounded
+normal-UAPI Compute submit was accepted; selected Compute/2 progressed to
+(1,1,1,1), and the first RunWorkQueue was accepted by the scheduler. No engine
+completion followed. The GPU timeout path fired and scheduler release later
+returned ETIMEDOUT while firmware-visible resources were retained fail-closed.
+
+The one-variable output-PTE correction is therefore necessary for parity but is
+not sufficient to resolve the real-shader engine stall. E319 should not be
+retried unchanged. The one-shot safety reboot returned automatically to Golden,
+and the sacrificial module/initrd/vmlinuz were restored to their exact pre-live
+hashes.
