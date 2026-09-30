@@ -8,6 +8,8 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- G15-E350-UAT-PPL-PRODUCTION-PTE.md — proves production G15 SecureGart uses IOUAT/UAT-PPL, not the direct AGX leaf encoder; exact pool-0x16 option 0x108 encodes AP=2 uncached and matches the E348 live-completing PTE.
+
 - G15-E329-E349-CDM-PTE-BISECTION.md — protected terminate-only bisection isolates E298 as the first regression; E348 isolates AP as the live PTE failure dimension, while E349 reconfirms Apple raw AP=0 and moves the unresolved boundary to G15 UAT mode/context activation.
 
 - G15-E328-WORKING-ENTRY-CORRECTED-MAP.md — E327/E328 retest of an independently known-working M3 entry on the fully corrected mapping baseline; same post-RunWorkQueue timeout, moving the frontier outside entry-program bytes.

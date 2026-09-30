@@ -1,6 +1,6 @@
 # Current G15 Bring-up State
 
-Research state: **2026-09-29**
+Research state: **2026-09-30**
 
 Target: MacBook Air M3 J615 / T8122, GPU G15G C0, exact macOS reference build 23J220 (14.8.3 ABI).
 
@@ -11,6 +11,12 @@ A protected terminate-only bisection isolated the first later regression to E298
 E349 re-audited the exact 23J220 low-level UAT path and reconfirmed that Apple really does encode the matching bank-0 leaf with AP=0 (`0x0080000000000008` protection bits). The earlier reduction had an imprecise vtable-slot description, but the raw leaf arithmetic was correct. The contradiction therefore moves to G15's surrounding UAT permission mode/context: current Linux execution behaves like the older AP permission matrix even though Apple G15 uses a non-legacy interpretation. See `research/g15/G15-E329-E349-CDM-PTE-BISECTION.md`.
 
 **Current next gate:** statically close the G15 UAT-mode/context activation contract—firmware mode consumer, GPTBAT/context setup, and any separate protected/runtime programming—before changing production PTE policy or issuing another GPU command.
+
+## 2026-09-30 update — E350
+
+The AP contradiction is closed. Production G15 SecureGart selects IOUnifiedAddressTranslator and the protected UAT-PPL mapper; the direct AGX encoder used by the earlier static reduction is the fallback backend. The exact PPL encoder maps pool-0x16 compact option 0x108 to protection `0x0080000000000088` (AP=2, uncached, GPU-access, PXN=UXN=0), exactly matching the E348 live-completing control. PPL also proves 0x108 and 0x308 are not PTE-equivalent, so the remaining range-5 resources must be reclassified individually rather than by one global 'uncached' constant. See `research/g15/G15-E350-UAT-PPL-PRODUCTION-PTE.md`.
+
+**Current next gate:** re-reduce each execution-facing resource through the production PPL table, starting with pool 0x16 and pool 5, before another shader launch.
 
 ## Current headline
 
