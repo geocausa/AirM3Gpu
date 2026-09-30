@@ -18,6 +18,12 @@ The AP contradiction is closed. Production G15 SecureGart selects IOUnifiedAddre
 
 **Current next gate:** re-reduce each execution-facing resource through the production PPL table, starting with pool 0x16 and pool 5, before another shader launch.
 
+## 2026-09-30 update — E351
+
+The production PPL matrix is now closed. Ordinary IOGPU backing descriptors have direction 3, resolving the last low-control ambiguity: pool 0x16 CDM and CodeHeap body/helper use compact 0x108 (`0x0080000000000088`), while pool 5 ESL, pool 0x0a Statics, pool 3 UserBuffer arguments, and the Shared application output use compact 0x308 (`0x00c0000000000088`). See `research/g15/G15-E351-PPL-RESOURCE-MATRIX.md`.
+
+**Current next gate:** build a two-class range-5 candidate and audit every allocation before any further live shader launch.
+
 ## Current headline
 
 The project has crossed the generic Compute execution boundary. A terminate-only J615 Compute command has completed normally on real hardware, proving the fundamental queue, RunCompute, firmware, event/stamp and WorkQueue completion path. The remaining blocker is specific to **real launch / state-loader / shader execution**, not generic G15 Compute transport.

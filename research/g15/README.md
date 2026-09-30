@@ -8,6 +8,8 @@ Current high-level state: `../../docs/CURRENT-STATE.md`.
 
 Key current boundary notes:
 
+- G15-E351-PPL-RESOURCE-MATRIX.md — resolves descriptor direction and classifies CDM/CodeHeap as compact 0x108 while ESL/Statics/UserBuffer/output are compact 0x308 under production UAT-PPL.
+
 - G15-E350-UAT-PPL-PRODUCTION-PTE.md — proves production G15 SecureGart uses IOUAT/UAT-PPL, not the direct AGX leaf encoder; exact pool-0x16 option 0x108 encodes AP=2 uncached and matches the E348 live-completing PTE.
 
 - G15-E329-E349-CDM-PTE-BISECTION.md — protected terminate-only bisection isolates E298 as the first regression; E348 isolates AP as the live PTE failure dimension, while E349 reconfirms Apple raw AP=0 and moves the unresolved boundary to G15 UAT mode/context activation.
