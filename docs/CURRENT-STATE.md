@@ -1,8 +1,19 @@
 # Current G15 Bring-up State
 
-Research state: **2026-09-30**
+Research state: **2026-10-02**
 
 Target: MacBook Air M3 J615 / T8122, GPU G15G C0, exact macOS reference build 23J220 (14.8.3 ABI).
+
+
+## 2026-10-02 update — exact compiler oracle survives 25G241
+
+The machine-local E280 evidence was re-audited after the macOS host update to 26.7.1 / 25G241. The local lab had progressed farther than this summary recorded: a target-14-converted 4112-byte backend request already produced a successful exact-23J220 2208-byte compile reply. The current-dyld compatibility bridge was rebased for 25G241 and the same exact 23J220 backend path again completed with status 0.
+
+Two fresh runs and the preserved September run differ only in the same two three-byte tail fields (six bytes total), while size, visible strings and object structure remain stable. Back-to-back runs vary at those same fields, so they are treated as per-run metadata rather than an execution-semantic regression.
+
+This restores current macOS as a practical host for the preserved exact-23J220 compiler oracle. Current-system compiler output is still not exact-target evidence by itself; target claims continue to require the retained 23J220 components and provenance checks.
+
+The compiler-reply acquisition half of E280 is therefore closed. The remaining production-entry boundary is the exact state-loader byte grammar described in `G15-23J220-PRODUCTION-STATE-LOADER.md`.
 
 ## 2026-09-29 update — E349
 
@@ -78,17 +89,15 @@ They should not be used as the forward live baseline.
 - `0x1a510` and the four preemption/state tail addresses belong to the command/DataBuffer allocation family; moving them to range-5 executable storage is not justified.
 - Exact production direct-launch dword 3 remains `0x40000000`; the manual `0x40` value is not a replacement for the production contract.
 
-## Current static frontier — E280
+## Current static frontier — E280–E283
 
-E279 is now statically closed.
+E279 is statically closed, and the exact-compiler-result portion of E280 is now closed as well.
 
 Exact 23J220 `ProgramVariantESLState::setupDirectESL()` constructs a generated state-load program from multiple possible load forms (immediate, absolute, gather/user/indirect/SCS), finishes pending rounds, explicitly calls `appendLdshdr()`, appends USC profile-control state-loader instructions, and then `ESLStateLoadEncoderGen2::finish()` emits LoadShader plus conditional additional state/branch instructions.
 
-This is materially richer than treating the independently successful hand-written M3 entry sequence as necessarily equivalent to Apple's production ComputeProgramVariant entry program.
+A provenance-clean exact 23J220 backend run produced the target G15 Compute executable. E281–E283 established that the matching workload has exactly two direct-loader records—BufferBindings as a two-word UserBuffer load and Statics as an independent two-word absolute load—and that reproducing the final register values and two-load topology still retains the E274 six-second engine-completion timeout. See `research/g15/G15-23J220-PRODUCTION-STATE-LOADER.md`.
 
-E280 has now recovered the exact 23J220 `MTLCompiler` service/plugin bridge. The exact service ABI is mechanically known: plugin registration carries the opaque driver configuration blob, request submission carries `(plugin index, request type, bytes, size, completion block)`, and the plugin interface forwards to the driver BuildRequest family. A newer-macOS live cross-check produces matching source/library (`0x0d`) and backend executable (`1`) request classes. Alternate-cache-only runs are explicitly not accepted as exact-target proof because UUID checks showed current components can still be selected, and a forced private old-cache mapping hits a real current-dyld/23J220-libdyld helper-ABI mismatch. See `research/g15/G15-23J220-MTLCOMPILER-BRIDGE.md`.
-
-**Highest-value next task:** execute the captured backend request through the exact 23J220 service + AGX compiler plugin, capture the exact serialized reply, feed it through the recovered exact direct-ESL builder, and compare generated entry bytes mechanically against E274 before permitting another GPU command.
+**Highest-value next task:** mechanically reconstruct the exact 23J220 byte-generation path for `loadFromUserBuffer` / `loadBufferPointer`, the independent Statics load, `finishRound`, `appendLdshdr`, and the final LoadShader/tail sequence; compare those bytes against E283. In parallel, implement and audit the E351 two-class range-5 mapping candidate. Do not issue another live shader launch until both static boundaries are closed or one yields a concrete execution-facing discriminator.
 
 ## Repository checkpoint
 
