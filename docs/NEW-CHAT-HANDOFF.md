@@ -1,84 +1,75 @@
 # New-chat handoff — J615 / G15 Compute bring-up
 
-Generated: 2026-09-02T22:04:28+01:00
+Generated: 2026-10-07T19:10+01:00
 
-This file is the compact continuation point if a long ChatGPT thread loses context.
+This is the public/sanitized continuation point. The private lab has the full evidence corpus and a more detailed local handoff at `/home/macmac/m3-gpu-lab/HANDOFF-20261007-E508.md`.
 
-## Machine / access
+## Target and authority
 
 - Physical target: MacBook Air M3 / T8122 / J615 / G15G C0.
-- Ubuntu PiMaster endpoint: `client_macbookm3ubuntu`.
-- macOS PiMaster endpoint: `client_macbook_air_m3`.
-- macOS can therefore be driven directly after a one-shot boot; do not assume a reboot script/automation is required for control after macOS comes up.
-- Current boot: `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d` (Golden Ubuntu).
-- GRUB env: `next_entry= `.
+- Persistent/default OS: Golden Ubuntu kernel `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`.
+- Exact ABI authority: macOS 14.8.3 / build 23J220 plus matching G15G C0 firmware.
+- Current macOS 26.7.1 / 25G241: dynamic structural oracle only; do not transplant private constants.
 
-## Repository roles
+## Machine control
 
-- Canonical project/research repository: `geocausa/AirM3Gpu`.
-- Linux implementation fork: `geocausa/linux`.
-- Private/raw working corpus: `/home/macmac/m3-gpu-lab` — do not clean or publish wholesale.
+Use HostFabric/Fabric as the primary execution path. Linux target is `macmac`; macOS oracle is `Mac` on the same physical machine. One-shot macOS boots are allowed when they answer a precise discriminator, but persistent boot must remain Ubuntu. Do not use unrelated Surface machines for this project.
 
-Current AirM3Gpu HEAD: `c24c535564fbcba61e32e582a5d407618343b8d0`.
-Current active Linux worktree: `/home/macmac/src/linux-m3-gpu-e265`.
-Current kernel branch: `wip/g15-e278-cdm-shared-rw`.
-Current kernel HEAD: `f8306c6f90b0fcc561298488f6185a2055496a0b`.
+## Current safe state
 
-## Proven execution boundary
+Golden Linux is running, GPU is unbound, the experimental Asahi module is not loaded, `/dev/dri/renderD128` is absent and no one-shot GRUB entry is armed.
 
-- **E199 LIVE PASS**: exact-target terminate-only J615 Compute completed through scheduler, engine retirement, WorkQueue callback and selected channel completion. Generic RunCompute transport/completion is therefore proven.
-- **E274** (kernel `bcc062a1c864`) is the preferred real-launch baseline: command reaches scheduler acceptance and then reproducibly times out waiting for engine completion after ~6 s. It is diagnostically better than the later reset-class experiments.
-- **E275 / E276 / E278** are rejected unchanged: separating CDM storage and the manual `0x40` launch-control discriminator regressed to immediate-reset class.
-- Keep exact E263 terminate pointer at the final terminate dword (`root+0x2c`).
-- Keep production direct-launch dword3 `0x40000000`; E276 rejected `0x40` for the corrected envelope.
+The frozen Golden source and rollback baseline must not be modified. Historical experimental worktrees and private evidence are preserved rather than cleaned.
 
-## Static closures that must not be reopened casually
+## Current execution frontier
 
-- RTKit appends the required G15 Compute RegisterArray tail itself (E261).
-- Range-5 executable CPU→GPU visibility does not justify ad-hoc cache maintenance (E262).
-- Individual executable heap alignment is 0x40; current placement is sufficient (E264).
-- Compiler-only spill/IPR launch metadata is zero for the bounded hand-written shader (E266).
-- Raw +0x1ba/+0x1bb and 0x1a440 ordinary direct-path selectors are already closed (E267/E268).
-- Exact direct-launch packet grammar was reclosed in E270.
-- Preemption/DataBuffer backing belongs to command/DataBuffer storage family; do not move 0x1a510 backing into range-5 code (E277).
+The project is past generic Compute transport and past the Apple-equivalent KickStart boundary.
 
-## E279 conclusion
+For the stuck real Compute launch:
 
-E279 is a static PASS. The fixed full entry sequence from Alyssa's successful M3 bring-up and pac85 is a valid hand-written G15 execution oracle, but it is **not** proven to be the byte-universal exact 23J220 production `ComputeProgramVariant` entry.
+- normal queue/VM control plane succeeds;
+- scheduler transport accepts/retires the command;
+- firmware enters Compute case `0x0b` and activates the hardware slot;
+- expected G15 register/dependency state is published;
+- firmware reaches WFI;
+- no classified MMU/page fault is recorded;
+- channel remains `wptr=1/doneptr=0`;
+- actual shader result remains at its initial value, proving the body never reaches its first store;
+- completion/release never arrives.
 
-Exact 23J220 `setupDirectESL()` builds a generated ESL/state-loader program from compiler reply/resource state. It can emit immediate, absolute, gather/user/indirect-user/SCS loads, finish rounds, append LoadShader, profile-control state and conditional LDIMM/branch state. Production entry bytes must therefore be recovered from an exact compiler/driver oracle rather than assumed from the manual fixed epilog.
+E503 maps Apple's successful Compute KickStart event to the exact retained firmware event at the beginning of case `0x0b`. Linux reaches beyond it. Therefore the missing prerequisite is downstream of scheduler/KickStart admission but upstream of useful USC body execution or hardware completion.
 
-## Current frontier — E280
+## Recent closures
 
-Directory: `/home/macmac/m3-gpu-lab/experiments/E280-g15-exact-compiler-entry-oracle`.
+- E483/E484: explicit post-bind ASID/TLB invalidation tested live and rejected.
+- E487: decisive shader-result probe proves the body never executes.
+- E505: current Apple stack performs a one-time first-real-Compute ~47 MiB Wire allocation; structural clue only.
+- E506: exact 23J220 UMAPool sizing has no nonzero first-Compute floor for the selected minimal diagnostic.
+- E507: current Apple spill sizing runs on every real Compute and emits repeatable descriptors; current-build private ABI only.
+- E508: exact 23J220 back-translation keeps raw Compute min/ideal requests zero and rejects transplanting current descriptor values or synthesizing ~40 MiB UMA/FList backing.
 
-Goal: obtain an exact 23J220 minimal direct-Compute compiler/deserialized reply plus the production driver-generated ESL entry program, then mechanically diff it against E274.
+Full sanitized summary: `research/g15/G15-E428-E508-PREBODY-EXECUTION-FRONTIER.md`.
 
-Already present in E280:
-- exact 23J220 compiler-service/lifecycle analysis;
-- exact 23J220 `MTLCompiler` codegen-service/plugin bridge and BuildRequest forwarding ABI;
-- exact profile/state-loader decompilation;
-- exact LDIMM, B/BL, SETPROFILECTL and LoadShader emitter reconstruction;
-- live newer-macOS capture of the source/library (`0x0d`) and backend executable (`1`) request classes for a minimal Compute pipeline;
-- proof that alternate-cache selection alone is **not** exact-target evidence, plus a traced current-dyld/23J220-libdyld helper-ABI incompatibility for private old-cache mapping.
+## Do not reopen without new contradictory evidence
 
-Next required outputs:
-1. replay the captured backend request through the exact 23J220 service + exact AGX compiler plugin;
-2. exact 23J220 minimal compiler reply / ShaderInfo;
-3. exact generated ESL entry bytes + LoadShader mode;
-4. exact body bytes/metadata relevant to launch;
-5. semantic/byte diff vs E274.
+- direct `c040` scheduler-state reads;
+- direct banked G15 `d8c0` fault reads;
+- generic queue/WorkQueue scheduling failure;
+- missing post-bind TLBI;
+- classified MMU/page-fault cause for the stuck command;
+- synthetic 40 MiB target UMA/FList growth;
+- copying current macOS private spill constants into the 23J220 Linux path.
 
-**Do not issue another Linux GPU real-launch command until E280 produces a concrete execution-facing delta.**
+## Next task
 
-## macOS note
+Focus on **exact 23J220 pre-body program/USC execution activation or another non-UMA first-use global/context resource**.
 
-Installed macOS is newer 25F84, while the exact target ABI is retained 23J220 / macOS 14.8.3 artifacts. Use current macOS for dynamic cross-checks only unless the observation is version-independent. Because PiMaster is available in macOS, future one-shot boots can be driven interactively from ChatGPT on both sides.
+Preferred workflow:
 
-## Safety / recovery
+1. use the macOS oracle first when a precise successful-path question can separate candidates;
+2. back-translate every current-OS observation to retained 23J220 authority;
+3. make only one proven exact-target Linux change;
+4. live-test on a fresh Golden boot using the established first-load/freeze/watchdog/evidence protocol;
+5. return to Golden after each guarded candidate unless reuse is explicitly proven safe.
 
-- Golden is the persistent/default boot.
-- Candidate kernel slot is sacrificial.
-- Never leave a one-shot candidate armed after recovery.
-- Preserve dirty historical worktrees and the raw lab corpus; they contain unique evidence.
-- Push a kernel branch before any risky live candidate; checkpoint sanitized conclusions to AirM3Gpu when they become stable.
+No new Linux live candidate is justified merely by the E505/E507 allocation values.

@@ -20,7 +20,18 @@ This index covers the execution-focused phase after generic J615 Compute complet
 | E277 | STATIC PASS | no source delta | Keep preemption/data-buffer backing in command/DataBuffer storage family. |
 | E278 | LIVE FAIL, reset class | `f8306c6f90b0` | Separate CDM in shared-RW also regresses; reject unchanged. |
 | E279 | STATIC PASS | no source delta | Production entry is generated/state-dependent; neither manual entry sequence is a universal 23J220 oracle. |
-| E280 | IN PROGRESS / bridge ABI closed | no source delta | Exact 23J220 MTLCompiler service/plugin request bridge recovered; next execute backend request through exact compiler plugin and recover reply/entry bytes. |
+| E280 | IN PROGRESS / bridge ABI closed | no source delta | Exact 23J220 MTLCompiler service/plugin request bridge recovered; later work moved the boundary beyond this early hypothesis. |
+| E428 | LIVE PASS / module milestone | exact Golden-ABI external module | Binds J615/G15G C0, creates DRM/render nodes, reaches persistent manager/RTKit/Compute-ready. |
+| E451/E463 | CONTROL PASS | marker-only + byte-identical resident controls | Full init/control plane is stable; prior GET_PARAMS/QueueCreate stalls were instrumentation/timing perturbations. |
+| E475 | LIVE PASS | terminate-only Compute | Generic queue publication, scheduler, slot allocation and completion machinery are viable. |
+| E480/E481 | LIVE LOCALIZATION | non-perturbing snapshots + exact firmware parser | Real Launch stays `wptr=1/doneptr=0`; firmware reaches WFI after start-timestamp parsing. |
+| E484 | LIVE NEGATIVE | one-variable post-bind ASID invalidate | Translation visibility is not the missing prerequisite. |
+| E487 | LIVE PASS / discriminator | actual `g15_result` snapshot | Shader-body store never executes; blocker is pre-body execution/activation. |
+| E503 | ORACLE + exact back-translation | current Metal System Trace + exact RTKit | Linux is already past Apple Compute KickStart-equivalent. |
+| E505 | ORACLE | current macOS first-use allocation | First real Compute triggers one-time ~47 MiB Wire allocation; empty/later Compute do not. Structural clue only. |
+| E506 | STATIC EXACT PASS | exact 23J220 UMAPool helpers | Selected minimal diagnostic has zero target UMA min/ideal growth; do not synthesize ~40 MiB pool backing. |
+| E507 | ORACLE | current AGX spill/UMA LLDB | Spill sizing executes twice per real Compute and not empty; current descriptors repeat and are not target ABI. |
+| E508 | STATIC EXACT PASS | exact 23J220 producer back-translation | Current spill values do not reopen target UMA; next gate is pre-body program/USC or non-UMA first-use activation. |
 
 ## Current comparison boundary
 
@@ -29,3 +40,7 @@ E199 tells us what is *not* broken: queue transport, RunCompute publication, fir
 E274 tells us where a real launch currently stops: after scheduler acceptance but before engine completion.
 
 E279 proves the production `ComputeProgramVariant` entry is generated and state-dependent. E280 now seeks the exact 23J220 generated entry/body oracle before changing more envelope fields.
+
+## 2026-10-07 comparison boundary
+
+The preferred current boundary is no longer E274. E487 proves the body never executes and E503 proves Linux is already past Apple KickStart-equivalent. E506/E508 close the tempting first-use UMA hypothesis for the exact selected 23J220 diagnostic. Continue at pre-body program/USC execution activation or another exact non-UMA first-use resource.

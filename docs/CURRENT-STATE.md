@@ -1,9 +1,21 @@
 # Current G15 Bring-up State
 
-Research state: **2026-10-02**
+Research state: **2026-10-07**
 
 Target: MacBook Air M3 J615 / T8122, GPU G15G C0, exact macOS reference build 23J220 (14.8.3 ABI).
 
+
+## 2026-10-07 update — E508
+
+The execution frontier has moved materially beyond the September E274 timeout. The accumulated G15 module now reaches a real Compute launch through scheduler admission, firmware case `0x0b`, hardware-slot activation, G15 register/dependency publication, start-timestamp handling and the WFI wait. Firmware-owned fault state remains clear, channel state remains `wptr=1/doneptr=0`, and the actual shader result remains untouched (`0xffffffff`): useful USC body execution never starts.
+
+A successful current-macOS Metal trace was back-translated to exact retained firmware and proves Linux is already past Apple's Compute KickStart-equivalent event. E483/E484 separately rejected missing post-map translation invalidation.
+
+E505/E507 exposed a real current-Apple first-Compute spill/first-use allocation pattern, but E506/E508 back-translated it against exact 23J220 and rejected any synthetic target UMA/FList growth for the selected minimal diagnostic. Exact 23J220 raw Compute `+0x138/+0x140` remain the authoritative min/ideal request pair and are zero for this command; current 25G241 spill descriptor values must not be transplanted.
+
+See `research/g15/G15-E428-E508-PREBODY-EXECUTION-FRONTIER.md`.
+
+**Current next gate:** exact 23J220 pre-body program/USC execution activation or another non-UMA first-use global/context resource. Use current macOS only to ask a precise discriminating question, then back-translate to 23J220 before another Linux live candidate.
 
 ## 2026-10-02 update — exact compiler oracle survives 25G241
 
@@ -56,7 +68,7 @@ This proves the generic J615 RunCompute/completion machinery is viable.
 
 A separate post-idle q22 teardown issue exists and is treated independently from the execution result.
 
-### E274 — best current real-launch diagnostic baseline
+### E274 — historical real-launch diagnostic baseline
 
 The corrected bounded real-launch path reaches:
 
@@ -65,7 +77,7 @@ The corrected bounded real-launch path reaches:
 - RunWorkQueue scheduler acceptance;
 - then a repeatable approximately six-second engine-completion timeout.
 
-No explicit persisted GPU/DART/RTKit fault accompanies that timeout. E274 is therefore the most informative live baseline for future single-variable discriminators.
+No explicit persisted GPU/DART/RTKit fault accompanied that timeout. E274 was the preferred baseline for that phase, but E487/E503 now provide a later and much narrower post-KickStart/pre-body boundary.
 
 ### E275 / E276 / E278 — rejected regressions
 
@@ -89,7 +101,7 @@ They should not be used as the forward live baseline.
 - `0x1a510` and the four preemption/state tail addresses belong to the command/DataBuffer allocation family; moving them to range-5 executable storage is not justified.
 - Exact production direct-launch dword 3 remains `0x40000000`; the manual `0x40` value is not a replacement for the production contract.
 
-## Current static frontier — E280–E283
+## Historical static frontier — E280–E283
 
 E279 is statically closed, and the exact-compiler-result portion of E280 is now closed as well.
 
@@ -97,7 +109,7 @@ Exact 23J220 `ProgramVariantESLState::setupDirectESL()` constructs a generated s
 
 A provenance-clean exact 23J220 backend run produced the target G15 Compute executable. E281–E283 established that the matching workload has exactly two direct-loader records—BufferBindings as a two-word UserBuffer load and Statics as an independent two-word absolute load—and that reproducing the final register values and two-load topology still retains the E274 six-second engine-completion timeout. See `research/g15/G15-23J220-PRODUCTION-STATE-LOADER.md`.
 
-**Highest-value next task:** mechanically reconstruct the exact 23J220 byte-generation path for `loadFromUserBuffer` / `loadBufferPointer`, the independent Statics load, `finishRound`, `appendLdshdr`, and the final LoadShader/tail sequence; compare those bytes against E283. In parallel, implement and audit the E351 two-class range-5 mapping candidate. Do not issue another live shader launch until both static boundaries are closed or one yields a concrete execution-facing discriminator.
+This E280–E283 frontier was subsequently advanced by later loader/PTE/firmware work. The authoritative next task is the 2026-10-07 E508 gate above.
 
 ## Repository checkpoint
 
