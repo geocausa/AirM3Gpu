@@ -1,9 +1,21 @@
 # Current G15 Bring-up State
 
-Research state: **2026-10-07**
+Research state: **2026-10-09**
 
 Target: MacBook Air M3 J615 / T8122, GPU G15G C0, exact macOS reference build 23J220 (14.8.3 ABI).
 
+
+## 2026-10-09 update — E560
+
+The real-Compute failure boundary is now **after CDM engine start/root fetch but before the first ESL-entry fetch**. E552 changed only hardware-visible RegisterArray `0x1a420` to an unmapped tagged address and produced an address-exact CDM control-stream read fault, proving the engine starts and fetches the published root. The paired ESL-entry sentinel did not get fetched, so the surviving differential is Launch-specific rather than generic root translation/visibility.
+
+E542 independently showed an ESL STOP/no-LoadShader Launch still stalls, placing useful shader execution downstream of the earliest blocker. E555 closed known public/successful G15 Launch packet-byte discrepancies, and E556 dynamically validated the exact-target-form G15 Stream-Link grammar on working Apple hardware. E558 therefore deprioritizes broad CDM-root visibility/token-decode hypotheses.
+
+Concrete non-coherent DMA-publication bugs have also been repaired in the program heaps, RunCompute/RegisterArray image and SKU backing. E560 is the newest built candidate and repairs the same ownership defect for the exact 0x14a0 Compute preemption/DataBuffer backing without changing addresses, PTEs, RegisterArray values, Launch bytes, programs or scheduler state. It is statically gated and **not yet live-executed**. E557, a five-entry RegisterArray-prefix diagnostic, is also built and remains the next discriminator if E560 is negative.
+
+See `research/g15/G15-E509-E560-CDM-LAUNCH-FRONTIER.md`.
+
+**Current next gate:** protected live E560 first; if unchanged, protected live E557. Use one-shot macOS whenever a precise successful-path oracle can collapse the remaining Launch-specific state space, then back-translate to 23J220 before changing Linux.
 
 ## 2026-10-07 update — E508
 
@@ -109,7 +121,7 @@ Exact 23J220 `ProgramVariantESLState::setupDirectESL()` constructs a generated s
 
 A provenance-clean exact 23J220 backend run produced the target G15 Compute executable. E281–E283 established that the matching workload has exactly two direct-loader records—BufferBindings as a two-word UserBuffer load and Statics as an independent two-word absolute load—and that reproducing the final register values and two-load topology still retains the E274 six-second engine-completion timeout. See `research/g15/G15-23J220-PRODUCTION-STATE-LOADER.md`.
 
-This E280–E283 frontier was subsequently advanced by later loader/PTE/firmware work. The authoritative next task is the 2026-10-07 E508 gate above.
+This E280–E283 frontier was subsequently advanced by later loader/PTE/firmware work. The authoritative next task is the 2026-10-09 E560 gate above.
 
 ## Repository checkpoint
 

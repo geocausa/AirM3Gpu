@@ -1,8 +1,8 @@
 # New-chat handoff — J615 / G15 Compute bring-up
 
-Generated: 2026-10-07T19:10+01:00
+Generated: 2026-10-09
 
-This is the public/sanitized continuation point. The private lab has the full evidence corpus and a more detailed local handoff at `/home/macmac/m3-gpu-lab/HANDOFF-20261007-E508.md`.
+This is the public/sanitized continuation point. The private lab on the M3 contains the full evidence corpus and detailed machine-local experiment records.
 
 ## Target and authority
 
@@ -13,63 +13,81 @@ This is the public/sanitized continuation point. The private lab has the full ev
 
 ## Machine control
 
-Use HostFabric/Fabric as the primary execution path. Linux target is `macmac`; macOS oracle is `Mac` on the same physical machine. One-shot macOS boots are allowed when they answer a precise discriminator, but persistent boot must remain Ubuntu. Do not use unrelated Surface machines for this project.
+Use HostFabric/Fabric or PiMaster on the M3. Linux target is `macmac`; macOS is the oracle side of the same physical machine. One-shot macOS boots are explicitly part of the workflow whenever they answer a precise discriminator; persistent boot must remain Ubuntu. Do not involve unrelated Surface machines in this project.
 
 ## Current safe state
 
-Golden Linux is running, GPU is unbound, the experimental Asahi module is not loaded, `/dev/dri/renderD128` is absent and no one-shot GRUB entry is armed.
-
-The frozen Golden source and rollback baseline must not be modified. Historical experimental worktrees and private evidence are preserved rather than cleaned.
+Golden Linux is the persistent baseline. Experimental candidates are sacrificial and must not modify the frozen Golden kernel/source baseline. Historical worktrees and evidence are preserved rather than cleaned. Before each live candidate, require the established clean-boot / no-prior-Asahi / empty-one-shot / freeze / watchdog gate.
 
 ## Current execution frontier
 
-The project is past generic Compute transport and past the Apple-equivalent KickStart boundary.
+The failure is no longer merely "post-KickStart / pre-body". It is localized to a Launch-specific transition:
 
-For the stuck real Compute launch:
+`Queue -> scheduler -> CDM engine -> root fetch [PASS] -> Launch decode/activation [FAIL WINDOW] -> ESL entry -> LoadShader -> USC body`
 
-- normal queue/VM control plane succeeds;
-- scheduler transport accepts/retires the command;
-- firmware enters Compute case `0x0b` and activates the hardware slot;
-- expected G15 register/dependency state is published;
-- firmware reaches WFI;
-- no classified MMU/page fault is recorded;
-- channel remains `wptr=1/doneptr=0`;
-- actual shader result remains at its initial value, proving the body never reaches its first store;
-- completion/release never arrives.
+Established facts:
 
-E503 maps Apple's successful Compute KickStart event to the exact retained firmware event at the beginning of case `0x0b`. Linux reaches beyond it. Therefore the missing prerequisite is downstream of scheduler/KickStart admission but upstream of useful USC body execution or hardware completion.
+- queue/VM control plane and WorkQueue scheduler admission succeed;
+- exact firmware enters Compute case `0x0b`, activates the slot, appends the expected register state and reaches WFI;
+- terminate-only Compute completes, so generic completion machinery is viable;
+- the real shader body never reaches its first observable store;
+- E552 proves the hardware consumes RegisterArray `0x1a420` and attempts the first CDM-root read;
+- the paired ESL-entry sentinel is never fetched on the failing Linux Launch;
+- ESL STOP still stalls, so LoadShader/body semantics are not the earliest blocker;
+- known public/successful G15 Launch packet bytes are closed;
+- working Apple M3 hardware independently follows the exact-target-form Stream-Link grammar.
 
-## Recent closures
+Therefore do not treat generic CDM-root visibility/translation as the primary hypothesis.
 
-- E483/E484: explicit post-bind ASID/TLB invalidation tested live and rejected.
-- E487: decisive shader-result probe proves the body never executes.
-- E505: current Apple stack performs a one-time first-real-Compute ~47 MiB Wire allocation; structural clue only.
-- E506: exact 23J220 UMAPool sizing has no nonzero first-Compute floor for the selected minimal diagnostic.
-- E507: current Apple spill sizing runs on every real Compute and emits repeatable descriptors; current-build private ABI only.
-- E508: exact 23J220 back-translation keeps raw Compute min/ideal requests zero and rejects transplanting current descriptor values or synthesizing ~40 MiB UMA/FList backing.
+## Recent DMA correctness fixes
 
-Full sanitized summary: `research/g15/G15-E428-E508-PREBODY-EXECUTION-FRONTIER.md`.
+Concrete non-coherent streaming-DMA ownership defects were found and corrected in:
 
-## Do not reopen without new contradictory evidence
+- production program/data heaps;
+- RunCompute/RegisterArray publication;
+- selected SKU stream backing.
 
-- direct `c040` scheduler-state reads;
-- direct banked G15 `d8c0` fault reads;
-- generic queue/WorkQueue scheduling failure;
+E560 extends that correction to the existing exact 0x14a0 Compute preemption/DataBuffer allocation: take CPU ownership after allocation, rebuild zero/default state, then return it to device ownership before RegisterArray/JobParameters2 publish its five addresses. No GPU-facing value is intentionally changed.
+
+## Ready candidates
+
+### E560 — run first
+
+Branch: `wip/g15-e560-preempt-dma`.
+
+Purpose: test whether the remaining unsynchronized preemption/DataBuffer publication is the missing Launch prerequisite. The exact-Golden module is built and statically gated; no live result exists yet.
+
+Interpretation:
+
+- progress/retirement: the DMA ownership defect was causally blocking Launch activation;
+- unchanged stall: retain the fix as correctness work, but it is insufficient; proceed to E557.
+
+### E557 — run second if E560 is negative
+
+Branch: `wip/g15-e557-minimal-register-prefix`.
+
+Purpose: reduce only the host-supplied G15 RegisterArray prefix to the five entries independently sufficient on the successful M3 bring-up path while leaving the exact Launch, mappings, DMA fixes, firmware tail and scheduler envelope unchanged.
+
+This is a diagnostic reduction, not a production ABI proposal.
+
+## Do not reopen without contradictory evidence
+
+- generic Queue/WorkQueue scheduling failure;
+- broad CDM-root translation/fetch failure;
 - missing post-bind TLBI;
-- classified MMU/page-fault cause for the stuck command;
-- synthetic 40 MiB target UMA/FList growth;
-- copying current macOS private spill constants into the 23J220 Linux path.
+- synthetic target UMA/FList growth for the selected diagnostic;
+- historical entry/body byte variants as the earliest cause;
+- LoadShader/body semantics before first ESL fetch;
+- already-rejected Launch dword/control-word substitutions;
+- current macOS private constants as target ABI.
 
-## Next task
+## Preferred workflow
 
-Focus on **exact 23J220 pre-body program/USC execution activation or another non-UMA first-use global/context resource**.
+1. protected live E560 on a fresh Golden boot;
+2. if negative, clean recovery then protected live E557;
+3. after either result, update the boundary before creating another candidate;
+4. use one-shot macOS freely for precise successful-path oracle questions that can discriminate the surviving Launch-only hypotheses;
+5. back-translate every macOS observation to retained 23J220 authority before changing Linux;
+6. keep the persistent Golden baseline untouched and preserve evidence from every live cycle.
 
-Preferred workflow:
-
-1. use the macOS oracle first when a precise successful-path question can separate candidates;
-2. back-translate every current-OS observation to retained 23J220 authority;
-3. make only one proven exact-target Linux change;
-4. live-test on a fresh Golden boot using the established first-load/freeze/watchdog/evidence protocol;
-5. return to Golden after each guarded candidate unless reuse is explicitly proven safe.
-
-No new Linux live candidate is justified merely by the E505/E507 allocation values.
+Full sanitized summary: `research/g15/G15-E509-E560-CDM-LAUNCH-FRONTIER.md`.
