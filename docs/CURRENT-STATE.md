@@ -1,8 +1,25 @@
 # Current G15 Bring-up State
 
-Research state: **2026-10-09**
+Research state: **2026-10-14**
 
 Target: MacBook Air M3 J615 / T8122, GPU G15G C0, exact macOS reference build 23J220 (14.8.3 ABI).
+
+
+## 2026-10-14 update — E691
+
+The active failure boundary is now **after active-slot publication and before first ESL-opcode interpretation**. E659 restored exact G15 startup state at physical HwDataB `+0xae4=0x31`; E660 corrected the persistent CL command-resource mapping. Subsequent address-tagged and timing experiments prove that CDM root fetch, UMA/PagePool context, ESL entry translation/visibility, scheduler admission, active-slot publication and downstream context-save machinery all execute.
+
+The decisive first-opcode oracle is now stronger than the October 9 boundary: working Apple hardware consumes a native-NOP-prefix poisoned LoadShader in an observed-valid G15 instruction slot and produces the expected tagged fault, while Linux with the same validated shape never reaches that effect. Linux therefore does not merely fail later shader execution; it fails before the first Apple-proven ESL opcode is interpreted.
+
+E665-E667 classify the later Finalize replay as an early 1–10 ms recovery reaction, not the activation primitive. E672/E673/E682/E683 close primary preemption/context storage, persistent CL scratch and the remaining address/resource plane as downstream or already-valid. E684-E686 close retained init/power register state and replay-status semantics. E687-E690 then close J615 PMGR topology, automatic gating and physical-power retention: even holding GFX continuously ACTIVE with automatic gating disabled from first platform power-on through firmware initialization does not move the first-opcode boundary. E691 finally closes the later reason-5 quiesce sweep as retained-firmware self-management of an already-stalled active context, not a missing host busy publication.
+
+The surviving causal cut is therefore:
+
+`valid CDM/Launch/UMA/ESL entry -> coherent c058 active slot -> [missing autonomous G15 frontend/state-loader/interpreter transition] -> instruction 0 not interpreted -> context-store/quiesce -> replay-1`
+
+Do not reopen queue/channel, root translation, UAT/PTE/PagePool/FList/UMA, DMA/cache, preemption backing, CL scratch, HwDataB, RegisterArray, RunCompute/SKU, retained init/power RMW, PMGR/AUTO, replay or reason-5 families without contradictory evidence. A new live experiment is justified only by a mechanically exact **non-address, non-power autonomous frontend/context** discriminator.
+
+See `research/g15/G15-E659-E691-FRONTEND-ACTIVATION-BOUNDARY.md`.
 
 
 ## 2026-10-09 update — E560

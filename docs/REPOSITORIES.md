@@ -18,7 +18,7 @@ This repository is subordinate to AirM3Gpu: it is implementation history, not a 
 
 This is the high-volume working corpus: experiment directories, exact-binary hashes, decompilation output, live logs, Ghidra scripts/databases, retained captures and scratch analysis. It is deliberately not pushed wholesale to either public repository.
 
-As of 2026-09-02 this workspace contains important evidence newer than the public AirM3Gpu checkpoint. See `manifests/LOCAL-LAB-STATUS-20260902.txt` for the preservation audit.
+As of 2026-10-14 the public repository is checkpointed through the E691 first-opcode activation frontier, while the private workspace remains the authority for raw captures, exact-binary analysis and experiment-level evidence. Historical preservation details remain in `manifests/LOCAL-LAB-STATUS-20260902.txt`.
 
 ## Rule going forward
 

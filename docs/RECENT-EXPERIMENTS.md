@@ -2,6 +2,26 @@
 
 This index covers the execution-focused phase after generic J615 Compute completion was first proven. Detailed raw evidence remains in the private/local lab; this file records only the sanitized conclusion and source checkpoint.
 
+## 2026-10-14 first-opcode activation frontier
+
+| Experiment | Result | Role | Decision |
+|---|---|---|---|
+| E552 / E582 | LIVE address-tagged positives | CDM root / ESL entry | CDM root fetch and execution-side ESL entry translation are proven. |
+| E613 / E614 | Working-Apple oracle + Linux negative | first opcode | Apple consumes a poisoned LoadShader in a native-NOP-prefix valid slot; Linux does not. Failure is before first proven ESL-opcode interpretation. |
+| E659 | LIVE advance | exact G15 startup state | Restore physical HwDataB `+0xae4=0x31`; retain as real ABI correction. |
+| E660 | LIVE correction | persistent CL command resource | Use production protected/page-list mapping class; removes newly exposed NoAccess. |
+| E665-E667 | LIVE/static localization | replay timing | Finalize replay-1 is proven and begins roughly 1–10 ms after activation; classify as downstream recovery. |
+| E672 / E673 | LIVE + exact static | primary Compute context | `gCDM_CTXW` writes primary context storage; it is downstream context-save output, not missing CPU-authored input. |
+| E682 / E683 | LIVE ordering + static cut | address/resource plane | Context-save precedes CL scratch; all known address-bearing prerequisites are correct or downstream. |
+| E684 / E685 | STATIC closure | retained init/power RMW | No surviving software-owned G15 startup/power register mismatch. |
+| E686 | STATIC closure | replay status | Replay-1 hardware state is generic lifecycle/recovery state, not a frontend-failure decoder. |
+| E687 / E688 | STATIC + LIVE negative | PMGR topology / late repower | LMX0 and late explicit GFX ACTIVE do not unlock first opcode. |
+| E689 / E690 | STATIC + LIVE clean negative | continuous-power retention | Exact restore lifecycle reconstructed; holding GFX continuously ACTIVE from first platform power-on still does not unlock opcode 0. Close physical-power retention. |
+| E691 | STATIC closure | logical reason-5 quiesce | Reason 5 is retained-firmware self-management of an already-stalled context; do not invent host busy state or suppress recovery. |
+
+**Current boundary:** `valid CDM/Launch/UMA/ESL entry -> c058 active slot -> missing autonomous frontend transition -> instruction 0 not interpreted -> context-store/quiesce -> replay-1`.
+
+
 | Experiment | Result | Kernel checkpoint / role | Decision |
 |---|---|---|---|
 | E199 | LIVE PASS | terminate-only exact-target Compute | Generic Compute/RunCompute/firmware/WorkQueue completion is proven. |

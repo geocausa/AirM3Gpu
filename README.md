@@ -6,9 +6,17 @@ Experimental bring-up work for the Apple M3 / T8122 G15 GPU on Asahi Linux.
 
 This repository is the **public, reproducible checkpoint** for the work. It intentionally does not contain Apple firmware, kernelcaches, extracted proprietary binaries, Ghidra databases, boot images, built kernel modules, or raw machine-local captures. Those are kept outside this repository; only derived facts, original research notes/scripts, hashes, and source patches are published here.
 
-## Current research state — 2026-08-28
+## Current research state — 2026-10-14
 
 Target hardware: MacBook Air M3 (J615 / T8122), GPU identified at runtime as G15G C0.
+
+**Current frontier:** the selected real Compute path now reaches CDM root fetch, valid Launch/UMA/PagePool state, a translated and byte-visible ESL entry, and coherent active-slot publication. A working-Apple address-tagged oracle proves that a native-NOP-prefix poisoned LoadShader is consumable at the first tested G15 opcode slot; Linux never reaches that effect. The remaining defect is therefore an autonomous G15 frontend/state-loader transition **after active-slot publication and before first ESL-opcode interpretation**.
+
+E659/E660 supplied the latest material Linux-side corrections (exact G15 startup state and persistent CL-resource mapping). E665-E691 then close replay, context-save/backing, remaining address/resource state, retained init/power RMWs, PMGR/AUTO/continuous-power retention, and logical reason-5 quiesce as downstream or non-causal. Do not reopen those families without contradictory evidence.
+
+See [G15 E659-E691 frontend activation boundary](research/g15/G15-E659-E691-FRONTEND-ACTIVATION-BOUNDARY.md) and [New-chat handoff](docs/NEW-CHAT-HANDOFF.md).
+
+The historical progression below is retained for context.
 
 The bring-up has advanced well beyond the earlier pre-`MSG_INIT` checkpoint. The isolated candidate now reaches native G15 `MSG_INIT`, post-init bootstrap, persistent RTKit/GpuManager lifetime, DRM registration, and `/dev/dri/renderD128`. Safe host-side GET_PARAMS, VM/GEM lifecycle, unbound VM mappings, passive queue lifecycle, q22 mapping notification, and shared-bank1/range-7 page-table handling are live-tested.
 

@@ -1,93 +1,53 @@
 # New-chat handoff — J615 / G15 Compute bring-up
 
-Generated: 2026-10-09
+Generated: 2026-10-14
 
-This is the public/sanitized continuation point. The private lab on the M3 contains the full evidence corpus and detailed machine-local experiment records.
+This is the public/sanitized continuation point. The private M3 lab retains detailed machine-local evidence; proprietary binaries, reverse-engineering databases, built modules and raw captures are intentionally not published here.
 
 ## Target and authority
 
 - Physical target: MacBook Air M3 / T8122 / J615 / G15G C0.
 - Persistent/default OS: Golden Ubuntu kernel `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`.
-- Exact ABI authority: macOS 14.8.3 / build 23J220 plus matching G15G C0 firmware.
-- Current macOS 26.7.1 / 25G241: dynamic structural oracle only; do not transplant private constants.
-
-## Machine control
-
-Use HostFabric/Fabric or PiMaster on the M3. Linux target is `macmac`; macOS is the oracle side of the same physical machine. One-shot macOS boots are explicitly part of the workflow whenever they answer a precise discriminator; persistent boot must remain Ubuntu. Do not involve unrelated Surface machines in this project.
-
-## Current safe state
-
-Golden Linux is the persistent baseline. Experimental candidates are sacrificial and must not modify the frozen Golden kernel/source baseline. Historical worktrees and evidence are preserved rather than cleaned. Before each live candidate, require the established clean-boot / no-prior-Asahi / empty-one-shot / freeze / watchdog gate.
+- Exact ABI authority: macOS 14.8.3 / build 23J220 plus matching retained G15G C0 firmware.
+- Later macOS builds: structural/dynamic oracle only; back-translate every observation before changing Linux.
 
 ## Current execution frontier
 
-The failure is no longer merely "post-KickStart / pre-body". It is localized to a Launch-specific transition:
+The problem is no longer generic queue admission, CDM-root translation, Launch-address visibility, cache/coherency, power, context backing or replay. The current causal cut is:
 
-`Queue -> scheduler -> CDM engine -> root fetch [PASS] -> Launch decode/activation [FAIL WINDOW] -> ESL entry -> LoadShader -> USC body`
+`CDM root fetch -> valid Launch -> valid UMA/PagePool -> translated/byte-visible ESL entry -> correct retained init/power state -> coherent c058 active slot -> [missing autonomous G15 frontend/state-loader/interpreter transition] -> first Apple-proven ESL opcode not interpreted -> context-store/quiesce -> replay-1`
 
-Established facts:
+The decisive discriminator is a working-Apple first-opcode oracle. A native-NOP-prefix poisoned LoadShader at an observed-valid G15 slot is consumed on working Apple hardware and produces the expected tagged fault. Linux reaches the entry address/visibility boundary but never produces that first-opcode effect.
 
-- queue/VM control plane and WorkQueue scheduler admission succeed;
-- exact firmware enters Compute case `0x0b`, activates the slot, appends the expected register state and reaches WFI;
-- terminate-only Compute completes, so generic completion machinery is viable;
-- the real shader body never reaches its first observable store;
-- E552 proves the hardware consumes RegisterArray `0x1a420` and attempts the first CDM-root read;
-- the paired ESL-entry sentinel is never fetched on the failing Linux Launch;
-- ESL STOP still stalls, so LoadShader/body semantics are not the earliest blocker;
-- known public/successful G15 Launch packet bytes are closed;
-- working Apple M3 hardware independently follows the exact-target-form Stream-Link grammar.
+## Recent material milestones
 
-Therefore do not treat generic CDM-root visibility/translation as the primary hypothesis.
-
-## Recent DMA correctness fixes
-
-Concrete non-coherent streaming-DMA ownership defects were found and corrected in:
-
-- production program/data heaps;
-- RunCompute/RegisterArray publication;
-- selected SKU stream backing.
-
-E560 extends that correction to the existing exact 0x14a0 Compute preemption/DataBuffer allocation: take CPU ownership after allocation, rebuild zero/default state, then return it to device ownership before RegisterArray/JobParameters2 publish its five addresses. No GPU-facing value is intentionally changed.
-
-## Ready candidates
-
-### E560 — run first
-
-Branch: `wip/g15-e560-preempt-dma`.
-
-Purpose: test whether the remaining unsynchronized preemption/DataBuffer publication is the missing Launch prerequisite. The exact-Golden module is built and statically gated; no live result exists yet.
-
-Interpretation:
-
-- progress/retirement: the DMA ownership defect was causally blocking Launch activation;
-- unchanged stall: retain the fix as correctness work, but it is insufficient; proceed to E557.
-
-### E557 — run second if E560 is negative
-
-Branch: `wip/g15-e557-minimal-register-prefix`.
-
-Purpose: reduce only the host-supplied G15 RegisterArray prefix to the five entries independently sufficient on the successful M3 bring-up path while leaving the exact Launch, mappings, DMA fixes, firmware tail and scheduler envelope unchanged.
-
-This is a diagnostic reduction, not a production ABI proposal.
+- **E659:** exact physical HwDataB `+0xae4=0x31` restores required G15 startup programming and materially advances the hardware/context path.
+- **E660:** persistent CL command resource corrected to the production protected/page-list mapping class.
+- **E665-E667:** exact replay-1 proven via command-memory marker; onset bounded to roughly 1–10 ms after activation. Replay is downstream recovery.
+- **E672/E673/E682/E683:** primary context-save and CL-scratch ordering reconstructed; the remaining address/resource plane is closed.
+- **E684/E685:** retained G15 init/power register programming audited end-to-end; no surviving scalar/RMW mismatch.
+- **E686:** hardware replay status is a generic lifecycle class, not a frontend error decoder.
+- **E687-E690:** J615 PMGR topology, AUTO gating and continuous physical GFX power/retention are closed. Continuous explicit ACTIVE from first platform power-on still fails before opcode 0.
+- **E691:** later reason-5 quiesce is retained-firmware self-management of an already-stalled active context; no missing host busy publication feeds it.
 
 ## Do not reopen without contradictory evidence
 
-- generic Queue/WorkQueue scheduling failure;
-- broad CDM-root translation/fetch failure;
-- missing post-bind TLBI;
-- synthetic target UMA/FList growth for the selected diagnostic;
-- historical entry/body byte variants as the earliest cause;
-- LoadShader/body semantics before first ESL fetch;
-- already-rejected Launch dword/control-word substitutions;
-- current macOS private constants as target ABI.
+- Queue/WorkQueue transport, stamp registration or scheduler acceptance.
+- CDM root fetch/control-stream placement.
+- Launch geometry/mode or already-validated ESL grammar/slot placement.
+- RegisterArray, RunCompute/SKU, known HwDataB or command-local producer families.
+- UAT/PTE, PagePool/FList/UMA, mapping ownership, cache or DMA publication.
+- Primary preemption/context backing or persistent CL command-resource backing.
+- Ad-hoc secure-cache selector changes without the separate protected-context registration contract.
+- Retained G15 startup/power RMW state.
+- LMX0/GFX PMGR/AUTO/continuous physical-power hypotheses.
+- Direct `c020/c040/c128` probing, replay-state injection, reason-5 suppression or invented host busy state.
+- Existing firmware KTrace/diagnostic paths as a passive pre-opcode observer; no exact waypoint exists there.
 
-## Preferred workflow
+## Next-work rule
 
-1. protected live E560 on a fresh Golden boot;
-2. if negative, clean recovery then protected live E557;
-3. after either result, update the boundary before creating another candidate;
-4. use one-shot macOS freely for precise successful-path oracle questions that can discriminate the surviving Launch-only hypotheses;
-5. back-translate every macOS observation to retained 23J220 authority before changing Linux;
-6. keep the persistent Golden baseline untouched and preserve evidence from every live cycle.
+Stay static until a mechanically exact **non-address, non-power autonomous G15 frontend/context state** is identified after c058 active-slot publication and before instruction-0 interpretation. The best next evidence would be a precise working-M3/macOS frontend-state oracle that can be back-translated to exact 23J220 authority, an exact-target hardware/context semantic not represented by the closed families, or a new public/upstream G15 state producer.
 
-Full sanitized summary: `research/g15/G15-E509-E560-CDM-LAUNCH-FRONTIER.md`.
+Do not spend another protected live cycle merely to refine replay timing or perturb a closed family.
+
+Full checkpoint: `research/g15/G15-E659-E691-FRONTEND-ACTIVATION-BOUNDARY.md`.
