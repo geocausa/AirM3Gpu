@@ -1,6 +1,6 @@
 # AirM3Gpu
 
-Experimental, clean-room bring-up work for the Apple M3 / T8122 G15 GPU on Asahi Linux.
+Experimental bring-up work for the Apple M3 / T8122 G15 GPU on Asahi Linux.
 
 **This is the canonical project/research repository.** The compilable Linux kernel implementation history is kept separately in `geocausa/linux`, a subordinate kernel fork. See [Repository roles](docs/REPOSITORIES.md).
 
