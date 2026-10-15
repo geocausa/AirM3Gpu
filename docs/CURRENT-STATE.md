@@ -1,9 +1,23 @@
 # Current G15 Bring-up State
 
-Research state: **2026-10-14**
+Research state: **2026-10-15**
 
 Target: MacBook Air M3 J615 / T8122, GPU G15G C0, exact macOS reference build 23J220 (14.8.3 ABI).
 
+
+## 2026-10-15 update — E717
+
+E692-E717 close the remaining software-visible and shared-state candidates around the first-opcode boundary. E704-E710 exhaust the final post-publication software and command-local plane. E711 reconstructs the normal c120/c140/c148 activation handshake and c128 completion path and proves it is common to the successful terminate control. E712/E714/E715 exhaust the known Apple/firmware diagnostic routes without finding a passive pre-opcode observer.
+
+E713 re-ingests XDC 2026/current public M3 work: the apparent 43-bit-vs-42-bit UAT discrepancy is only global-vs-bank-local terminology, and the public entry-shader/page-manager model agrees with the existing causal cut. E716 closes software-visible reset/default state. E717 completes the selected 0x24c0 ChannelState consumer map: after its 0xb0 QueueInfo prefix, retained firmware uses exactly 128 x 0x48 stamp/DAG records; the final 0x10 bytes have no recovered consumer.
+
+The surviving boundary is therefore:
+
+`exact software/shared state -> c058/common Compute activation -> entry VA fetch-visible -> [autonomous G15 entry-interpreter admission/execute transition fails] -> instruction 0 not interpreted -> context-store/replay`
+
+No further live mutation is justified until new working-G15 or hardware-facing evidence identifies a concrete discriminator inside that autonomous interval.
+
+See `research/g15/G15-E692-E717-AUTONOMOUS-FRONTEND-CLOSURE.md`.
 
 ## 2026-10-14 update — E691
 

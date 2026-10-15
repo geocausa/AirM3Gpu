@@ -1,6 +1,6 @@
 # New-chat handoff — J615 / G15 Compute bring-up
 
-Generated: 2026-10-14
+Generated: 2026-10-15
 
 This is the public/sanitized continuation point. The private M3 lab retains detailed machine-local evidence; proprietary binaries, reverse-engineering databases, built modules and raw captures are intentionally not published here.
 
@@ -13,14 +13,21 @@ This is the public/sanitized continuation point. The private M3 lab retains deta
 
 ## Current execution frontier
 
-The problem is no longer generic queue admission, CDM-root translation, Launch-address visibility, cache/coherency, power, context backing or replay. The current causal cut is:
+The failure is now below all mechanically identified software-authored command, selected shared-memory, startup/reset and common engine-activation state.
 
-`CDM root fetch -> valid Launch -> valid UMA/PagePool -> translated/byte-visible ESL entry -> correct retained init/power state -> coherent c058 active slot -> [missing autonomous G15 frontend/state-loader/interpreter transition] -> first Apple-proven ESL opcode not interpreted -> context-store/quiesce -> replay-1`
+`exact RunCompute/SKU/RegisterArray + selected ChannelState/DAG + UAT/PagePool/UMA -> c040/c048/c050/c058 publication -> common Compute activation -> entry VA fetch-visible -> [autonomous G15 entry-interpreter admission/execute transition fails] -> instruction 0 not interpreted -> context-store/quiesce -> replay-1`
 
-The decisive discriminator is a working-Apple first-opcode oracle. A native-NOP-prefix poisoned LoadShader at an observed-valid G15 slot is consumed on working Apple hardware and produces the expected tagged fault. Linux reaches the entry address/visibility boundary but never produces that first-opcode effect.
+E711-E717 additionally close the exact c120/c140/c148/c128 engine lifecycle, known Apple/firmware diagnostic paths, software-visible reset/default state, and the complete selected 0x24c0 ChannelState consumer map. XDC/current-public G15 work converges with this entry-shader interpretation rather than exposing a missing host prerequisite.
 
 ## Recent material milestones
 
+- **E702/E703:** separate upstream-quality G15 startup YUV-matrix parity bug found/fixed compile-only; non-causal for Compute.
+- **E704-E710:** final software publication and remaining command/policy planes exhausted.
+- **E711:** normal c120/c140/c148 activation handshake and c128 completion reconstructed; common with successful terminate control.
+- **E712/E714/E715:** known exact Apple/firmware frontend diagnostic paths exhausted; no safe passive observer.
+- **E713:** XDC/current-public convergence confirms UAT/page-manager/entry-shader model; no new activation field.
+- **E716:** software-visible entry-interpreter reset/default state closed.
+- **E717:** complete selected ChannelState closed; 0xb0 QueueInfo + 128 x 0x48 firmware records + 0x10 unused tail.
 - **E659:** exact physical HwDataB `+0xae4=0x31` restores required G15 startup programming and materially advances the hardware/context path.
 - **E660:** persistent CL command resource corrected to the production protected/page-list mapping class.
 - **E665-E667:** exact replay-1 proven via command-memory marker; onset bounded to roughly 1–10 ms after activation. Replay is downstream recovery.
@@ -50,4 +57,6 @@ Stay static until a mechanically exact **non-address, non-power autonomous G15 f
 
 Do not spend another protected live cycle merely to refine replay timing or perturb a closed family.
 
-Full checkpoint: `research/g15/G15-E659-E691-FRONTEND-ACTIVATION-BOUNDARY.md`.
+Full current checkpoint: `research/g15/G15-E692-E717-AUTONOMOUS-FRONTEND-CLOSURE.md`.
+
+Previous first-opcode checkpoint: `research/g15/G15-E659-E691-FRONTEND-ACTIVATION-BOUNDARY.md`.

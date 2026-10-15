@@ -6,15 +6,15 @@ Experimental bring-up work for the Apple M3 / T8122 G15 GPU on Asahi Linux.
 
 This repository is the **public, reproducible checkpoint** for the work. It intentionally does not contain Apple firmware, kernelcaches, extracted proprietary binaries, Ghidra databases, boot images, built kernel modules, or raw machine-local captures. Those are kept outside this repository; only derived facts, original research notes/scripts, hashes, and source patches are published here.
 
-## Current research state — 2026-10-14
+## Current research state — 2026-10-15
 
 Target hardware: MacBook Air M3 (J615 / T8122), GPU identified at runtime as G15G C0.
 
-**Current frontier:** the selected real Compute path now reaches CDM root fetch, valid Launch/UMA/PagePool state, a translated and byte-visible ESL entry, and coherent active-slot publication. A working-Apple address-tagged oracle proves that a native-NOP-prefix poisoned LoadShader is consumable at the first tested G15 opcode slot; Linux never reaches that effect. The remaining defect is therefore an autonomous G15 frontend/state-loader transition **after active-slot publication and before first ESL-opcode interpretation**.
+**Current frontier:** the selected real Compute path reaches exact software/shared-state publication, normal Compute engine activation, and a translated/byte-visible G15 entry program, but the autonomous entry interpreter still fails before instruction 0 is interpreted. The later context-store/quiesce/replay path is downstream recovery.
 
-E659/E660 supplied the latest material Linux-side corrections (exact G15 startup state and persistent CL-resource mapping). E665-E691 then close replay, context-save/backing, remaining address/resource state, retained init/power RMWs, PMGR/AUTO/continuous-power retention, and logical reason-5 quiesce as downstream or non-causal. Do not reopen those families without contradictory evidence.
+E692-E717 close the remaining broad startup/platform, engine-lifecycle, diagnostic, reset/default and selected-ChannelState families. Current XDC/public M3 work independently converges with the same entry-shader model and exposes no missing host prerequisite. E703 separately fixes a genuine non-causal G15 startup YUV-matrix parity defect.
 
-See [G15 E659-E691 frontend activation boundary](research/g15/G15-E659-E691-FRONTEND-ACTIVATION-BOUNDARY.md) and [New-chat handoff](docs/NEW-CHAT-HANDOFF.md).
+See [G15 E692-E717 autonomous frontend closure](research/g15/G15-E692-E717-AUTONOMOUS-FRONTEND-CLOSURE.md), [G15 E659-E691 frontend activation boundary](research/g15/G15-E659-E691-FRONTEND-ACTIVATION-BOUNDARY.md), and [New-chat handoff](docs/NEW-CHAT-HANDOFF.md).
 
 The historical progression below is retained for context.
 

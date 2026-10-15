@@ -2,6 +2,22 @@
 
 This index covers the execution-focused phase after generic J615 Compute completion was first proven. Detailed raw evidence remains in the private/local lab; this file records only the sanitized conclusion and source checkpoint.
 
+## 2026-10-15 autonomous frontend closure
+
+| Experiment | Result | Role | Decision |
+|---|---|---|---|
+| E692-E701 | STATIC closure | startup/platform sweep | No surviving startup branch, Fender, GPTBAT, mapper, context-observer or pre-GPU platform prerequisite. |
+| E702 / E703 | STATIC finding + compile-only fix | startup YUV parity | Real driver-correctness bug; retain fix, but it is non-causal for direct Compute. |
+| E704-E710 | STATIC closure | post-publish software / command state | No hidden firmware tail or command-local activation token after c058 publication. |
+| E711 | STATIC exact lifecycle | c120/c140/c148/c128 | Normal engine request/ack/completion path reconstructed; common with terminate-only success, so not the real-Launch-only blocker. |
+| E712 / E714 / E715 | STATIC closure | diagnostics | Exact host/firmware diagnostic routes yield no safe passive pre-opcode observer. |
+| E713 | STATIC public convergence | XDC/current public M3 | Public UAT/page-manager/entry-shader evidence agrees with local causal boundary. |
+| E716 | STATIC closure | reset/default state | Retained startup writes already execute on Linux; no remaining software-visible reset/default mismatch. |
+| E717 | STATIC closure | selected ChannelState | Full 0x24c0 object accounted for; no hidden tail activation state or passive progress mirror. |
+
+**Current boundary:** `exact software/shared state -> c058/common Compute activation -> entry fetch-visible -> autonomous entry-interpreter transition fails before instruction 0 -> context-store/replay`.
+
+
 ## 2026-10-14 first-opcode activation frontier
 
 | Experiment | Result | Role | Decision |

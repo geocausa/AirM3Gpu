@@ -913,3 +913,9 @@ E165 private source audit sha256  51cee9703249f32149e4d5a798ffc4e77c2e0ae20e1243
 E165 restored-artifact proof sha256  6ddd0807a659a3f0b37d03ff59e6846fc728f7f063003352a97801a7ca28b4de
 E165 public VM-context note sha256  40f46adefca24f4891c95c390f00654cb49cc1bc330854230188015abab871b0
 E165 closure  signed VM-context GPTBAT publication live-proven across slots 1..18; QueueInfo/channel/commands blocked; ordinary SUBMIT ENODEV; no RunCompute
+
+# 2026-10-15 autonomous frontend closure checkpoint
+E703 Linux research commit  347ea0444159c0897cb9c04e9bfa82da96add307
+E703 role  restore G15 startup YUV matrices; compile-only correctness fix, non-causal for first-opcode stall
+E692-E717 public research note sha256  f6e626eb8ed8136a39334a620075c67a709d516d6fd13038ab5143a0aa894e4b
+E692-E717 closure  software/shared/startup/reset/common-activation/known-diagnostic planes closed; surviving boundary is autonomous G15 entry-interpreter admission before instruction 0
