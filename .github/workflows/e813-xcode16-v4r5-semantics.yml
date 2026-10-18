@@ -1,0 +1,37 @@
+name: E813 Xcode 16.3-16.4 G15 v4r5 parser semantics
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  semantics:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: e812-xcode15-aps-oracle
+      - name: Compare initial v4r5 parser semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          for V in 16.3 16.4; do
+            XCODE="/Applications/Xcode_${V}.app"
+            BIN="$XCODE/Contents/PlugIns/GPUDebugger.ideplugin/Contents/Frameworks/GTShaderProfiler.framework/Versions/A/GTShaderProfiler"
+            echo "===== Xcode $V ====="
+            DEVELOPER_DIR="$XCODE/Contents/Developer" xcodebuild -version
+            shasum -a 256 "$BIN"
+            echo '--- retained descriptor/parser strings ---'
+            strings -a "$BIN" | grep -E 'chunkSize|AGXPSAPSParserGen1.cpp|tokenTypeIndex < numTokenTypes' | head -30 || true
+            sudo rm -f /Applications/Xcode.app
+            sudo ln -s "$XCODE" /Applications/Xcode.app
+            clang ci/e812_token_stats.c -o /tmp/e813_token_stats
+            echo '--- token stats v4r5 ---'
+            /tmp/e813_token_stats
+            clang ci/e813_chunk_align_v4r5.c -o /tmp/e813_chunk_align
+            echo '--- chunk alignment v4r5 ---'
+            /tmp/e813_chunk_align
+          done
