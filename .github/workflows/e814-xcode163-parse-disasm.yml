@@ -1,0 +1,51 @@
+name: E814 Xcode 16.3 APS parse disassembly
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  disasm:
+    runs-on: macos-15
+    steps:
+      - name: Disassemble exact v4r5 parse implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          XCODE=/Applications/Xcode_16.3.app
+          BIN="$XCODE/Contents/PlugIns/GPUDebugger.ideplugin/Contents/Frameworks/GTShaderProfiler.framework/Versions/A/GTShaderProfiler"
+          lipo "$BIN" -thin arm64 -output /tmp/GTShaderProfiler.arm64
+          xcrun llvm-objdump --start-address=0x829bdc --stop-address=0x82d3a8 --disassemble /tmp/GTShaderProfiler.arm64 > /tmp/parse.asm
+          echo '=== parse head ==='
+          sed -n '1,280p' /tmp/parse.asm
+          echo '=== candidate 0x1000/chunk windows ==='
+          python3 - <<'PY'
+          from pathlib import Path
+          L=Path('/tmp/parse.asm').read_text().splitlines()
+          hits=[]
+          for i,s in enumerate(L):
+              if '#0x1000' in s or '#0x1, lsl #12' in s:
+                  hits.append(i)
+          print('hits',len(hits))
+          shown=set()
+          for i in hits:
+              a=max(0,i-16); b=min(len(L),i+25)
+              key=(a,b)
+              if key in shown: continue
+              shown.add(key)
+              print(f'--- lines {a+1}-{b} ---')
+              print('\n'.join(L[a:b]))
+          PY
+          echo '=== udiv/msub windows near parse head ==='
+          python3 - <<'PY'
+          from pathlib import Path
+          L=Path('/tmp/parse.asm').read_text().splitlines()
+          for i,s in enumerate(L):
+              if ('udiv' in s or 'msub' in s) and i < 900:
+                  a=max(0,i-8); b=min(len(L),i+14)
+                  print(f'--- around line {i+1} ---')
+                  print('\n'.join(L[a:b]))
+          PY
