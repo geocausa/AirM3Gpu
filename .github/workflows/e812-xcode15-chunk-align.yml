@@ -1,0 +1,25 @@
+name: E812 Xcode 15.4 APS chunk alignment
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  oracle:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: e812-xcode15-aps-oracle
+      - name: Run historical chunk alignment oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          XCODE=/Applications/Xcode_15.4.app
+          sudo rm -f /Applications/Xcode.app
+          sudo ln -s "$XCODE" /Applications/Xcode.app
+          clang ci/e812_chunk_align_1544.c -o /tmp/e812_chunk_align_1544
+          /tmp/e812_chunk_align_1544
