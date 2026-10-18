@@ -1,0 +1,54 @@
+name: E812 Xcode 15.4 APS oracle
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  oracle:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: e812-xcode15-aps-oracle
+
+      - name: Run Xcode 15.4 APS parser oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          XCODE=/Applications/Xcode_15.4.app
+          BIN="$XCODE/Contents/PlugIns/GPUDebugger.ideplugin/Contents/Frameworks/GTShaderProfiler.framework/Versions/A/GTShaderProfiler"
+          test -f "$BIN"
+          {
+            echo '=== host ==='; sw_vers; uname -a
+            echo '=== xcode ==='; DEVELOPER_DIR="$XCODE/Contents/Developer" xcodebuild -version
+            echo '=== framework ==='; file "$BIN"; shasum -a 256 "$BIN"; dwarfdump --uuid "$BIN"; otool -L "$BIN"
+          } > out/metadata.txt
+          strings -a "$BIN" | grep -E 'AGXPSAPSParserGen1|AGXProfilingSupport|tokenTypeIndex|numTokenTypes|chunkSize|APSProfileData|agxps_aps_parser' > out/aps-strings.txt || true
+          sudo rm -f /Applications/Xcode.app
+          sudo ln -s "$XCODE" /Applications/Xcode.app
+          clang ci/e812_firstbyte_sweep.c -o out/e812_firstbyte_sweep
+          clang ci/e812_token_stats.c -o out/e812_token_stats
+          set +e
+          out/e812_firstbyte_sweep > out/firstbyte-sweep.txt 2> out/firstbyte-sweep.err; echo $? > out/firstbyte-sweep.rc
+          out/e812_token_stats > out/token-stats.txt 2> out/token-stats.err; echo $? > out/token-stats.rc
+          set -e
+          echo '=== metadata ==='; cat out/metadata.txt
+          echo '=== retained APS strings ==='; cat out/aps-strings.txt || true
+          echo '=== token stats ==='; cat out/token-stats.txt || true
+          echo '=== selected first-byte rows ==='; grep -E '^(00|01|0f|4f|8f|cf|ff) ' out/firstbyte-sweep.txt || true
+          echo '=== rc ==='; cat out/firstbyte-sweep.rc out/token-stats.rc
+          rm -f out/e812_firstbyte_sweep out/e812_token_stats
+
+      - name: Upload textual oracle evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: e812-xcode15.4-aps-text
+          path: out/*.txt
+          retention-days: 3
+          if-no-files-found: error
