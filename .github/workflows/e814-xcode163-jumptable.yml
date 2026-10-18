@@ -1,0 +1,32 @@
+name: E814 Xcode 16.3 APS token jump table
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  jump:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: e812-xcode15-aps-oracle
+      - name: Recover exact token dispatch table
+        shell: bash
+        run: |
+          set -euo pipefail
+          XCODE=/Applications/Xcode_16.3.app
+          BIN="$XCODE/Contents/PlugIns/GPUDebugger.ideplugin/Contents/Frameworks/GTShaderProfiler.framework/Versions/A/GTShaderProfiler"
+          sudo rm -f /Applications/Xcode.app
+          sudo ln -s "$XCODE" /Applications/Xcode.app
+          clang ci/e814_jump_163.c -o /tmp/e814_jump
+          echo '=== runtime jump table ==='
+          /tmp/e814_jump
+          lipo "$BIN" -thin arm64 -output /tmp/GTShaderProfiler.arm64
+          echo '=== table bytes ==='
+          xcrun llvm-objdump -s --start-address=0xbe0a48 --stop-address=0xbe0a6a /tmp/GTShaderProfiler.arm64 || true
+          echo '=== candidate token16 window ==='
+          xcrun llvm-objdump --start-address=0x82a000 --stop-address=0x82a080 --disassemble /tmp/GTShaderProfiler.arm64
