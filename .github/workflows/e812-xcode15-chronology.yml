@@ -1,0 +1,35 @@
+name: E812 Xcode 15 APS parser chronology
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  chronology:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: e812-xcode15-aps-oracle
+      - name: Sweep Xcode 15 parser lineage
+        shell: bash
+        run: |
+          set -euo pipefail
+          for V in 15.0.1 15.1 15.2 15.3 15.4; do
+            XCODE="/Applications/Xcode_${V}.app"
+            BIN="$XCODE/Contents/PlugIns/GPUDebugger.ideplugin/Contents/Frameworks/GTShaderProfiler.framework/Versions/A/GTShaderProfiler"
+            echo "===== Xcode $V ====="
+            if [ ! -f "$BIN" ]; then echo 'framework_missing'; continue; fi
+            DEVELOPER_DIR="$XCODE/Contents/Developer" xcodebuild -version
+            shasum -a 256 "$BIN"
+            strings -a "$BIN" | grep -m1 'AGXPSAPSParserGen1.cpp' || true
+            sudo rm -f /Applications/Xcode.app
+            sudo ln -s "$XCODE" /Applications/Xcode.app
+            clang ci/e812_parser_matrix.c -o /tmp/e812_parser_matrix
+            /tmp/e812_parser_matrix | grep -E 'parser_ok requested=15,4|target |parser_ok_count' || true
+            clang ci/e812_firstbyte_1544.c -o /tmp/e812_firstbyte
+            /tmp/e812_firstbyte | grep -E '^(0f|4f|8f|cf|ff) ' || true
+          done
