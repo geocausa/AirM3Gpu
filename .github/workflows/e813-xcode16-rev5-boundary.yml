@@ -1,0 +1,36 @@
+name: E813 Xcode 16 G15 rev5 boundary sweep
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  boundary:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: e812-xcode15-aps-oracle
+      - name: Sweep installed Xcode 16 parsers
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== installed Xcode 16 apps ==='
+          find /Applications -maxdepth 1 -type d -name 'Xcode_16*.app' -print | sort -V
+          for XCODE in $(find /Applications -maxdepth 1 -type d -name 'Xcode_16*.app' -print | sort -V); do
+            BIN="$XCODE/Contents/PlugIns/GPUDebugger.ideplugin/Contents/Frameworks/GTShaderProfiler.framework/Versions/A/GTShaderProfiler"
+            echo "===== $XCODE ====="
+            if [ ! -f "$BIN" ]; then echo 'framework_missing'; continue; fi
+            DEVELOPER_DIR="$XCODE/Contents/Developer" xcodebuild -version
+            shasum -a 256 "$BIN"
+            strings -a "$BIN" | grep -m1 'AGXPSAPSParserGen1.cpp' || true
+            sudo rm -f /Applications/Xcode.app
+            sudo ln -s "$XCODE" /Applications/Xcode.app
+            clang ci/e812_parser_matrix.c -o /tmp/e813_parser_matrix
+            /tmp/e813_parser_matrix | grep -E 'parser_ok requested=15,4|target |parser_ok_count' || true
+            clang ci/e812_firstbyte_sweep.c -o /tmp/e813_firstbyte
+            /tmp/e813_firstbyte | grep -E '^(0f|4f|8f|cf|ff) ' || true
+          done
