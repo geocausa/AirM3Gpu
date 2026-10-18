@@ -1,0 +1,32 @@
+name: E814 Xcode 16.3 APS parser vtable probe
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: e812-xcode15-aps-oracle
+      - name: Probe Xcode 16.3 parser implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          XCODE=/Applications/Xcode_16.3.app
+          BIN="$XCODE/Contents/PlugIns/GPUDebugger.ideplugin/Contents/Frameworks/GTShaderProfiler.framework/Versions/A/GTShaderProfiler"
+          sudo rm -f /Applications/Xcode.app
+          sudo ln -s "$XCODE" /Applications/Xcode.app
+          clang ci/e814_vtable_probe.c -o /tmp/e814_vtable_probe
+          echo '=== runtime vtable ==='
+          /tmp/e814_vtable_probe
+          lipo "$BIN" -thin arm64 -output /tmp/GTShaderProfiler.arm64
+          echo '=== exported parse wrapper ==='
+          xcrun llvm-objdump --disassemble-symbols=_agxps_aps_parser_parse /tmp/GTShaderProfiler.arm64 || true
+          echo '=== parser create wrapper ==='
+          xcrun llvm-objdump --disassemble-symbols=_agxps_aps_parser_create /tmp/GTShaderProfiler.arm64 | head -240 || true
