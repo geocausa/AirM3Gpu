@@ -1,0 +1,81 @@
+name: E814 Xcode 16.3 G15 parser continuity
+
+on:
+  push:
+    branches:
+      - e814-xcode163-parser-continuity
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parser:
+    runs-on: macos-15-arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Recover Xcode 16.3 target parser body
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          XCODE=/Applications/Xcode_16.3.app
+          BIN="$XCODE/Contents/PlugIns/GPUDebugger.ideplugin/Contents/Frameworks/GTShaderProfiler.framework/Versions/A/GTShaderProfiler"
+          test -f "$BIN"
+
+          {
+            sw_vers
+            uname -a
+            DEVELOPER_DIR="$XCODE/Contents/Developer" xcodebuild -version
+            file "$BIN"
+            shasum -a 256 "$BIN"
+            dwarfdump --uuid "$BIN"
+          } > out/metadata.txt
+
+          sudo rm -f /Applications/Xcode.app
+          sudo ln -s "$XCODE" /Applications/Xcode.app
+
+          clang -Wall -Wextra -O0 ci/e814_parser_vtable.c -o out/e814_parser_vtable
+          out/e814_parser_vtable > out/vtable.txt 2> out/vtable.err
+
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          t = Path('out/vtable.txt').read_text()
+          m = re.search(r'^vt\[\s*0\]=.*?off=0x([0-9a-fA-F]+)', t, re.M)
+          if not m:
+              raise SystemExit('could not locate vt[0] implementation offset')
+          off = int(m.group(1), 16)
+          start = max(0, off - 0x200)
+          stop = off + 0x8000
+          Path('out/parser-range.txt').write_text(f'parse_impl_off=0x{off:x}\nstart=0x{start:x}\nstop=0x{stop:x}\n')
+          PY
+
+          OFF=$(awk -F= '/^parse_impl_off=/{print $2}' out/parser-range.txt)
+          START=$(awk -F= '/^start=/{print $2}' out/parser-range.txt)
+          STOP=$(awk -F= '/^stop=/{print $2}' out/parser-range.txt)
+
+          xcrun llvm-objdump --macho --disassemble --start-address="$START" --stop-address="$STOP" "$BIN" > out/parser-window.asm
+          nm -nm "$BIN" 2>/dev/null | grep -E 'agxps_aps_parser|APSParser|ParserGen1' > out/parser-symbols.txt || true
+          strings -a "$BIN" | grep -E 'AGXPSAPSParserGen1|tokenTypeIndex < numTokenTypes|chunkSize' > out/parser-strings.txt || true
+
+          {
+            echo '=== range ==='; cat out/parser-range.txt
+            echo '=== vtable ==='; cat out/vtable.txt
+            echo '=== parser window line count ==='; wc -l out/parser-window.asm
+            echo '=== parser symbols ==='; cat out/parser-symbols.txt || true
+          }
+
+          rm -f out/e814_parser_vtable
+
+      - name: Upload E814 textual evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: e814-xcode16.3-g15-parser-text
+          path: |
+            out/*.txt
+            out/*.asm
+            out/*.err
+          retention-days: 7
+          if-no-files-found: error
