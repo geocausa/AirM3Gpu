@@ -1,0 +1,33 @@
+name: E812 Xcode 15.4 G15 v4r4 oracle
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  oracle:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: e812-xcode15-aps-oracle
+      - name: Run closest historical G15 parser
+        shell: bash
+        run: |
+          set -euo pipefail
+          XCODE=/Applications/Xcode_15.4.app
+          sudo rm -f /Applications/Xcode.app
+          sudo ln -s "$XCODE" /Applications/Xcode.app
+          clang ci/e812_firstbyte_1544.c -o /tmp/e812_firstbyte_1544
+          clang ci/e812_token_stats_1544.c -o /tmp/e812_token_stats_1544
+          /tmp/e812_token_stats_1544 | tee /tmp/token-stats.txt
+          /tmp/e812_firstbyte_1544 > /tmp/firstbyte.txt
+          echo '=== selected rows ==='
+          grep -E '^(00|01|0f|4f|8f|cf|ff) ' /tmp/firstbyte.txt
+          echo '=== bucket16 rows ==='
+          grep 'bucket=16' /tmp/firstbyte.txt || true
+          echo '=== unique successful bucket counts ==='
+          awk '/bucket=[0-9]+/{for(i=1;i<=NF;i++)if($i~/^bucket=/)print $i}' /tmp/firstbyte.txt | sort | uniq -c
