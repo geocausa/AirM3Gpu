@@ -1,3 +1,4 @@
+// E848 hosted synthetic parser-body probe; no GPU access.
 #include <dlfcn.h>
 #include <inttypes.h>
 #include <stdint.h>
