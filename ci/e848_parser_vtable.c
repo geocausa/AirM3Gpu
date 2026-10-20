@@ -35,18 +35,31 @@ int main(void) {
     if (!gc || !gd || !dc || !pc || !pd || !parse_export) return 3;
     show_ptr("parse_export", parse_export);
     show_ptr("parser_create", (void*)pc);
-    void *g = gc(15,4,5,0); if (!g) return 4;
+    Dl_info bi={0}; if(!dladdr(parse_export,&bi)) return 4;
+    uintptr_t base=(uintptr_t)bi.dli_fbase;
+    void *g = gc(15,4,5,0); if (!g) return 5;
     desc_t d = dc(); memcpy(d.b,&g,8);
     *(uint32_t*)(d.b+0x08)=0x400; *(uint32_t*)(d.b+0x0c)=0x40;
     *(uint32_t*)(d.b+0x10)=0x1000; *(uint64_t*)(d.b+0x18)=0x1000;
-    void *p=pc(&d); if(!p){gd(g);return 5;}
+    void *p=pc(&d); if(!p){gd(g);return 6;}
     void **vt=*(void***)p;
-    Dl_info bi={0}; dladdr(parse_export,&bi); uintptr_t base=(uintptr_t)bi.dli_fbase;
     printf("base=%p parser=%p vtable=%p vtable_off=0x%llx\n",(void*)base,p,(void*)vt,(unsigned long long)((uintptr_t)vt-base));
     for(int i=-4;i<24;i++){
       void*q=vt[i]; Dl_info qi={0};
       if(q&&dladdr(q,&qi)) printf("vt[%2d]=%p off=0x%llx sym=%s\n",i,q,(unsigned long long)((uintptr_t)q-(uintptr_t)qi.dli_fbase),qi.dli_sname?qi.dli_sname:"?");
       else printf("vt[%2d]=%p\n",i,q);
+    }
+    /* Xcode 16.3 parse-body disassembly mechanically identifies:
+       jump-table image offset 0xbe0a48 and target anchor 0x829edc. */
+    const uint16_t *jt=(const uint16_t*)(base+0xbe0a48ULL);
+    const uintptr_t anchor=0x829edcULL;
+    puts("=== token jump table ===");
+    for(unsigned i=0;i<17;i++){
+      uintptr_t target=anchor+((uintptr_t)jt[i]<<2);
+      printf("token[%u] raw=0x%04x target_off=0x%llx first32=",i,jt[i],(unsigned long long)target);
+      const unsigned char *q=(const unsigned char*)(base+target);
+      for(unsigned j=0;j<32;j++) printf("%02x",q[j]);
+      putchar('\n');
     }
     pd(p); gd(g); dlclose(h); return 0;
 }
