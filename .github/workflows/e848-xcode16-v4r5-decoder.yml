@@ -1,0 +1,89 @@
+name: E848 Xcode16 v4r5 decoder census
+
+on:
+  push:
+    branches:
+      - e848-xcode16-v4r5-decoder
+
+permissions:
+  contents: read
+
+jobs:
+  decoder:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Census Xcode 16.3 and 16.4 shader-profiler decoder
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          PAT='agxps_aps_(profile_data_get_(work|esl|hw)_clique_instruction_trace|clique_instruction_trace_get_(pc_advances|pc_advances_num|pc_advance_reasons|pc_advance_reasons_num|init_pcs|init_pcs_num|thread_execution_changes|thread_execution_changes_num|timestamp_references|timestamp_references_num|execution_events|execution_events_num|instruction_stats)|clique_advance_reason_get_string)'
+          for V in 16.3 16.4; do
+            XCODE="/Applications/Xcode_${V}.app"
+            BIN="$XCODE/Contents/PlugIns/GPUDebugger.ideplugin/Contents/Frameworks/GTShaderProfiler.framework/Versions/A/GTShaderProfiler"
+            test -f "$BIN"
+            PREFIX="out/xcode-${V}"
+            {
+              echo "===== Xcode $V ====="
+              DEVELOPER_DIR="$XCODE/Contents/Developer" xcodebuild -version
+              shasum -a 256 "$BIN"
+              file "$BIN"
+              dwarfdump --uuid "$BIN" || true
+            } > "${PREFIX}-meta.txt"
+
+            nm -gU "$BIN" > "${PREFIX}-nm.txt" || true
+            strings -a "$BIN" > "${PREFIX}-strings.txt"
+            otool -tvV "$BIN" > "${PREFIX}-disasm.txt"
+
+            grep -E "$PAT" "${PREFIX}-nm.txt" > "${PREFIX}-trace-api.txt" || true
+            grep -Ei 'AGXPSAPSParserGen1|clique|instruction trace|init[_ ]?pc|pc[_ ]?advance|advance reason|execution event|shader profiler' "${PREFIX}-strings.txt" > "${PREFIX}-trace-strings.txt" || true
+
+            python3 - "$PREFIX" "$PAT" <<'PY'
+import re,sys
+prefix,pat=sys.argv[1:]
+rx=re.compile(pat)
+syms=[]
+for line in open(prefix+'-nm.txt',errors='ignore'):
+    m=re.match(r'([0-9a-fA-F]+)\s+.*\s(_?agxps_\S+)$', line.strip())
+    if m and rx.search(m.group(2).lstrip('_')):
+        syms.append((int(m.group(1),16),m.group(2)))
+lines=open(prefix+'-disasm.txt',errors='ignore').read().splitlines()
+out=[]
+for addr,name in syms:
+    label=name+':'
+    hits=[i for i,l in enumerate(lines) if l.strip()==label or l.strip().endswith(label)]
+    out.append(f'===== {name} @ 0x{addr:x} =====')
+    if hits:
+        i=hits[0]
+        out.extend(lines[i:i+100])
+    else:
+        # fall back to textual address neighborhood
+        hx=f'{addr:016x}'
+        hits=[i for i,l in enumerate(lines) if l.startswith(hx)]
+        if hits:
+            i=hits[0]
+            out.extend(lines[max(0,i-3):i+100])
+        else:
+            out.append('NO_DISASM_MATCH')
+open(prefix+'-target-disasm.txt','w').write('\n'.join(out)+'\n')
+PY
+
+            echo "===== $V metadata ====="
+            cat "${PREFIX}-meta.txt"
+            echo "===== $V trace API ====="
+            cat "${PREFIX}-trace-api.txt" || true
+            echo "===== $V trace strings (first 120) ====="
+            head -120 "${PREFIX}-trace-strings.txt" || true
+            echo "===== $V targeted disassembly ====="
+            cat "${PREFIX}-target-disasm.txt" || true
+          done
+
+      - name: Upload decoder evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: e848-xcode16-v4r5-decoder
+          path: out/
+          retention-days: 3
+          if-no-files-found: error
