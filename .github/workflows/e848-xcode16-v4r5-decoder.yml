@@ -41,34 +41,33 @@ jobs:
             grep -Ei 'AGXPSAPSParserGen1|clique|instruction trace|init[_ ]?pc|pc[_ ]?advance|advance reason|execution event|shader profiler' "${PREFIX}-strings.txt" > "${PREFIX}-trace-strings.txt" || true
 
             python3 - "$PREFIX" "$PAT" <<'PY'
-import re,sys
-prefix,pat=sys.argv[1:]
-rx=re.compile(pat)
-syms=[]
-for line in open(prefix+'-nm.txt',errors='ignore'):
-    m=re.match(r'([0-9a-fA-F]+)\s+.*\s(_?agxps_\S+)$', line.strip())
-    if m and rx.search(m.group(2).lstrip('_')):
-        syms.append((int(m.group(1),16),m.group(2)))
-lines=open(prefix+'-disasm.txt',errors='ignore').read().splitlines()
-out=[]
-for addr,name in syms:
-    label=name+':'
-    hits=[i for i,l in enumerate(lines) if l.strip()==label or l.strip().endswith(label)]
-    out.append(f'===== {name} @ 0x{addr:x} =====')
-    if hits:
-        i=hits[0]
-        out.extend(lines[i:i+100])
-    else:
-        # fall back to textual address neighborhood
-        hx=f'{addr:016x}'
-        hits=[i for i,l in enumerate(lines) if l.startswith(hx)]
-        if hits:
-            i=hits[0]
-            out.extend(lines[max(0,i-3):i+100])
-        else:
-            out.append('NO_DISASM_MATCH')
-open(prefix+'-target-disasm.txt','w').write('\n'.join(out)+'\n')
-PY
+          import re,sys
+          prefix,pat=sys.argv[1:]
+          rx=re.compile(pat)
+          syms=[]
+          for line in open(prefix+'-nm.txt',errors='ignore'):
+              m=re.match(r'([0-9a-fA-F]+)\s+.*\s(_?agxps_\S+)$', line.strip())
+              if m and rx.search(m.group(2).lstrip('_')):
+                  syms.append((int(m.group(1),16),m.group(2)))
+          lines=open(prefix+'-disasm.txt',errors='ignore').read().splitlines()
+          out=[]
+          for addr,name in syms:
+              label=name+':'
+              hits=[i for i,l in enumerate(lines) if l.strip()==label or l.strip().endswith(label)]
+              out.append(f'===== {name} @ 0x{addr:x} =====')
+              if hits:
+                  i=hits[0]
+                  out.extend(lines[i:i+100])
+              else:
+                  hx=f'{addr:016x}'
+                  hits=[i for i,l in enumerate(lines) if l.startswith(hx)]
+                  if hits:
+                      i=hits[0]
+                      out.extend(lines[max(0,i-3):i+100])
+                  else:
+                      out.append('NO_DISASM_MATCH')
+          open(prefix+'-target-disasm.txt','w').write('\n'.join(out)+'\n')
+          PY
 
             echo "===== $V metadata ====="
             cat "${PREFIX}-meta.txt"
