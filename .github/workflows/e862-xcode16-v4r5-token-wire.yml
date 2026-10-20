@@ -1,0 +1,42 @@
+name: E862 Xcode16.3 v4r5 token wire
+
+on:
+  push:
+    branches:
+      - e848-xcode16-v4r5-decoder
+    paths:
+      - '.github/workflows/e862-xcode16-v4r5-token-wire.yml'
+      - 'ci/e862_token_wire_probe.c'
+
+permissions:
+  contents: read
+
+jobs:
+  token-wire:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe internal v4r5 token decoder
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          XCODE=/Applications/Xcode_16.3.app
+          BIN="$XCODE/Contents/PlugIns/GPUDebugger.ideplugin/Contents/Frameworks/GTShaderProfiler.framework/Versions/A/GTShaderProfiler"
+          test -f "$BIN"
+          sudo rm -f /Applications/Xcode.app
+          sudo ln -s "$XCODE" /Applications/Xcode.app
+          clang -Wall -Wextra -O0 ci/e862_token_wire_probe.c -o out/e862_token_wire_probe
+          out/e862_token_wire_probe > out/token-wire.txt 2> out/token-wire.err
+          rm -f out/e862_token_wire_probe
+          echo '=== token wire head ==='
+          head -80 out/token-wire.txt
+          echo '=== framing aliases ==='
+          grep '^fill=ff' out/token-wire.txt || true
+      - name: Upload E862 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: e862-xcode16.3-v4r5-token-wire
+          path: out/
+          retention-days: 3
+          if-no-files-found: error
