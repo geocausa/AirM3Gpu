@@ -21,6 +21,7 @@ static int interesting(const char *s){
  return 0;
 }
 int main(void){
+ system("cp /Applications/Xcode_16.3.app/Contents/SharedFrameworks/DVTInstrumentsFoundation.framework/Versions/A/DVTInstrumentsFoundation out/DVTInstrumentsFoundation && shasum -a 256 out/DVTInstrumentsFoundation");
  const char *F="/Applications/Xcode_16.3.app/Contents/SharedFrameworks/DVTInstrumentsFoundation.framework/Versions/A/DVTInstrumentsFoundation";
  char cmd[4096]; snprintf(cmd,sizeof(cmd),"nm -arch arm64 -m '%s'",F); FILE *fp=popen(cmd,"r"); if(!fp){perror("nm");return 2;}
  struct sym *S=calloc(MAXSYM,sizeof(*S)); int n=0; char line[4096];
