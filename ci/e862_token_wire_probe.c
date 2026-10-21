@@ -1,26 +1,51 @@
 #include <dlfcn.h>
-#include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-typedef struct { unsigned char b[0x68]; } desc_t;
-typedef struct { uint64_t count, bits; } stat_t;
-typedef void *(*gpu_create_t)(uint32_t,uint32_t,uint32_t,uint32_t);
-typedef void (*destroy_t)(void*);
-typedef desc_t (*desc_create_t)(void);
-typedef void *(*parser_create_t)(desc_t*);
-typedef void *(*parse_t)(void*,const void*,uint64_t,uint32_t,uint32_t*);
-typedef int (*stats_t)(void*,uint64_t,stat_t*);
-typedef uint64_t (*num_t)(void*);
-typedef int (*trace_t)(void*,void**,uint64_t,uint64_t);
-typedef int (*copy_u64_t)(void*,uint64_t*,uint64_t,uint64_t);
-static void *sym(void *h,const char*n){void*p=dlsym(h,n);if(!p){fprintf(stderr,"missing %s\n",n);exit(3);}return p;}
-static int load(const char *p,uint8_t out[4096]){FILE*f=fopen(p,"rb");if(!f)return 0;size_t n=fread(out,1,4096,f);int extra=fgetc(f);fclose(f);return n==4096&&extra==EOF;}
-struct api{void*h;gpu_create_t gc;destroy_t gd,pd,dd;desc_create_t dc;parser_create_t pc;parse_t parse;stats_t stats;num_t toks,bits,wn,en,kn,tn,npc,nadv;trace_t et;copy_u64_t getpcs;};
-static void replay(struct api*a,const char*label,const char*path){
- uint8_t page[4096];if(!load(path,page)){fprintf(stderr,"load fail %s\n",path);exit(4);}void*g=a->gc(15,4,5,0);if(!g){fprintf(stderr,"gpu create fail\n");exit(5);}desc_t d=a->dc();memcpy(d.b,&g,8);*(uint32_t*)(d.b+8)=0x400;*(uint32_t*)(d.b+12)=0x40;*(uint32_t*)(d.b+16)=0x1000;*(uint64_t*)(d.b+24)=0x1000;void*p=a->pc(&d);uint32_t err=999;void*r=p?a->parse(p,page,4096,0x21,&err):0;
- printf("PARSE page=%s err=%u profile=%p tokens=%llu bits=%llu\n",label,err,r,r?(unsigned long long)a->toks(r):0,r?(unsigned long long)a->bits(r):0);
- if(r){for(unsigned i=0;i<17;i++){stat_t s={0};int ok=a->stats(r,i,&s);printf("TOKEN page=%s type=%u ok=%d count=%llu bits=%llu\n",label,i,ok,(unsigned long long)s.count,(unsigned long long)s.bits);}uint64_t w=a->wn(r),e=a->en(r),k=a->kn(r),t=a->tn(r);printf("OBJECTS page=%s work=%llu esl=%llu kicks=%llu tiles=%llu\n",label,(unsigned long long)w,(unsigned long long)e,(unsigned long long)k,(unsigned long long)t);for(uint64_t i=0;i<e;i++){void*tr=0;int ok=a->et(r,&tr,i,1);uint64_t np=(ok&&tr)?a->npc(tr):0,na=(ok&&tr)?a->nadv(tr):0;printf("ESL_TRACE page=%s i=%llu ok=%d init_pcs=%llu advances=%llu\n",label,(unsigned long long)i,ok,(unsigned long long)np,(unsigned long long)na);if(np){uint64_t pcs[8]={0};uint64_t take=np<8?np:8;int pok=a->getpcs(tr,pcs,0,take);for(uint64_t j=0;j<take;j++)printf("ESL_PC page=%s i=%llu n=%llu ok=%d pc=0x%llx\n",label,(unsigned long long)i,(unsigned long long)j,pok,(unsigned long long)pcs[j]);}}a->dd(r);}if(p)a->pd(p);a->gd(g);
+typedef void *id_t; typedef void *cls_t; typedef void *sel_t;
+typedef cls_t (*objc_getClass_t)(const char*);
+typedef sel_t (*sel_registerName_t)(const char*);
+typedef void *(*class_getInstanceMethod_t)(cls_t,sel_t);
+typedef id_t (*msg_id_t)(id_t,sel_t);
+typedef uint64_t (*msg_u64_t)(id_t,sel_t);
+static void inspect_framework(const char *path){
+  void *h=dlopen(path,RTLD_NOW|RTLD_LOCAL);
+  printf("DLOPEN path=%s ok=%d err=%s\n",path,h!=NULL,h?"none":dlerror());
+  if(!h)return;
+  void *oh=dlopen("/usr/lib/libobjc.A.dylib",RTLD_NOW|RTLD_GLOBAL);
+  if(!oh){printf("OBJC_DLOPEN_FAIL %s\n",dlerror());dlclose(h);return;}
+  objc_getClass_t getc=(objc_getClass_t)dlsym(oh,"objc_getClass");
+  sel_registerName_t sels=(sel_registerName_t)dlsym(oh,"sel_registerName");
+  class_getInstanceMethod_t gim=(class_getInstanceMethod_t)dlsym(oh,"class_getInstanceMethod");
+  void *ms=dlsym(oh,"objc_msgSend");
+  cls_t c=getc?getc("GTGPUAPSConfig"):0;
+  printf("CLASS path=%s GTGPUAPSConfig=%p\n",path,c);
+  if(c&&sels&&gim&&ms){
+    const char *need[]={"initForProfiling","cliqueTraceLevel","emitPos","emitThreadControlFlow","countPeriod","pulsePeriod","systemTimePeriod","tileTracing","eslInstTracing","syncDrainMode",NULL};
+    for(int i=0;need[i];i++) printf("METHOD %s present=%d\n",need[i],gim(c,sels(need[i]))!=NULL);
+    if(gim(c,sels("initForProfiling"))){
+      id_t o=((msg_id_t)ms)((id_t)c,sels("alloc"));
+      id_t p=((msg_id_t)ms)(o,sels("initForProfiling"));
+      printf("PROFILE obj=%p",p);
+      const char *keys[]={"cliqueTraceLevel","emitPos","emitThreadControlFlow","countPeriod","pulsePeriod","systemTimePeriod","tileTracing","eslInstTracing","syncDrainMode",NULL};
+      for(int i=0;keys[i];i++) if(gim(c,sels(keys[i]))) printf(" %s=%llu",keys[i],(unsigned long long)((msg_u64_t)ms)(p,sels(keys[i])));
+      printf("\n");
+    }
+  }
+  dlclose(h);
 }
-int main(void){const char*P="/Applications/Xcode.app/Contents/PlugIns/GPUDebugger.ideplugin/Contents/Frameworks/GTShaderProfiler.framework/Versions/A/GTShaderProfiler";struct api a={0};a.h=dlopen(P,RTLD_NOW|RTLD_LOCAL);if(!a.h){fprintf(stderr,"dlopen:%s\n",dlerror());return 2;}a.gc=(gpu_create_t)sym(a.h,"agxps_gpu_create");a.gd=(destroy_t)sym(a.h,"agxps_gpu_destroy");a.dc=(desc_create_t)sym(a.h,"agxps_aps_descriptor_create");a.pc=(parser_create_t)sym(a.h,"agxps_aps_parser_create");a.pd=(destroy_t)sym(a.h,"agxps_aps_parser_destroy");a.dd=(destroy_t)sym(a.h,"agxps_aps_profile_data_destroy");a.parse=(parse_t)sym(a.h,"agxps_aps_parser_parse");a.stats=(stats_t)sym(a.h,"agxps_aps_profile_data_get_token_type_stats");a.toks=(num_t)sym(a.h,"agxps_aps_profile_data_get_parsed_tokens_num");a.bits=(num_t)sym(a.h,"agxps_aps_profile_data_get_parsed_bits_num");a.wn=(num_t)sym(a.h,"agxps_aps_profile_data_get_work_cliques_num");a.en=(num_t)sym(a.h,"agxps_aps_profile_data_get_esl_cliques_num");a.kn=(num_t)sym(a.h,"agxps_aps_profile_data_get_kicks_num");a.tn=(num_t)sym(a.h,"agxps_aps_profile_data_get_tiles_num");a.et=(trace_t)sym(a.h,"agxps_aps_profile_data_get_esl_clique_instruction_trace");a.npc=(num_t)sym(a.h,"agxps_aps_clique_instruction_trace_get_init_pcs_num");a.nadv=(num_t)sym(a.h,"agxps_aps_clique_instruction_trace_get_pc_advances_num");a.getpcs=(copy_u64_t)sym(a.h,"agxps_aps_clique_instruction_trace_get_init_pcs");replay(&a,"core00-page00","ci/e878-core00-page00.bin");replay(&a,"core08-page00","ci/e878-core08-page00.bin");dlclose(a.h);return 0;}
+int main(void){
+  dlopen("/System/Library/Frameworks/Foundation.framework/Foundation",RTLD_NOW|RTLD_GLOBAL);
+  FILE *fp=popen("find /Applications/Xcode_16.3.app -type f \\( -name GPUToolsReplay -o -name GPUToolsReplay.framework \\) 2>/dev/null | head -40","r");
+  char line[4096];int n=0;
+  if(fp){while(fgets(line,sizeof(line),fp)){line[strcspn(line,"\r\n")]=0;if(!*line)continue;printf("FOUND %s\n",line);size_t L=strlen(line);if(L>10&&strstr(line,"GPUToolsReplay.framework")&&strcmp(line+L-10,".framework")){inspect_framework(line);n++;}}pclose(fp);}
+  const char *fallbacks[]={
+    "/Applications/Xcode_16.3.app/Contents/SharedFrameworks/GPUToolsReplay.framework/Versions/A/GPUToolsReplay",
+    "/Applications/Xcode_16.3.app/Contents/Frameworks/GPUToolsReplay.framework/Versions/A/GPUToolsReplay",
+    "/Applications/Xcode_16.3.app/Contents/Developer/Library/PrivateFrameworks/GPUToolsReplay.framework/Versions/A/GPUToolsReplay",
+    NULL};
+  for(int i=0;fallbacks[i];i++) inspect_framework(fallbacks[i]);
+  printf("SUMMARY inspected=%d\n",n);
+  return 0;
+}
