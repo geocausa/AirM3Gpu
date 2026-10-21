@@ -3,12 +3,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-typedef void *id_t; typedef void *cls_t; typedef void *sel_t;
+typedef void *obj_t; typedef void *cls_t; typedef void *sel_t;
 typedef cls_t (*objc_getClass_t)(const char*);
 typedef sel_t (*sel_registerName_t)(const char*);
 typedef void *(*class_getInstanceMethod_t)(cls_t,sel_t);
-typedef id_t (*msg_id_t)(id_t,sel_t);
-typedef uint64_t (*msg_u64_t)(id_t,sel_t);
+typedef obj_t (*msg_id_t)(obj_t,sel_t);
+typedef uint64_t (*msg_u64_t)(obj_t,sel_t);
 static void inspect_framework(const char *path){
   void *h=dlopen(path,RTLD_NOW|RTLD_LOCAL);
   printf("DLOPEN path=%s ok=%d err=%s\n",path,h!=NULL,h?"none":dlerror());
@@ -25,8 +25,8 @@ static void inspect_framework(const char *path){
     const char *need[]={"initForProfiling","cliqueTraceLevel","emitPos","emitThreadControlFlow","countPeriod","pulsePeriod","systemTimePeriod","tileTracing","eslInstTracing","syncDrainMode",NULL};
     for(int i=0;need[i];i++) printf("METHOD %s present=%d\n",need[i],gim(c,sels(need[i]))!=NULL);
     if(gim(c,sels("initForProfiling"))){
-      id_t o=((msg_id_t)ms)((id_t)c,sels("alloc"));
-      id_t p=((msg_id_t)ms)(o,sels("initForProfiling"));
+      obj_t o=((msg_id_t)ms)((obj_t)c,sels("alloc"));
+      obj_t p=((msg_id_t)ms)(o,sels("initForProfiling"));
       printf("PROFILE obj=%p",p);
       const char *keys[]={"cliqueTraceLevel","emitPos","emitThreadControlFlow","countPeriod","pulsePeriod","systemTimePeriod","tileTracing","eslInstTracing","syncDrainMode",NULL};
       for(int i=0;keys[i];i++) if(gim(c,sels(keys[i]))) printf(" %s=%llu",keys[i],(unsigned long long)((msg_u64_t)ms)(p,sels(keys[i])));
