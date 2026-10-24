@@ -20,22 +20,27 @@ Current authority: `docs/CANONICAL-CHECKPOINT.md`.
 | E1086-C | GNOME/simpledrm topology | GNOME Wayland runs on `card0/simpledrm`; old system Mesa is rejected on separate G15G render device by 592-vs-600 GET_PARAMS gate | Compositor/display device and render GPU are split. |
 | E1086-D | Honeykrisp Wayland present | `vkcube --wsi wayland` selects Apple M3 G15G and causes GPU activity, but bounded present does not complete; Mutter logs `Invalid sequence for VSYNC frame info`; no GPU/DART/RTKit fault | **Current native-present boundary is cross-device dma-buf/fence/vsync integration.** |
 | E1086-E | WSI controls | Direct-display has no display; immediate mode unsupported; Xwayland has no DRI3; Wayland EGL on simpledrm remains software even with client Zink/PRIME overrides | Close these as basic bypass routes; investigate native DCP/KMS + sync path. |
+| E1087 | Native-display live baseline | DCP handoff reaches the PMP display-request acknowledgement gate; simpledrm retained | Display handoff/gate works; localize PMP startup. |
+| E1088 | T8122 PMP report compatibility | `apple-pmp-report` binds; next fail-soft gate is PMGR `pms_sram` lookup | T8122 report ABI accepted. |
+| E1089 | T8122 PMGR power-state lookup | PMGR power-state lookup passes; next gate is PMP tunables/PTD layout | Power-domain naming/lookup crossed. |
+| E1090 | PMP offset/layout iteration | Built/armed intermediate offset correction | Superseded by E1091; preserve as intermediate only. |
+| **E1091** | **Native J615 DCP/KMS live pass** | PMP request `0x20080` acknowledged (`ack 0x200f0`); DCP RTKit/DCPLink + PIODMA run; 2880x1800@60 display starts; `apple-drm` registers; `eDP-1` connected/enabled; `fb0=appledrmfb`; simpledrm displaced | **Native display ownership crossed. GPU intentionally blacklisted; simultaneous GPU+display is next.** |
 
 ## Current interpretation
 
 The repaired-lineage progression is:
 
-`E056 Apple HwDataA reduction -> E1075 firmware-running -> E1076 correct Compute -> E1077 correct Render/triangle -> E1078 panel-visible CPU-copy bridge -> E1086 native-present boundary`
+`E056 Apple HwDataA reduction -> E1075 firmware-running -> E1076 correct Compute -> E1077 correct Render/triangle -> E1078 panel-visible CPU-copy bridge -> E1086 native-present localization -> E1091 native DCP/KMS takeover`
 
 Current hard boundary:
 
-`correct GPU render -> Honeykrisp Wayland GPU activity -> [simpledrm/render-GPU dma-buf + fence + VSYNC integration] -> native presented GPU buffer`
+`native DCP/KMS PASS + G15G Render PASS -> [simultaneous GPU + native display] -> [native KMS/dma-buf/fence GPU-buffer presentation] -> compositor`
 
 The older E972 token5→token7 boundary remains valuable historical evidence for the older failing lineage, but it is not the current wall.
 
 ## Current next sequence
 
-**map native DCP/KMS ownership -> trace first-present formats/modifiers/fences/VSYNC -> bounded GPU-buffer scanout -> compositor/desktop integration -> endurance/performance qualification**.
+**combined E1091 display + E1075 GPU boot -> bounded offscreen Render control -> native KMS GPU-buffer scanout -> compositor/desktop integration -> endurance/performance qualification**.
 
 Do not return to broad GPU frontend searches without contradictory evidence.
 

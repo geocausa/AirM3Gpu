@@ -76,13 +76,39 @@ Presentation discriminators:
 
 Private E1086 `RESULT.md` SHA-256: `0e78deb6a85e6ca3030ff712d44e160295d065739dd987b07379b35fac4b6a54`.
 
-### Current hard boundary
+### E1086 boundary before native DCP work
 
 `correct G15G Compute + TA/fragment triangle render/readback -> GPU Wayland swapchain/job activity -> [cross-device simpledrm/render-GPU presentation + vsync/fence integration] -> native presented GPU buffer`
 
-This is now a display/presentation problem, not a GPU execution problem.
+E1086 established that this was a display/presentation problem, not a GPU execution problem.
 
-## 3. Historical execution localization retained
+## 3. E1091 — first native J615 DCP/KMS display takeover
+
+E1087-E1091 moved the display side from fail-soft PMP/DCP admission to a real native Apple DRM device. The decisive E1091 display-only boot used kernel `7.1.12-e1091-t8122-pmp-reordered` and the retained J615 display handoff image SHA-256 `2c908a8ddbc592a43a298298051f7727eec2081b1e75aa5aa535cdbb36b60a81`.
+
+Mechanically observed progression:
+
+- the T8122 display gate enabled both DCP DARTs, mailbox, DCP and display-subsystem;
+- the 56-value J615 PMP image from `/chosen/asahi,t8122-pmp` was consumed;
+- PMP halted preflight accepted and seeded request `0x20080`;
+- the PMP started on the first display consumer and reached ready with request `0x20080`, ack `0x200f0`;
+- `apple-dcp` observed the display request acknowledged;
+- DCP RTKit and DCPLink ran and PIODMA buffers mapped;
+- J615 display started at `2880x1800@60`, with 64 notch rows hidden;
+- native `apple-drm` registered, `eDP-1` is connected/enabled, and `fb0` became `appledrmfb`;
+- simpledrm no longer owns the active framebuffer.
+
+The Asahi GPU was intentionally blacklisted for E1091. This is therefore a native-display proof, not yet a simultaneous GPU+display or zero-copy presentation proof.
+
+Private E1091 `RESULT.md` SHA-256: `d350acf59fc23ce1d219cb3d5e046dd0c29fcdcaddd1416aaad01a175472a486`. The exact source delta against E1075 base `a4778ca2a3f4791245cf1f7f42f26ccf2b17f5f7` is preserved privately as `E1091-SOURCE-DIFF.patch`, SHA-256 `691b050993339adfa50d1419479a6fe0453662d2938007c34faae01dc2de25a3`.
+
+### Current hard boundary
+
+`native J615 DCP/KMS PASS + G15G Compute/Render PASS (independently) -> [simultaneous display + GPU qualification] -> [native KMS/dma-buf/fence presentation of a GPU-produced buffer] -> compositor/desktop acceleration`
+
+The next experiment must combine the two already-proven subsystems without changing their internals.
+
+## 4. Historical execution localization retained
 
 E972/E974/E989–E1005 remain valid for the older E933/E950-style failing lineage:
 
@@ -92,27 +118,28 @@ E972/E974/E989–E1005 remain valid for the older E933/E950-style failing lineag
 
 Preserve those negatives, but do not present them as the current repaired-lineage frontier.
 
-## 4. Do not repeat
+## 5. Do not repeat
 
 - Do not reopen instruction-0, token5→token7, shader, TA/fragment, Queue/RunCompute/UAT/PagePool/power/parser/MMIO hypotheses without contradictory evidence.
 - Do not use the legacy manager-backend `G15Debug::SelfTest` bit47 as a current qualification gate.
 - Do not interpret `Cannot find any display!`, softpipe Wayland EGL, or Xwayland no-DRI3 as GPU Render failures.
 - Do not replace system Mesa merely to continue the display investigation; the isolated G15G userspace path is already qualified.
 
-## 5. Immediate next actions
+## 6. Immediate next actions
 
-1. Map the display stack precisely: simpledrm ownership, available/missing native Apple DCP/KMS components, relevant DT nodes/drivers, and why no native display DRM device replaces simpledrm.
-2. Trace Honeykrisp Wayland first-present around dma-buf format/modifier, implicit/explicit synchronization, fence ownership and Mutter VSYNC sequencing without changing GPU command construction.
-3. Design one bounded native KMS/DCP discriminator that scans out a GPU-produced buffer directly, avoiding E1078's CPU framebuffer copy.
+1. Restore the live-test free-space safety margin without deleting E1091 evidence or its source/build lineage.
+2. Prepare one E1092 boot that keeps the exact E1091 native-display kernel/handoff and changes only the GPU policy: remove the Asahi blacklist and add the already-proven E1075 startup/pstate-cap parameters.
+3. Require both native `apple-drm`/`eDP-1` health and G15G `firmware-running`/render-node health before submitting any job; then run exactly one bounded offscreen `vk-render-check`.
+4. Only if combined-device qualification passes, present one GPU-produced buffer through native KMS/dma-buf/fence plumbing, with no CPU framebuffer bridge.
 
-Only after native presentation succeeds should broader compositor/desktop acceleration and endurance/performance qualification begin.
+Only after that direct native-presentation proof should compositor/desktop acceleration and endurance/performance qualification begin.
 
-## 6. Recovery state
+## 7. Recovery state
 
-After E1086, Fabric reconciled the machine back to Golden:
+After E1091, the machine was recovered back to Golden:
 
 - Golden kernel: `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`.
-- Recovery boot ID: `548c1cb2-a5f6-4aa4-8fe9-69a3740a14c9`.
+- Current verified Golden boot ID after the later recovery: `d45645c3-7ca3-4049-b01c-87e264dd74ed`.
 - Known-good m1n1 `boot.bin` SHA-256: `a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d`.
 - Original `/boot/grub/custom.cfg` SHA-256: `cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462`.
 - Persistent and next boot are Ubuntu; no pending GRUB one-shot entry and no experimental render node.
@@ -124,3 +151,4 @@ After E1086, Fabric reconciled the machine back to Golden:
 - E1077: `/home/macmac/m3-gpu-lab/experiments/E1077-vk-render-readback/RESULT.md`.
 - E1078: `/home/macmac/m3-gpu-lab/experiments/E1078-visible-triangle-bridge/RESULT.md`.
 - E1086: `/home/macmac/m3-gpu-lab/experiments/E1086-wayland-presentation-differential/RESULT.md`.
+- E1091: `/home/macmac/m3-gpu-lab/experiments/E1091-t8122-pmp-reordered-devices/RESULT.md`.

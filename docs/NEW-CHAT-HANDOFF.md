@@ -6,7 +6,7 @@ Generated: **2026-10-24**
 
 ## One-sentence state
 
-**The physical J615 now executes correct Compute and graphics under Linux, produces pixel-correct Vulkan and Zink/Honeykrisp triangles, and has already shown those GPU-produced pixels on the internal panel through a verified CPU-copy bridge; the remaining major wall is native simpledrm/DCP/KMS GPU-buffer presentation and its dma-buf/fence/vsync integration.**
+**The physical J615 now has independently proven G15G Compute/Render and native Apple DCP/KMS display takeover; the remaining major wall is running both together and presenting a GPU-produced buffer through native KMS/dma-buf/fence plumbing without the CPU bridge.**
 
 ## Latest hard facts
 
@@ -20,18 +20,21 @@ Generated: **2026-10-24**
 - **E1086 native-presentation discriminator:** GNOME Wayland runs on `card0/simpledrm`. Honeykrisp Wayland `vkcube` selects Apple M3 G15G and causes GPU activity, but the bounded present does not complete; Mutter logs `Invalid sequence for VSYNC frame info` at the corresponding time. No GPU/DART/RTKit fault occurs.
 - Direct Vulkan display exposes no panel object; immediate present mode is unsupported; Xwayland lacks DRI3; Wayland EGL follows simpledrm and uses software rendering rather than Zink on the render-only card.
 - E1086 private result SHA-256: `0e78deb6a85e6ca3030ff712d44e160295d065739dd987b07379b35fac4b6a54`.
+- **E1091 native display:** PMP request `0x20080` is acknowledged (`ack 0x200f0`), DCP RTKit/DCPLink and PIODMA run, J615 starts at 2880x1800@60, native `apple-drm` registers, `eDP-1` is connected/enabled, and `fb0=appledrmfb`; simpledrm is displaced. Asahi GPU was intentionally blacklisted for this display-only proof.
+- E1091 private result SHA-256: `d350acf59fc23ce1d219cb3d5e046dd0c29fcdcaddd1416aaad01a175472a486`; preserved source-delta SHA-256: `691b050993339adfa50d1419479a6fe0453662d2938007c34faae01dc2de25a3`.
 
 ## Current boundary
 
-`correct G15G Compute + TA/fragment triangle render/readback -> GPU Wayland swapchain/job activity -> [cross-device simpledrm/render-GPU dma-buf + fence + VSYNC integration] -> native presented GPU buffer`
+`native J615 DCP/KMS PASS + G15G Compute/Render PASS (independently) -> [simultaneous GPU + display] -> [native KMS/dma-buf/fence presentation of a GPU buffer] -> compositor`
 
-This is a display/presentation integration problem. The GPU execution problem is closed for the repaired lineage.
+GPU execution and native display ownership are separately closed; their integration is the current problem.
 
 ## Next action
 
-1. Map the present display stack exactly: simpledrm ownership, native Apple DCP/KMS driver/component availability, DT nodes and why a native display DRM device has not replaced simpledrm.
-2. Trace the first Honeykrisp Wayland present through format/modifier negotiation and implicit/explicit sync/fence ownership, with special attention to the Mutter VSYNC sequence failure.
-3. Build one bounded native KMS/DCP GPU-buffer scanout test that avoids E1078's CPU framebuffer copy.
+1. Restore the >=10 GiB live-test free-space safety margin without deleting the E1091 lineage/evidence.
+2. Boot the exact E1091 native-display stack with only the Asahi blacklist removed and the proven E1075 GPU startup/pstate-cap parameters added.
+3. Verify native `apple-drm`/`eDP-1` and G15G `firmware-running`/render-node health together, then run one 1-second offscreen Render control.
+4. If that passes, perform one bounded native-KMS presentation of a GPU-produced buffer with dma-buf/fence completion evidence and no CPU framebuffer copy.
 
 Only then broaden into compositor/desktop acceleration and endurance/performance work.
 
@@ -43,4 +46,4 @@ E972/E974/E989–E1005 remain valid for the older E933/E950-style failing lineag
 
 ## Recovery
 
-The Mac is back on Golden Linux `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`, boot ID `548c1cb2-a5f6-4aa4-8fe9-69a3740a14c9`, exact known-good m1n1 and original GRUB hash-verified, persistent/next boot Ubuntu, no pending one-shot entry and no experimental render node.
+The Mac is back on Golden Linux `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`, boot ID `d45645c3-7ca3-4049-b01c-87e264dd74ed`, exact known-good m1n1 and original GRUB hash-verified, with persistent/next boot Ubuntu.

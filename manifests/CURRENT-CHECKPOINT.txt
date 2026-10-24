@@ -41,13 +41,22 @@ E1086 immediate present: unsupported
 E1086 Xwayland: no DRI3
 E1086 current boundary: correct GPU render -> GPU Wayland activity -> missing cross-device simpledrm/render-GPU dma-buf/fence/vsync integration -> native presented GPU buffer
 
+Native J615 DCP/KMS milestone: E1091 PASS
+E1091 kernel: 7.1.12-e1091-t8122-pmp-reordered
+E1091 kernel SHA256: 538b06b8dfe52139c21c60bc6ac831c0085e7e69fae820195ab7fafb26bb7566
+E1091 display handoff SHA256: 2c908a8ddbc592a43a298298051f7727eec2081b1e75aa5aa535cdbb36b60a81
+E1091 result: PMP request 0x20080 acknowledged with ack 0x200f0; DCP RTKit/DCPLink and PIODMA run; J615 2880x1800@60; apple-drm registered; eDP-1 connected/enabled; fb0=appledrmfb; simpledrm displaced
+E1091 GPU policy: Asahi intentionally blacklisted; display-only qualification
+E1091 private RESULT SHA256: d350acf59fc23ce1d219cb3d5e046dd0c29fcdcaddd1416aaad01a175472a486
+E1091 source delta vs E1075 SHA256: 691b050993339adfa50d1419479a6fe0453662d2938007c34faae01dc2de25a3
+
 Historical execution-semantic closure: E972/E974/E989-E1005
 Classification: retained historical negative for E933/E950-style lineage; NOT the current repaired-lineage frontier
 
-Current next gate: map native DCP/KMS/display ownership, trace dma-buf/modifier/fence/VSYNC path, then one bounded direct GPU-buffer scanout discriminator
+Current next gate: run E1091 native display together with the qualified E1075 G15G path, then one bounded direct native-KMS GPU-buffer presentation discriminator
 
-Recovery after E1086: Golden active
-Recovery boot ID: 548c1cb2-a5f6-4aa4-8fe9-69a3740a14c9
+Recovery after E1091: Golden active
+Recovery boot ID: d45645c3-7ca3-4049-b01c-87e264dd74ed
 Known-good boot.bin SHA256: a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d
 Original custom.cfg SHA256: cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462
 Persistent boot: Ubuntu

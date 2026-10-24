@@ -8,7 +8,7 @@ Target: MacBook Air M3 J615 / T8122 / G15G C0. Exact reference: macOS 14.8.3 / 2
 
 ## Headline
 
-**J615 basic GPU execution is solved on the repaired E1075 lineage; native presentation is now the frontier.**
+**J615 GPU execution and native DCP/KMS display ownership are both independently solved; simultaneous GPU+display and direct GPU-buffer presentation are now the frontier.**
 
 E1075 restores the exact E056-derived T8122 HwDataA `+0x418c..+0x41db` image and reaches `firmware-running` with `/dev/dri/renderD128`.
 
@@ -37,15 +37,25 @@ E1086 independently reproduces correct graphics and then probes native presentat
 - No GPU, DART or RTKit fault occurs.
 - Immediate present mode is unsupported; Xwayland has no DRI3.
 
-Current boundary:
+E1086 boundary was:
 
 `correct Compute + TA/fragment Render -> GPU Wayland swapchain/job activity -> [simpledrm/render-GPU dma-buf/fence/vsync integration] -> native presented GPU buffer`
 
 Private E1086 result SHA-256: `0e78deb6a85e6ca3030ff712d44e160295d065739dd987b07379b35fac4b6a54`.
 
+## E1091 — native display takeover
+
+E1091 crosses the native-display wall independently of the GPU: the T8122 PMP starts and acknowledges request `0x20080`, DCP RTKit/DCPLink runs, PIODMA maps, J615 display starts at 2880x1800@60, native `apple-drm` registers, `eDP-1` is connected/enabled and `fb0` becomes `appledrmfb`. simpledrm no longer owns the active framebuffer. Asahi was intentionally blacklisted for this display-only proof.
+
+Private E1091 result SHA-256: `d350acf59fc23ce1d219cb3d5e046dd0c29fcdcaddd1416aaad01a175472a486`.
+
+Current boundary:
+
+`native DCP/KMS PASS + G15G Compute/Render PASS -> [simultaneous GPU + display] -> [native KMS/dma-buf/fence presentation] -> compositor`
+
 ## Next work
 
-Map native Apple DCP/KMS/display ownership, then trace the first-present dma-buf/modifier/fence/vsync path and build one bounded direct GPU-buffer scanout discriminator. Do not modify GPU command construction merely to solve presentation.
+Run one one-variable combined-device boot using the exact E1091 display stack with the qualified E1075 Asahi GPU path enabled. If both subsystems stay healthy, run one bounded offscreen Render control and then one direct native-KMS GPU-buffer presentation test.
 
 Do not return to broad instruction-0, token5→token7, Queue/RunCompute/UAT/PagePool/power/parser/MMIO searches without contradictory evidence.
 
@@ -55,4 +65,4 @@ E972/E974/E989–E1005 remain valid for the older failing E933/E950-style lineag
 
 ## Safety state
 
-After E1086, Fabric reconciled Golden Linux `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`, boot ID `548c1cb2-a5f6-4aa4-8fe9-69a3740a14c9`, known-good m1n1 SHA `a81993b...`, original GRUB SHA `cf011eee...`, Ubuntu persistent/next boot, no pending one-shot entry and no experimental render node.
+After E1091, the machine was recovered to Golden Linux `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`, boot ID `d45645c3-7ca3-4049-b01c-87e264dd74ed`, known-good m1n1 SHA `a81993b...`, original GRUB SHA `cf011eee...`, and Ubuntu persistent/next boot.
