@@ -23,6 +23,19 @@ The private/local lab contains the full machine-specific evidence, raw captures,
 
 Linux/Asahi and Mesa are developed in their own Git worktrees. AirM3Gpu receives exported patch series; it does not vendor full Linux or Mesa histories.
 
+## Session-start anti-repeat gate
+
+Before doing any new reverse engineering or live GPU work:
+
+1. `git fetch --all --prune` in both `geocausa/AirM3Gpu` and `geocausa/linux`.
+2. Read `docs/CANONICAL-CHECKPOINT.md` and `docs/NEW-CHAT-HANDOFF.md`.
+3. Confirm the latest relevant Linux `wip/g15-*` branch head instead of assuming the branch named in an older chat is current.
+4. Check the machine-local evidence directories for a newer result bundle than the public checkpoint.
+5. Classify the proposed task as **new evidence**, **reproduction**, or **already closed**. Do not run a reproduction merely because an old handoff forgot the later result.
+6. If a CI/oracle run changes the frontier, commit a human-readable result/conclusion in the same checkpoint. A workflow file, binary page, or CI stdout alone is not a durable conclusion.
+
+`docs/CANONICAL-CHECKPOINT.md` is the authority for where to resume. Historical `CURRENT-STATE` sections and old chat summaries are supporting evidence only.
+
 ## Milestone discipline
 
 A durable milestone follows this order:
@@ -34,7 +47,7 @@ A durable milestone follows this order:
 5. Verify cleanup/postconditions, not merely the positive log line.
 6. Commit the component worktree immediately after the gate is closed.
 7. Export the component commit(s) into `patches/`.
-8. Update `docs/CURRENT-STATE.md` and `manifests/CURRENT-HASHES.txt`.
+8. Update `docs/CANONICAL-CHECKPOINT.md`, `docs/NEW-CHAT-HANDOFF.md`, `docs/CURRENT-STATE.md`, and the current manifest.
 9. Commit AirM3Gpu.
 10. Push AirM3Gpu `main` only when the checkpoint is internally consistent.
 

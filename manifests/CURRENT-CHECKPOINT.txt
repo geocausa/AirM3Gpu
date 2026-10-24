@@ -1,0 +1,12 @@
+AirM3Gpu canonical checkpoint date: 2026-10-24
+Target: J615 / T8122 / G15G C0
+Exact target authority: macOS 14.8.3 / 23J220
+Pre-consolidation research head: 767337aa6e32bbd13d75b3ef046faaa0a8fd1c0a (E972 replay)
+Merged main head: cea6044cdd1b0f38d7fd86e9f422c09ebde74754
+Merged E814 parser-continuity head: 7c2eb2adca1294c2ed02ebdc839b189405bec693
+Merged E850 Xcode15.4 token-continuity head: 895e53c25897dc52010a94695f12690e03f64e6e
+Latest Linux observer branch: wip/g15-e828-producer-ktrace
+Latest Linux observer commit: 3070021adff4108337d19c53070c1f95359b86f5
+Hard execution boundary: entry fetch visible; instruction 0 not interpreted
+Next gate: persist E972 Apple-E932 vs Linux-E934 token output; name earliest semantic differential; bridge to exact 23J220 before new live mutation
+Local E814 Ubuntu evidence: /home/macbuntu/e814-work

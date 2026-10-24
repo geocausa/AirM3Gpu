@@ -1,0 +1,921 @@
+=== CURRENT 2026-09-02 CHECKPOINT ===
+AirM3Gpu canonical project head will be updated by this housekeeping commit.
+Kernel implementation fork: geocausa/linux
+Current implementation branch: wip/g15-e278-cdm-shared-rw
+Current implementation commit: f8306c6f90b0fcc561298488f6185a2055496a0b
+Preferred real-launch live baseline: wip/g15-e274-working-body-order @ bcc062a1c864491b1b4286fea86c828c9f658733
+Known-good terminate-only Compute: E199
+Static closure: E279 production entry/state-loader contract
+Current frontier: E280 exact compiler/driver generated entry oracle
+Persistent Golden kernel: 7.1.6-ubuntu-m3-usbpd-gc5037a961e4d
+Sacrificial baseline asahi.ko: 141d23bc64eba8ebf37ef6078fb8f319697db50f35cd5f6a81006f2b289bbe40
+Sacrificial baseline initrd: 37743993c3e1c60b9b9d996df470abffc2fdf18998a4fd4ac4654b5cf9d13776
+Sacrificial vmlinuz: 6a6ec8b3d1a4c040d795c22dffe72b1f6775206ff754c8254e514f91b4555223
+
+=== HISTORICAL LEDGER BELOW ===
+AirM3Gpu research state: 2026-08-30
+Last live checkpoint: 2026-08-27
+
+SOURCE REVISIONS
+linux base                  d8c844ca7c34abb01b93851cb405fb42b2650f0a
+linux previous public head  7c7e4d68082f8ff349c191bc3021c2f7d023009e
+linux current checkpoint    f2cb03001da02b1bde833550f38700b247ca30c2
+linux current tree          1e10f2d211ddb16995ac73de2c7c5243f9f6d1b0
+mesa base                   6dd2f2919e74a1e038485b1dd08eb062c4230ebb
+mesa head                   d36216e783a3714eca0b734afb0df2301ece8739
+
+PUBLIC LINUX DELTA
+0004 sha256  ab5edbdd7854dd46a2e191fc039d8fda657598d8a9db642faf8d269992831aca
+0004 applies from 1b57b289af96973badfbb8489ef379a1b3a96f07
+0004 reconstructs tree e985490062efc4baf5847b6e73cd7cf799a5ffaa
+0005 sha256  aff55c652bfaf267939c7272fd2d09f5806b66820a99fdb294b5d8ab933281f7
+0005 applies from 2f08f68bb2efdadf2d337441553c1f682152a748
+0005 reconstructs tree b913cff9035c398aa04c1a0bb737d9cdfc139e58
+0006 sha256  296c512b562d84827480aedec08bcb19d9fbf2f37c435eeecdeafb897450cbf1
+0006 applies from 1d264651a20410af426cb3ee269ede2ec15011dd
+0006 reconstructs tree a833d07fe3bbcd6103090c8cbb9dfa378614521e
+0007 sha256  af6b45190901a8c19f34823f448ac151d54687e75faf4d0bca319556fc772b69
+0007 applies from f73b9e5516589fde5820ea487911fd830fac958c
+0007 reconstructs tree 999f7f6cc80a2e5cfd92c8de88dbc1a05d6c3de3
+
+GOLDEN LOCAL BOOT CONTRACT
+golden kernel release   7.1.6-ubuntu-m3-usbpd-gc5037a961e4d
+golden vmlinuz sha256   24cc320029c67b8996bd0c12fdffe46e51d823dbda24c753e4dc634cc0d54315
+golden boot.bin sha256  8c538fc2c161d47cb2b275b650afd0c6b5dfd74fe1bd0c9343cf1c40d8602c9a
+
+LIVE TRANSPORT BOUNDARY
+latest isolated candidate release  7.1.6-gc6fa9b794ba9
+E035 diagnostic asahi.ko sha256  47f13bb98ffa6b40fb793e2ababdb9ba0d3b8068be91282cf550d68dafb03c41
+E035 is a diagnostic-only negative experiment; its extra wake telemetry is not part of the clean 2f08 checkpoint.
+
+CALLBACK-GATE DIAGNOSTICS
+E041 passive-stats asahi.ko sha256  7bd19e2abfc2529cb835aac1b710850f71bbcfb5dd30159034aefedf0e99cad3
+E043 class-2 KTrace asahi.ko sha256  7a03f841f67d4ccfd7943453968fcb093c29f5c79ec0328c36f06190315f61c1
+E044 KTrace-calibration candidate sha256  804eb61042d9949d166c1979a175fde34af4f804e0c19e3d45135c197478d949
+private evidence checkpoint E041  1cdc78f
+private evidence checkpoint E042  12656c5
+private evidence checkpoint E044  6d66742
+E044 selected KTrace counts  0x100=0 (bit1 disabled) 0x207=0 0x213=607
+E044 correction  callback 0x100/0x101 use trace bit1; 0x207 uses trace bit2
+These modules are diagnostic-only and are not part of the clean public Linux patch series.
+
+E045 CALLBACK-ENTRY DIAGNOSTIC
+E045 asahi.ko sha256  e4a119856859dc00edef086d4dfc82e6f62ede7dd2ae0f33d7df32d750bf9c11
+private evidence checkpoint E045  d67adda
+E045 selected KTrace  0x100=1(args0=1) 0x207=0 0x213=121
+Boundary: callback reached; outer gate passed; investigate FUN_6a0c scheduler internals.
+
+E046/E047 SCHEDULER-ENTRY CONTROL
+E046 asahi.ko sha256  167d24ebf241cc4facba1102be6e86152e623cef7f60a1ffd5a3d180e75a9806
+E047 bit1-only asahi.ko sha256  a46184ba4274770ff0e51b05619ecbcab15611294121b3a4a0ca436ee9c9d9a2
+private evidence checkpoint E047  9b37cad
+E047 selected KTrace  0x100=1(args0=1) 0x101=0 0x111=0 0x112=0 0x128=0 0x12e=0
+Boundary: callback enters, outer gate passed, FUN_3d330 cold-power transaction does not return before FUN_6a0c.
+
+E048-E051 COLD-POWER HANDSHAKE
+E048 q21-snapshot asahi.ko sha256  344ecf5c62f896b2be02595c73d688b80ec6998e36280c56c74dadd525f2a152
+private evidence checkpoint E048  f5863d7
+E049 power-dispatch diagnostic sha256  a9d033ccf91c5ef73d19449b50fe9199a879c9f8ae4de2a95077177c14977f74
+E049 is an instrumentation-flood failure; broad 0x20b/0x20c logging is rejected.
+E050 bounded power-completion sha256  985b7cf5b5db9c68833b23c2ae9138a3c82e9d62f31d4b3295bb8a247ea3d199
+private evidence checkpoint E050  414e8d1
+E051 arg1-dispatch sha256  8097a499f82bc12e43dbbcf2ef67e88d1f4f5a138860e9d69d9a919f0ed43faa
+private evidence checkpoint E051  e9848b2
+E051 selected KTrace  0x100=1 0x20b(arg1)=1 0x200=1 0x20c(arg1)=1 0x101=0 0x207=0 0x22f=0
+Boundary: state-1 worker and event-1 post complete; remaining stall is later in FUN_3d330 before FUN_6a0c.
+
+E052-E060 SCHEDULER REGISTRATION LIFECYCLE
+private evidence checkpoint E052  9a263a8
+private evidence checkpoint E057 scheduler crash  81a7df9
+private evidence checkpoint E057 DPE ABI  a94c8c1
+private evidence checkpoint E058  76fd9d7
+private evidence checkpoint E059  72a763c
+private evidence checkpoint E060  600f271
+private evidence checkpoint E061  ce57c13
+private evidence checkpoint E062  8c5523f
+private evidence checkpoint E063  93af1db
+private evidence checkpoint E064  1826d67
+private evidence checkpoint E065  a35107c
+private evidence checkpoint E066  2254375
+private evidence checkpoint E067  247a3ec
+private evidence checkpoint E068  5a3890b
+private evidence checkpoint E069  3ad20c2
+
+private evidence checkpoint E070  0e2d379
+E070 private result sha256  39733ea95c15e146b2d92c0a8b5e033251f6e58fb2a37d92013d70d99a661e00
+E070 exact 23J220 encodeCLCommandSKUStream sha256  0e368f85b5411a982c721e78a238eb194ebad604b165ad23a6a34610c6663287
+E070 exact 23J220 encodeComputeWFI sha256  60f30f184711499ca738305101cd821f732ec6ea2f04309ad58d2160ab6effcc
+E070 exact 23J220 AGXCLChannelSKU::submitBuffer sha256  120ff0cc89acfeaffac930eac51a15ba4bebfec105e33e5d8185d02359cad8de
+E070 closure  G15 +0x760 is exact SKU execution stream; inherited Linux microsequence producer must not be used; no live RunCompute
+
+private evidence checkpoint E071  031baf6
+E071 private result sha256  7b655b3d12df224e9bb3a90b6ee722538377e3a98afafed8cfcc24eab8a772ce
+E071 Linux checkpoint  f73b9e5516589fde5820ea487911fd830fac958c
+E071 closure  stock empty path uses no-feature 0x2c0 SKU; prepared UMA byte RunCompute +0x846 = 1; no live RunCompute
+E069 exact-target result sha256  81a46a7264d0600345bc81103a5d013b9078be4ba1c6d70bd5bd8ea5ce167159
+E069 macOS evidence bundle sha256  9611184ba81af8e5da4953db5919a5f8b46b34e2fee09e909fd4275a1f968822
+E069 closure  exact 23J220 ordinary empty Compute reaches AGXCLChannelSKU::submitBuffer; no host elision; no Linux RunCompute
+E068 empty raw Compute sha256  daba7c272a8bd1009fc04d0128e546892ee4eee70a5859904b1e4ac38b803611
+E068 one-thread raw Compute sha256  457f415f84077982ffb3e2dbb5e252e87fa31b52b400c3c16ccabeaf55e5fd32
+E068 Linux checkpoint  1d264651a20410af426cb3ee269ede2ec15011dd
+E068 native asahi.ko sha256  05f6137f5fc1f0dc2202b2d587156a960c1ab55e70ddadba477a7fb23274e78c
+E068 build  PASS at exact 24-warning baseline; no install or RunCompute execution
+E067 exact 23J220 AGXG15G binary sha256  e29327fd1eeec53ea47bba91572d393cd6bc38ab77b9ac3c9ab62cc70f94854b
+E067 exact RegisterArray producer sha256  495020a4205780e2f916c0e9d1e7f9462b0a237d93cb422dc3f5236f59ebeb09
+E067 closure  target 23J220 list/order/synthesis matches independently reconstructed 25F84 G15 producer; Linux raw/private value producers remain gated
+E066 exact 23J220 Compute/CLE size  0x880
+E066 exact 23J220 RunWorkQueue entry size  0x18; Compute pipe type=2
+E066 exact 23J220 ReleaseResource opcode  0x11
+E060 diagnostic asahi.ko sha256  a516262736853a707acf16f7639d9f6a7da40d671aa61e5713bcc00cd2c7c421
+E060 signed probe sha256  40d908e9c17ef187491c35a482b76d4d05226e98b20becaec44e45256af143c4
+E060 registration  scheduler 0x111 accepted; callback 0x101 returned; pipe (1,1,1,1)
+E060 release  generated G15 ReleaseResource tag=0x11; native teardown returned success
+Boundary: bounded Barrier-only QueueInfo registration and native G15 release are closed; no RunVertex/RunFragment/RunCompute or shader payload executed.
+The E057-E060 diagnostic modules are not part of the clean public Linux source checkpoint.
+
+private evidence checkpoint E072  3fec9b0
+E072 macOS oracle result sha256  3bccf6a407c9c77508a79ead37e1187871ab5399d015eb2226e8c5f90f88b182
+E072 public UMA-tail note sha256  c6987066af4b4e00dc601eff1c22404ccbdfa68ce4e7e608605c291cecc9c785
+E072 closure  empty +0x847/+0x84f are zero; +0x83e is live 0x70 Page-Pool State; +0x857 is live one-page HWMetrics base; no live RunCompute
+private evidence checkpoint E073  9b6d600
+E073 private result sha256  284c02c752d6d3d3d000a451b35c867d3be2986c1578905ab6bede882d5cbfad
+E073 Linux checkpoint  03fdbb86230f1c431bb6958dfa6bc752ad35b1cd
+E073 Linux tree  999f7f6cc80a2e5cfd92c8de88dbc1a05d6c3de3
+E073 public context-generation note sha256  b9a78d72d92a44b2e1487e9329037f22bb45c3dc5e9aed6470b61886f3881771
+E073 module sha256  a54dee9c2b3a435c7f3c5fcebb33cde71dacf81b0b1af4df846851631f97b376
+E073 closure  G15 context ID 1..63 + dynamic generation now modeled at RunCompute +0x10/+0x85f; HardwareBuffer-ID/mapping lifetime still blocks live +0x83e; no live RunCompute
+private evidence checkpoint E074  7e92ea8
+E074 private result sha256  452a315e4a6f7e2148d73f6fce56fae241fb540e45145169577c94bdf1b2653d
+E074 Linux checkpoint  4e26fc0898606f09b9bf726ebba2c5452ee957f2
+E074 Linux tree  4a844f6c6a6077b9658a4d3e3b3c16cd6c89ba42
+E074 patch 0008 sha256  ae5fcd160c8730424af6bc312831f57a809fa08e9986d8e2669cb44d77e7defd
+E074 closure  shared bank-1 range-8 parent L2[6..8) is empty on exact J615; read-only one-shot PASS; no child table or RunCompute
+private evidence checkpoint E075  f0f319f
+E075 private result sha256  c573fbbcee163056c1677eea37505eae97137e6a103a582d0cb0438f7a04fe34
+E075 Linux checkpoint  e9f50fcc17d58244740360e484ae9904c0cd8d6c
+E075 Linux tree  0bb806b6dc8361763144fccba2fd3dcf37b323f7
+E075 diagnostic module sha256  dd67f99fc3cb166530532813a867e053e4e91e06993f69e7966c96b48402766c
+E075 patch 0009 sha256  0280f3bd00932887698d9ebb24a18b10c34f0101622f20b8296fbe473559321c
+E075 closure  exact range-8 leaf 0x00c0000000000443 live PASS at 0xfffffc200c000000; clean eight-parent detach; no RunCompute
+private evidence checkpoint E076  7e253cc
+E076 private result sha256  5d7d7b3ce47b17996406da2b9e4b59f4464bc90ba852239047456e09b80edfe0
+E076 Linux checkpoint  6e3850dcdd51d4bd912b9c02b0ea9633c7fd7060
+E076 Linux tree  aa7d564fd4cfb6efd6ca4674df74d64663c6f13b
+E076 module sha256  ec87dd9d33a4de3cd643637549c215f452a9adee2e62f14dfc6bea8b4c0a46fe
+E076 patch 0010 sha256  0288180a8a951ad3705fda84654bf2bb8df2c6ffb2931d61be0103b3c46cf439
+E076 closure  dedicated range-8 allocator class exists compile-only; no persistent object or RunCompute
+private evidence checkpoint E077  5fdbcd4
+E077 macOS oracle result sha256  aad7d200fefade5116757f6bbf5740cb070a5d27b87beded0b61d9c7ab654bc6
+E077 closure  exact four-resource FList constructor and symbolic list-size formulas; fallback numeric sizes remain conditional; no RunCompute
+private evidence checkpoint E078  507f403
+E078 Linux checkpoint  886820e1f460d4af0e6bbd4d33812d89d5adddd1
+E078 Linux tree  0e95ec2eacd9151962a73a951efdc6e728b9c810
+E078 module sha256  36dc754ad4744d38dc54a73b79739cd0a8c78970f0f1bed09acd3bc2a3c82afb
+E078 patch 0011 sha256  0b3b8c77fb440da5e152d60e3a1330fee92eb7c5f3bfd802940de139fec1feb2
+E078 closure  FList FW-Uncached leaf 0x00c000000000044b + exact 8-byte ABI compile-only; persistent FList and RunCompute remain blocked
+private evidence checkpoint E079  670a48b
+E079 Linux checkpoint  865f24f2a9fc2be36db3ffae11eee22aa0ebc63c
+E079 Linux tree  f88bf712fb898afb3f5a436acb62f18eadf3dc87
+E079 module sha256  5ffd4013a82ef211178f618001a5bc4f0faa5706c0548bb087bb18fba525830a
+E079 patch 0012 sha256  28d46d3d827587f174600c3c7055191a63bbe1758a2add25532d1aa479f9b7e9
+E079 closure  exact 256-ID sticky/refcount/free-state manager modeled compile-only; no synchronized runtime instance or RunCompute
+private evidence checkpoint E080  d6374bb
+E080 Linux checkpoint  ed17ac035ad2422d4a85146e97c88cb3057eb174
+E080 Linux tree  0ab1640083173ac0070b3717bce4e8fbbee85ec3
+E080 module sha256  91da584b67236872bb8bb22c3ea99c7aeb068759e16d625531aebacccde2feca
+E080 patch 0013 sha256  a99aa363f523ea201287efa5eabcb3b3df3e0a69eb19434c2d34db73cd5ca473
+E080 closure  synchronized HardwareBuffer manager/FList sticky owner compile-only; no runtime instance or RunCompute
+private evidence checkpoint E081  cef34c8
+E081 Linux checkpoint  affdd1fba79d333530cac22d069212b6e65ef9d4
+E081 Linux tree  2626c74fdd6b91a09e51a24b187e7510760dd3b3
+E081 module sha256  23fbaeaf602208c1f5aef14ba8f8fb4c14a943a9339dd41c5a0f80a41b82b204
+E081 patch 0014 sha256  b20da8f6d4b4df1d6e58dd5e2eb90449a4da830f17acfa4837f4d78bd4bd9a33
+E081 closure  exact symbolic FList geometry plus fixed-object/HardwareBuffer plan; no GPU allocator or RunCompute
+private evidence checkpoint E082  b4caa6a
+E082 exact oracle result sha256  cf517eefd0a0765670c009f67f07cb263de4f2264c43a87be8c55bfa2fdb9f2d
+E082 private result sha256  7494831928c2878cf9f05b8654e69513e7634368abef5d1877a1e28feb4a7301
+E082 Linux checkpoint  724674ad034ee3502aa9448324cd0056b7b0c670
+E082 Linux tree  8d1327b8eb514abd506e751f578bab40ebe937c1
+E082 module sha256  f2d6d6838511448cd048800eecf8264811f43a54e8713dd6bb73d1fa46f661f7
+E082 patch 0015 sha256  cf5fa4401ec4e31c68df27f62bc470d680f7bcb76255b66da61c36b4be5a61d6
+E082 public range5 note sha256  68b5563f87ce37ae39fa9fb74802147aa41ba1cb87a4d6c61d3a07a00ea80109
+E082 closure  corrected FList caller option 0x20000000003; Page/Backup Lists exact range-5 compact 0x300; semantic class compile-only; no GPU allocation or RunCompute
+private evidence checkpoint E083  cd9bd35
+E083 exact oracle result sha256  689873e26adcfd5c4015992c203217d46e8be59c91a61332b16e5a899f78703b
+E083 private result sha256  8daa4f95575c181596a2d57133c8360c0d1221549201d63a8d2e422cb9e030d9
+E083 Linux checkpoint  b88369c26ffe82ce73765b8bbba64b2db771ef76
+E083 Linux tree  44e9f3c3c84933d5679dd90a647ebcd377855ee8
+E083 module sha256  c1259bd681ac030e38b75a4df2b77066423af48bb1f205f15be21acf609c3632
+E083 patch 0016 sha256  dfb98af1a80f7be36ef623476af27fe3b71db0638d5dc3f8e00d5c8f83bbc8ef
+E083 public geometry note sha256  b2b599517e0a9c78637cdeb71670a683e92e975287b16aa136505f9298818bde
+E083 closure  J615 exact M=2GiB B=4MiB P=16KiB; Page Pool List=4MiB/0x80000 entries; Backup List=32KiB; no GPU allocation or RunCompute
+private evidence checkpoint E084  63f0edf
+E084 public m1n1 main  d7df51a586a82f8fed9344cb1646ac5a8aee32ed
+E084 public m1n1 gpu-wip  11163540ee025d996f4adf45a40b91d6290ec605
+E084 private semantic result sha256  4aa574519cb1933fb130df275c94e2c08c970a2120cfaacd00a373ff677395bf
+E084 closure  current public m1n1 used as semantic dictionary only; no G15/M3 public layout found; 23J220 remains source of truth; no Linux source change or RunCompute
+E084 public semantic note sha256  dd373757d08ded2aa09dfd0af4449253d7cef01fa93ac38e42a1352957e7d4df
+private evidence checkpoint E085  e29b250
+E085 Linux checkpoint  9b21157497bb
+E085 Linux tree  dcf3368ccd71d1166d5198cab9dd21b3daa2d6f8
+E085 module sha256  a8d3ab97f621da84fd6d345543582fe1f59251ccd3170225ecebc8cbd4789398
+E085 patch 0017 sha256  3a93a7f7398e5209ff710ea44f9a142179e070c5d7643d5beafc61383699c707
+E085 closure  q22 range7 map/unmap=1/0; range8 special aperture=3/2; compile-only, no persistent range8 object or RunCompute
+E085 public q22 note sha256  c4d40a415d5921204ea16517f6af87d3f5e20c607b8113f6d516f47d43de0b5b
+private evidence checkpoint E086  5e6c06d
+E086 Linux checkpoint  3cd3f336d9f4c103f2df7e284b9a517a42e7d90f
+E086 Linux tree  65804f29fac725207b173f8e71f2f79f64fcf3f4
+E086 module sha256  ab9ea1342170bea6526b440d245a0bb4a88831db09018e0773d9673894dbdcf4
+E086 patch 0018 sha256  0d123511937dd9f185cab93a4cc397a87ce16984a1dc2137ab8d92c360bc8bf7
+E086 closure  exact four persistent FList backings owned compile-only; state stops at constructor seed; no +0x83e publication or RunCompute
+E086 public FList owner note sha256  fb41d73538146ba1dc1add68ec3e41fabf4e87848174c16aa1d79b42a8b98938
+private evidence checkpoint E087  dbbb0f1
+E087 exact oracle result sha256  5fd7b554829a8e53e522bb2369c4796c85b7d85e06f4fd2ed1a75db229090f67
+E087 private result sha256  5fd7b554829a8e53e522bb2369c4796c85b7d85e06f4fd2ed1a75db229090f67
+E087 closure  FList prepare/complete is residency-reference lifetime; first prepare commits PTEs, complete does not release them; no Linux source change or RunCompute
+E087 public residency note sha256  8ca1becb83940b5756844afc518ba6ea569ac85d62af3840581e60ee0f521289
+private evidence checkpoint E088  29e0335
+E088 exact oracle result sha256  7bcfb2ee3fbdae976d2258a05b8675d8acd8765bd8109d4530a19d080bb776df
+E088 private result sha256  7bcfb2ee3fbdae976d2258a05b8675d8acd8765bd8109d4530a19d080bb776df
+E088 closure  RunCompute +0x14 is rotating event-control FWVA; normal stamp update kicks scheduler, submit-event test gates descriptor/context/UMA retirement; no Linux source change or RunCompute
+E088 public completion note sha256  36515732c03dd1be6ec734d054b6797010314f4f4c88ffd53ca23a977db8d684
+private evidence checkpoint E089  0d9d9ab
+E089 private result sha256  abd7964d902692e961df03f960b01b6ba94c824ee4a049adf7a12f9bd80f96c7
+E089 Linux checkpoint  167c037a91a0b85fa10480b90e883de31fa88e0d
+E089 Linux tree  dbb40740b78de201ec0d1facd713628b9a5a5109
+E089 module sha256  0bf6bc2f1329c58a0e048016315c2a0ff509d334bb467b7d3150430fa8bbe3a6
+E089 patch 0019 sha256  7f6c87799aa8c79c4f8dacc8e91e20dd6564733735eb9bc41262a7548690f0ff
+E089 closure  exact G15 RunCompute +0x14 event-control FWVA now zero/fail-closed instead of wrong queue-wide notifier; no install or RunCompute
+E089 public event-control note sha256  0e98ccfbef99140ce80fd7a171b1b2f25e518bb49075b84f6894aa33e95433d4
+private evidence checkpoint E090  6737844
+E090 exact oracle result sha256  28dd918ecabf946333439010ae09a4d11c2d6356bd732665aa54446d072de0c5
+E090 private result sha256  28dd918ecabf946333439010ae09a4d11c2d6356bd732665aa54446d072de0c5
+E090 closure  destructive recovery force-completes stamps into normal descriptor retirement then separately drains cached context, async UMA request, sticky FList HardwareBuffer, page-pool and channel state; no Linux source change or RunCompute
+E090 public recovery note sha256  815cd3145a66052462d2d10e2d3377fc68898ff1467b4a7e0d51ce6261d414fb
+private evidence checkpoint E091  86cbfda
+E091 private result sha256  8e70216b55ba4be6a47ae8f0f4a50de785c24238cd7889f3f1dca86ae1069a8d
+E091 Linux checkpoint  97bd7129c3f05a22cc604ceb04a9c9bc39893100
+E091 Linux tree  27efe6a7509e5e1ca41a1561e24139644dc6b6c3
+E091 module sha256  fe09dd7d5471c73a1febdeb31a1d7e6c185c216036a1a6cd975b72d621f268f6
+E091 patch 0020 sha256  4b9bf4d04c067000317257cc3e1cddf79451b714d249a907b315a204a439bb4f
+E091 closure  exact 36x0xc0 event-control rotation geometry modeled compile-only; no mapping class/allocator/+0x14 publication or RunCompute
+E091 public event-control-pool note sha256  ca62962381fef60a677e9965d440db71ebd2798413e879a0017e833e258a8f5f
+
+private evidence checkpoint E092  4045774
+E092 exact oracle result sha256  4e1db24bfdd16eee280ef4f539275c415e5374066fddac630127e01df912bb9c
+E092 private result sha256  4e1db24bfdd16eee280ef4f539275c415e5374066fddac630127e01df912bb9c
+E092 closure  exact contiguous stamp pool=0x90 range7 outer 0x700000007 leaf 0x...0447; event-control pool=0x1b00 range8 outer 0x20800000007 leaf 0x...0443; construction links stamp FWVA at +0; rotation +0x10 config still gated; no Linux source change or RunCompute
+E092 public event-control-backing note sha256  fa66055d96ca49a07f54e16fb90abc887d73064b38cc56df9c6d2041bf1cd6a5
+private evidence checkpoint E093  517c0dc
+E093 private result sha256  022490015b4fe017c75fa3ae8598b15f370f482a645c98f0121083cc4a0aefc1
+E093 Linux checkpoint  ddcbd85be239fa4db5143826bc3ca0588bacbd34
+E093 Linux tree  2301c705e7d31892c9e06861aa4eb179e3809c2e
+E093 module sha256  dbb29792369f0a3ee8b66a5abd00501fd4a18d45d503ef701fb59c8e293319b4
+E093 patch 0021 sha256  83f6ab33b0fe7bfc28a704addeff80ea8881a936581ffc6057b3c67e197ed2cc
+E093 closure  exact range7 0x90 stamp + range8 0x1b00 event-control shared backings owned compile-only at page base with q22 lifetime and +0 construction linkage; owner unreachable; +0x14 zero; no RunCompute
+E093 public event-control-backing-owner note sha256  3e39baa7d17b11d3493f1c433c9062fe74ae090f903919573a1ec9ae746c9679
+private evidence checkpoint E094  af50580
+E094 private result sha256  8ea9bf59a361582abb2be6d477feda1610e449067ee4051031a6d6dd6c537faa
+E094 RTKit type-3 oracle sha256  0f454ef00b7a7cf24af4b25d00e9864f8c839103f096820503c03c2840bd3471
+E094 Linux checkpoint  42bca8d2e9dcc25682aa0aa87d48521fadd1a828
+E094 Linux tree  a492ce367bee16fab63aa8c80f465b83614655d8
+E094 module sha256  617064c5fa58080aa45e03d9d3a5166a4b1554338a3d65d8c94071656f4d5b1e
+E094 patch 0022 sha256  b51f92f11bb18f5b65e0071e043509f7f9a67737aad0df5759bdec0b5d5a5120
+E094 closure  normal J615 event-control +0x10=0x50 effective record count; post-finish seed modeled unreachable; selected FWVA and RunCompute +0x14 remain zero/fail-closed; no RunCompute
+E094 public selected-state note sha256  f0d6d68640898d1b261adbef165c1d7523d0d46445d743acf01d6d754630d664
+private evidence checkpoint E095  83ee8ff
+E095 private result sha256  c933b156abad1958bf7fd882454203e6cceaca061b1f14050bb5eda3ea632c51
+E095 closure  exact finishEvent dependency barrier before 36-slot reuse; +0x08 is unmasked shared state sequence, not stamp index; no Linux source change or RunCompute
+E095 public finish/reuse note sha256  e157847ed42e66847094b743ed22261c1819ae3c631647b4e8ad3f267544b45e
+private evidence checkpoint E096  a5320f7
+E096 Linux checkpoint  4ff63937d4fcc1c4afc9b52c4e5cf1240f049716
+E096 Linux tree  7174c9d766c79ed6679ff5d32eb0eb8f85dbc0a5
+E096 module sha256  7368ee7ea5959ba0ac47edfcfd1d6bdf12e18859c12d39222d1c8d98f6e99391
+E096 patch 0023 sha256  7b7b23b6f787692918b46e659ec598102dbd219a7413f2368e9cb169bd44f80b
+E096 closure  +0x08 corrected to shared state sequence; 36-slot JobFence guard prevents reuse until pending commands retire; owner unreachable; +0x14 zero; no RunCompute
+E096 public retirement-guard note sha256  fd598dada77e2371ce5b06865b07f88cb570f6e5f4b796ea6969de60ca5dd6e0
+private evidence checkpoint E097  7d73f4a
+E097 exact oracle result sha256  9c3ed0b605d2fe0a749bbb31170626ca2ef8170d2f74f23d5373d1b11fca6c8f
+E097 mapping option  0x0001008700000007
+E097 compact UAT option  0x30b
+E097 exact leaf bits  0x00e000000000040b
+E097 closure  one 0x4000-byte HWMetrics page, 0x100x0x40 ring; exact PTE is existing PROT_GPU_FW_SHARED_RW; no Linux source change or RunCompute
+private evidence checkpoint E098  03d4be5
+E098 Linux checkpoint  d18178f018aca2b92249ab72c5c361e19b6f45dc
+E098 Linux tree  69edfedc61b042a086bf1cd82386d3c09d60f18a
+E098 module sha256  3e4f66140e3c679932d953454505fb7df0a48fe3aa3f525120a21e7d620ef42e
+E098 patch 0024 sha256  674cc741ac89a47d05bcba1e9e8e3e83e5c9e98386cf30dd4cd20526de567584
+E098 closure  exact HWMetrics semantic range-7 class + unreachable page-base owner; +0x857 zero/fail-closed; no install or RunCompute
+E097-E098 public HWMetrics note sha256  02580775b7ecca164c902d7408797d34e61f1ae1e5bd5eeabd6cddc16c4f9549
+private evidence checkpoint E099  bb64054
+E099 Linux checkpoint  47a8c0070a4be796f27ed64f3ca7a7f198b8af1b
+E099 Linux tree  c97331359f2996c1c7d09bedde5b99eaea362079
+E099 module sha256  0fb676474a24d9125df61dad53ed4611ec8bb3838775d7942aa226b4bedc422a
+E099 patch 0025 sha256  3856385c33bdd33ee4556f93511642f6dff8c0b50e779f527b6993a2fa96eb2b
+E099 private result sha256  eaccc02583f5ef38952235c1a6d920bff66d014b3149652d9e6550d11d2b8c55
+E099 public FList population note sha256  99060bcf0acc4bbdb1b957ea2d0b3be0ac7ddb51c8303bb02826ffd087bcf8c0
+E099 closure  exact post-populatePagePool 0x70 firmware-state image modeled unreachable; page-list contents/chained backing mappings and RunCompute +0x83e remain gated; no install or RunCompute
+
+private evidence checkpoint E100  422d408
+E100 exact oracle result sha256  c870d66bf0ef752b28fe84bc10e6aa15608fcff352fd1e286e419977ffff6dc3
+E100 Linux checkpoint  bd95b9c01004eeb8b35f6c7d06224bac635d2cfa
+E100 Linux tree  8f10c024ee2743f91112f920d37567979ef0a07c
+E100 module sha256  fc6f5ae8eed0e2d6543ab3a488b94da9ba2cc310d693fab3d49faa1b9a07cd91
+E100 patch 0026 sha256  562c1194867b1d305af3aa8c5f41731385db1d4b1e905bee73e422cfb4bbf18e
+E100 private result sha256  3d9e8114c701be231b3077c43dfb734883f2db78944412461f6bd00ecd7cbe4c
+E100 public stock-empty activation note sha256  9922493704a2c61e256dbdf0e1ddaf6b78454e5a8db13888fb19db35d3235a8c
+E100 closure  stock-empty first activation has zero populated pages and zero Backup extents with real mapped resources/capacity/HardwareBuffer ID; helper unreachable; RunCompute +0x83e zero; no install or RunCompute
+
+private evidence checkpoint E101  86c1c46f25be05bc09ae7f98cd13e43417af1304
+E101 exact oracle result sha256  f01cdbedda0cd26434591712633b57dc79795f96cfe24be5f5b9cd7103acc678
+E101 private result sha256  2103e7e0a0c6df754d408399f186789ae729b631d9957e80e7c562f17be4b5ce
+E101 closure  exact inactive stock-empty 23J220 SKU source map corrected/closed; no Linux source change or RunCompute
+private evidence checkpoint E102  4a0a98c0834ed694ade9c3868af815517bbf7219
+E102 Linux checkpoint  897d3ae4189603b58438131724e8d481f03b6917
+E102 Linux tree  2bc3de6ea13b5115594305bb597f10df92a735bc
+E102 module sha256  b6373f5b22796f11994d2292663bff0464f945488c09edccb666bdce81829778
+E102 patch 0027 sha256  7d19ec1154d99778587329ec3dc10304f141e11d0214a741a186ed4b94eb9adf
+E102 private result sha256  e02f2d42433ba55a75065e8dab8ea5c8e0e2924c9f3b4ba4fdc62dcfa1f93f0e
+E102 layout audit sha256  bc5a7b842224c81fb4e671d944ddbef87c9e988ca90c376f6b264503572c13b5
+E101-E102 public SKU note sha256  792be8bdc02307094251d128939714acf2a595e96fdccc3ee57cf4189824389c
+E102 closure  exact stock-empty 0x2c0 SKU serializer compile-only/unreachable; no GPU backing, +0x760 integration, install or RunCompute
+
+private evidence checkpoint E103  e513fe821754891ea631db1fa523bcc7f0c8f862
+E103 exact oracle result sha256  81487a025ee612d300afc4bfad4871128fd1035afb19239899673584ba424667
+E103 private result sha256  021c73155f856e0cf822822bd12e95cf89b3068158721daafb9ed8332c39c0ea
+E103 closure  exact Compute SKU backing=0x30000 range8, 0xf0 slots x 0x300, host event storage 0x3c00, encoder-lifetime mapping; no RunCompute
+private evidence checkpoint E104  83d9e328b7c71adc0fe1707612b9df1369e34ad6
+E104 Linux checkpoint  d54dfc78d0592e2b8bb239aac61b9bc0489e3a78
+E104 Linux tree  16d86879298422b44475805f6cbcc2a1502579e1
+E104 module sha256  4ca508de93085f783563ce7dbf0c8043dd7bdd759ba8cbeaf221aea37fd71215
+E104 patch 0028 sha256  f39e59e9138a406f9459799417856f64e5568e9a9d701d978094dca99d4550ee
+E104 private result sha256  337364ce13d5aed97e5e9d89f30c8d22f4b0337de5c98002c26a70b0eae14983
+E103-E104 public SKU backing note sha256  b821e016d6b1f922563157861f5821c028c2afae5a15d54d6befba24b015d184
+E104 closure  exact zero-filled page-base 0x30000 range8 SKU backing owned compile-only/unreachable; no selected FWVA, +0x760 integration, install or RunCompute
+
+private evidence checkpoint E105  4e6e01d
+E105 exact oracle result sha256  4c095a82e3f996a6058bf489f81a49811da70f4287313ae6c051789f00d1c58e
+E105 private result sha256  f59a0e088effae86bbdf54f7aa8b3f5ee940e7a36c20b44c8494321463d56397
+E105 closure  exact next-slot testEvent/copyEvent retirement lifetime; finish returns selected backing FWVA; no Linux source change or RunCompute
+private evidence checkpoint E106  f990b4c
+E106 Linux checkpoint  69af01482ad8fbcba160559c308b8905598e3c6e
+E106 Linux tree  d9b6b43aec68a22ea9b84728dc410c418fca65f0
+E106 module sha256  77c7ca7cb034a416c45127c3eeec9822979da6d380f78fffa6740a69d3d5273b
+E106 patch 0029 sha256  3fcc1da7175d5c620af0da495df655cb6120a1293b448fcf47995481af6dbf72
+E106 private result sha256  a11b0c86c07ed8786713f4fac5124a12c23450782ca08478373665d0f7956be3
+E105-E106 public SKU retirement note sha256  fe60975105242c25cba2d0567a0357dcc1b0294ba0b346a5b9cb015f53acdfc6
+E106 closure  exact next-slot scan modeled with conservative JobFence guard compile-only/unreachable; no SKU backing writes, +0x760 integration, install or RunCompute
+
+private evidence checkpoint E107  4d32d00
+E107 Linux checkpoint  f3464e7ec21633631df5e942303146069a62737e
+E107 Linux tree  5a6003c16ef70d8539cc948f03e949bf5c83458f
+E107 module sha256  0a8797840a9b64d40d62cbc8c302f463fd812283d55a0df92202b1e5716387c6
+E107 patch 0030 sha256  a72416b0cff7b53ce6ab38b038c03162f8c6e62811bf81ee97e9e56e923338e9
+E107 private result sha256  1507761947f76da8faa779b20b7fb595224c66e21ed50000490707a9f1f0c0ca
+E107 public prepared-slot note sha256  9f0316e0979974ecf5fb18866e0c66a516ec3154dbe07f0b507ea0c40551b762
+E107 closure  exact stock-empty bytes copied into caller-retired 0x300 slot and returned as unreachable prepared token; no +0x760 integration/install/RunCompute
+
+private evidence checkpoint E108  06aa44d
+E108 Linux checkpoint  ea707e8e7726c30da653a026384d097c876db0dc
+E108 Linux tree  047a29b09eae77f4956ebe31a2fef1c3abf201a9
+E108 module sha256  56de872a869d55f785295258c88d43ba51b15639b4742a6bd3d64cc0e1ff41d5
+E108 patch 0031 sha256  7ace399664a792102f8ea8830d558bc657c3dbfce7f5a03abc721eda8a61453a
+E108 private result sha256  6946271c86b43c506516bbaa28c72c30895f3dacc07ee2418a9a54298ae9327b
+E108 public owner-graph note sha256  4332bd27dd12dd603124ebf20aa0f78e502182cecc8c6393f3142a6aed994f9f
+E108 closure  prerequisite owners coexist under unreachable graph; no slots/activation/FWVA publication/RunCompute integration or execution
+
+private evidence checkpoint E109  e172f34
+E109 Linux checkpoint  a783f835b437e43f019b58b00daa0935b6dacf84
+E109 Linux tree  21c8418854d9c10ac54cebf6b5b60fda24214619
+E109 module sha256  edc77c86d83582e57b7aac8f9e372ba279316740b4f04bd646c91fadb1857bc2
+E109 patch 0032 sha256  7e845a12e9f06aee6a9ec3180c9ae12944b24dde753b7bfeb7f396f7845f92f4
+E109 private result sha256  d92fe1a5f301c61453200e193e21c394bbbdf5c864a374e8e2019d64f3bda077
+E109 public unpublished-assets note sha256  0d07ec2d64f0f029676ed8fc51a0835bd1959c36e4d8ec3702fab271350a85b4
+E109 closure  coherent private non-Copy event/SKU/Page-Pool/HWMetrics/HardwareBuffer token with rollback/completion; guards separate; no RunCompute consumer/install/execution
+
+private evidence checkpoint E110  c350815
+E110 Linux checkpoint  63bb6ffe4f22abcd86db40b86e349a5aaea99bc2
+E110 Linux tree  3878c44828b1e20edb26d7ce98a3ca9ea8fdd84a
+E110 module sha256  7482c77f7883530ebb6130baf72173a962c54a07bf77aefe57e6e603e945ce68
+E110 patch 0033 sha256  3c5d7cb4389ac7a33d0dac07e9b0a8e492a6817bedf62d9a08524d868f0f2aa9
+E110 private result sha256  37f92e6464632d46a3400ea94f29bcf29a05cf2c35fb26efe2ba22fb3abb1d3c
+E110 public guarded-assets note sha256  7ca75aa7412332b683fd6a5f583c733931c85af3cb179cb9c3c54875ab55a59b
+E110 closure  exact event/SKU guards bound to armed fence before private asset materialization with failure rollback; no Queue/submission call site or RunCompute integration/execution
+
+private evidence checkpoint E111  3f86a4794a8cf1545e887816e4dc1406ccadf6bc
+E111 Linux checkpoint  139b745dbf0092825cad3c65bc18fb03385f2305
+E111 Linux tree  a9dd74c5b7a0acb8b43e120f5e72d7cb0be99894
+E111 module sha256  ec27e7ac2f4fdb9725813017baeb1431e9361bcf9bf7083322f4082b62b3f755
+E111 patch 0034 sha256  3ac519ee47769c346b5d82bb092b3d46b9ce742275949389b31981f05c019221
+E111 private result sha256  64b11b92bb896d76dfd4ebd5ee95321332d410adf6cde41c69386ae6b6422b13
+E111 public field-stage note sha256  fbce44e6ee7fa840d603865ac2102080102d666aeb004dc0d2164093ed38a60b
+E111 closure  exact stock-empty RunCompute-facing asset values staged host-only with retained HardwareBuffer lifetime; no firmware-command writer/call site/install/RunCompute
+
+private evidence checkpoint E112  222a0cec0db9bf4ead8f389d43007b7829b5a303
+E112 private result sha256  af4de75d096791378edef0c96b7e78e1c96e65c2a8d877b2bca0cbb777cc6bea
+E112 audit sha256  f148502308e6d07b92350f7fcaa03233b3007101698a7e4dc29c48959feb55cf
+E112 public integration-gap note sha256  4a9bed0e1c18897748e474066889ce94bcc47002d73fc53e4c2fdcfe4bf96450
+E112 closure  static audit blocks direct E111->RunCompute writer; requires two-phase SKU/command ordering, early fence arm/rollback, missing runtime source bridges, and exact active pre-micro/JobParameters2 producers; no Linux source change/install/RunCompute
+
+private evidence checkpoint E113  ef8bafd8fb50cabf463ecf731630fcf751633642
+E113 Linux checkpoint  b21300a1ad4db8df298c493c98f014803d33ad5b
+E113 Linux tree  66a6a838a94275fe6352471b7c9c12804920ddba
+E113 module sha256  067a3767ed6782a8ae0f22985de1d40f46bc995464e819f9df962c111c3630b6
+E113 patch 0035 sha256  9c7ccea01b1102e6a100817f04d84ac80187cd3750eeaf9069231c47c9237645
+E113 private result sha256  90c71bf812e0b8d5490be5d1f8e7f9463c9c16c29fbd6d0d6a68eb145247eea0
+E113 two-phase audit sha256  c2328e3d55ea7462845d85dde5beb3974f8e6fd32bfd4ec608f8972bb80d8a69
+E113 public two-phase note sha256  7f8bbb579b073536b4c58bd06ca4c6898dd6af49c96fc37408c3be34ef1c5ca4
+E113 closure  two-phase dormant select/prepare then command-aware SKU finalize; unresolved runtime inputs remain explicit; no RunCompute writer/call site/install/RunCompute
+
+private evidence checkpoint E114  206fca7
+E114 exact oracle/private result sha256  85e14474309be16d9ebfc70ab0cb3c74840c4bbdc066a0eb1417b69797ea8fa1
+E114 closure  exact J615 CL command resource stride=0xf400 MGPU span=0x800 logical bytes=0x1f400 option-3 range5; evctl_index=channel+0x38; flush_stamps=(descriptor+0x48!=0); no Linux source/install/RunCompute
+
+private evidence checkpoint E115  8e2facb
+E115 Linux checkpoint  059d34701e480252829c6b397dad5ee2eb8881dc
+E115 Linux tree  9ae728e61b03d505b5c9f06e0f3d38eb056fc640
+E115 module sha256  e9c75081c07cf34d0234ec929d1a22ef7f34d393a660c66b1110c865b6df3ec4
+E115 patch 0036 sha256  54bd94f69309e5e87ce9326eae90d8e82ac2ea809993d935468e38b502796e7d
+E115 private result sha256  fb80eab8ec36d022f355f5679ab19182d231e65e80707dc4e9aa3e1779c0381e
+E114-E115 public CL command-resource note sha256  1ddfd48301da0b96611958309d2ea342f53f86c42654a4b7927b6cd9bfea6489
+E115 closure  exact CL command-region base now owned/derived inside unreachable graph; no Queue/submission call site; live +0x14/+0x83e/+0x857 zero and +0x760 unchanged; no install/RunCompute
+
+
+private evidence checkpoint E116  721fe92
+E116 exact macOS oracle result sha256  508876540bd9945c43f17658edc7a02f1b91cb5471ed38634afd35257c90c60e
+E116 private result sha256  95c088b13fe7afe6749d1a89c440716a4942d19a5eed91e89593745219ff3016
+E116 closure  exact _AGFIChannelState element=0x24c0 backing=0x8000 slots=3 range8 outer=0x20800000007 compact=0x003 leaf=0x00c0000000000443; selected FWVA reset/release lifetime identified; no Linux source/install/RunCompute
+
+private evidence checkpoint E117  e4303ae
+E117 Linux checkpoint  252ded3b63533ab89b45e965546f2f0b9d2e57a2
+E117 Linux tree  e212c71cc52ac68382d3d8dc9a8b022790ae53e8
+E117 module sha256  e33655defa2032facbecd28fc58a61aa14fffe2b3adea61067f0b6c24765386e
+E117 patch 0037 sha256  3e55bb96fd6a6260c2172c51420b763ffed78775d31ab50a8ace2fab2b054821
+E117 private result sha256  f91fcd65998ac7e1b9b1d2ae00e5f918f8b59b5e38d816fb32da7084c09fa8c3
+E116-E117 public channel-state note sha256  4bc35c1ba19f17c6e7181b2df1c3f5242c30c9184a71a79d415cbd2d33cceb2b
+E117 closure  exact channel-state range-8 backing geometry owned compile-only; no selection/reset/FWVA publication/call site; live RunCompute fields unchanged; no install/RunCompute
+
+private evidence checkpoint E118  b0b9381cee3b4ed1f59b0421261c4d1f356345a9
+E118 private result sha256  14b4e869686bb942e9ef31ad84bf0a1353621cc10c3e8ec715f9f1eb8aa44c0f
+E118 public reset-priority note sha256  88a14baca47269c2c8a4778ac27e13f0494edc839c65a093a122ff99588df353
+E118 closure  exact selected channel-state reset + priority mutation ABI; inherited Linux priority table not direct G15 authority; normal CL constructor/priority tuple remains gated; no Linux source/install/RunCompute
+
+private evidence checkpoint E119  2a00074
+E119 private result sha256  69111c7a08b5bf85e2bad3d192b4cb28d148a136baedcd6e2f5d78cf2bbc9de9
+E119 public CL constructor-priority note sha256  98f802d23db66fe6a32904d99c7caf8d6810022e0aa673b227bee2d08347d167
+E119 closure  first CL evctl_index=0 / subsequent index exact; J615 second channel integer=0x50; priority tuple derives from effective IOGPU priority/QoS with integer arg 2; no Linux source/install/RunCompute
+
+private evidence checkpoint E120  0748095
+E120 Linux checkpoint  98d829e05a896cd7b2fa05c626aaef84128c2c9e
+E120 Linux tree  3be13579f13cdc311255cc86a2588446c516ff71
+E120 module sha256  7bb1fbc5efdb135b1d72a5c31342689dc0381991629b28031ef4c3e060b672f0
+E120 patch 0038 sha256  121ba441698ce9ffaad418ff60e3d39553d5d6e2bf228b3085e2e475b5e66f1d
+E120 private result sha256  8e697518ea22661ff664cd26022f4271e26375743275b716c89d849717e3129c
+E120 layout audit sha256  8be2238ba246da5c996c65f1c9fbd67dfc7b80ef6bbb43328d971690dc91927c
+E120 public selected-state note sha256  09b9ecfdd1750c8b8ce4dc00b36b29da658560d64c8c66b04d779ed41c8e3b62
+E120 closure  exact selected channel-state reset/priority image modeled compile-only; slot index kept distinct from evctl_index; no SKU/RunCompute conversion/install/RunCompute
+
+private evidence checkpoint E121  eae9bdc
+E121 Linux checkpoint  563b93f4bce3bb8d1ddfb12f9737acf99905fa71
+E121 Linux tree  b51a0dee9e73cd2f4960a4ac93a3d66f8cbdeeb4
+E121 module sha256  091ed2873c01ac2ad11df958f5d0e672c61b90dc311ccc22e8d940d0dbc3d9e4
+E121 patch 0039 sha256  6b77ba2e318ce31c2ea1c60e3d76aff593bad617455ca2a3a0443f4b6f1e154f
+E121 private result sha256  52c7ebfc5e0f39b0ea30dd8a92d187b196c63f2d80264b916e95d086d3285a6a
+E121 public gpu-buffer note sha256  39e89f928cf2f215641b1119e9df919ade2a4990d0031ab7f4594975345c731f
+E121 closure  QueueInfo +0x18 derives from selected channel-state +0xb0; external gpu_buf FWVA removed only from private compile-only helper; no live WorkQueue/SKU/RunCompute change
+
+private evidence checkpoint E122  c918f99
+E122 private result sha256  bc6e456d5b3122a425a99ac8aa7d6b41a3d7682338f3d3c0add10613f181387f
+E122 closure  exact J615 cached/uncached channel-memory stacks: element=0x2860 backing=0x8000 slots=3; range7 outer=0x700000007 leaf=0x00c0000000000447; range8 outer=0x20800000007 leaf=0x00c0000000000443; no Linux source/install/RunCompute
+
+private evidence checkpoint E123  5724633
+E123 Linux checkpoint  14954ffdd9c5fe47126b1af5cc99bf8a9f6a2140
+E123 Linux tree  51444ce1b31131b88d8db0b0da2cd27d4b8e816c
+E123 module sha256  96a6a87b2b7c6cc91da93452f89bf428296ea058d4b3f3b784e913da77495f83
+E123 patch 0040 sha256  fa17051647a4fcd55b9c818624e9d0d91d0de6c0b200de324c7d42f239690f47
+E123 private result sha256  d255f388df2a4f083d156342222cf66d91487adfb3bf104166dac74429aa304b
+E122-E123 public channel-memory note sha256  5aac9e56237ca88ea7ed227f2a4494af04b8c7ff20a2499611977a514c3cf265
+E123 closure  exact cached/uncached channel-memory backing geometry owned compile-only; independent range7/range8 semantic allocators; no selected FWVA/owner-graph/live WorkQueue/RunCompute change
+
+private evidence checkpoint E124  c7f8ce6
+E124 Linux checkpoint  1d9c455c0c0dfdb6a5b9703bfb44bb6b2877736c
+E124 Linux tree  81c687644b41f17b4c9764609cc47697b7d08e83
+E124 module sha256  660eeb875f6abe13a860af455bd29b1ca0739d60870be79d62bf033d9c30a096
+E124 patch 0041 sha256  fc18ea83ddd0b36e03f5ec968b89e58ce306a486257119bb510046c2ee7c1831
+E124 private result sha256  7de612e06ed4dc5e7484272e5c0e230fd9b2ca5d36822d94396996eef18053fc
+E124 public uncached-reset note sha256  841d73fd131895e31c08c08793c4be7f538cdc77c84637b7d31c9cce59579e08
+E124 closure  normal J615 channel+0x54=0x500; selected uncached element writes +00/+10/+20/+30/+40=0,+50=0x500 only; private slot token no FWVA; no cached/live WorkQueue/RunCompute change
+
+private evidence checkpoint E125  feb69ba
+E125 Linux checkpoint  adfbfca2e26565ce974fd6c238c4910abf99533e
+E125 Linux tree  ca21d51c7c50740e1e925ee6838c3634c06291dc
+E125 module sha256  7630b231b211b6f71ebbc40be7cd3a07f16ef1d333091826761306b02d3aa7d7
+E125 patch 0042 sha256  9f609c0a9a06ef5e625072c254b3be52c614cf4161be664e285d4c7b13ad5dca
+E125 private result sha256  444676b10dad52a52542571ed928a96eb20310cc38c762fc1517c5f21cfe095d
+E125 public timestamp-state note sha256  d5cd08c774c3c241ac3e632c44bf4bc6e56e8bc2d7ed1241701f9b934ad0679e
+E125 closure  QueueInfo+0x10=selected AGXTimeStampQueue state FWVA, state=0x18 range7 backing=0x4000 states=0x2aa leaf=0x00c0000000000447; private owner/reset only; live WorkQueue notifier/RunCompute unchanged
+
+private evidence checkpoint E126  fcc5fd43ae30d330b9afde418820f6fd70799320
+E126 Linux checkpoint  293ca63380179cca5bb8c6511a67349f90878b44
+E126 Linux tree  2a2089948c3d9795ee385d364e70a5c39b162c92
+E126 module sha256  a5e31931d40181f8bb2aa2ce1bdc5a7c707b16603df87fd3209014554d817270
+E126 patch 0043 sha256  9b52358b14a67ccccfb4244edf3264b5c9aac14f7d0e479d4ea8b78e3c64ee67
+E126 private result sha256  2d4d56178e6c1ee0914ad5761724d3d273025ca5ea1871112aa37d91a7912ca0
+E126 public scheduler-state note sha256  db57cff80137754ed79635e89fd645e880cd94bccb1949be2c3d61a9d5fc42e9
+E126 closure  exact _AGFISchedulerState range8 element=0x40 backing=0x4000 slots=0x100; selected queue+8d8/channel+f0/QueueInfo+a4 provenance and 0x38-byte host reset modeled private; live GpuContext/RunCompute unchanged
+
+private evidence checkpoint E127  01146a4cbe50c1f9e8b9201a71bb26b6110d7faf
+E127 Linux checkpoint  8f6bd394ceb5bdcd62bfa2ca3817c85bd7cabf9d
+E127 Linux tree  87431d2ef1ea1a35882d5a499117d73ae295ea30
+E127 module sha256  a2d0cbf1d48639b4271f9136e60c70e8d80113848a3e13cda2db1b3a1d69a48a
+E127 patch 0044 sha256  840155573f3adb6104ac1b3f37a150950f23f221befdee627b94d6dbd81c10da
+E127 private result sha256  144823b7136c741acfb162d019da631527aac07fb199d896a888b7f87c038f9b
+E127 public channel-owner note sha256  41df82e47b77ce3fb31e25ec06179443db572b8be907096e476d67680e445518
+E127 closure  timestamp/scheduler/channel-state/uncached/cached resources grouped under dormant owner graph with independent indices; QueueInfo pointer set internally derived and external SKU channel_state_fwva removed; no live Queue/RunCompute consumer
+
+private evidence checkpoint E128  03a626f05ae3b4b2e99bc46bb04a6e027411c909
+E128 Linux checkpoint  ccc976c598ab40f9cd8ef24837af1139979bbc09
+E128 Linux tree  b02f2c4472e65afee9c404759da93622e3840db6
+E128 module sha256  ced66b40865979c5aa70686673ae939058ea04d4db789428285d87f2f19da66e
+E128 patch 0045 sha256  d00b74399fec6bc6b8e14880ffa9b8a5261f9001ac79b732c2d8293582513070
+E128 private result sha256  5e8b7bc2fe8e5171d686b90c35294aa1362c65e5792af2b9fc0d6a449f8eb798
+E128 public fixed-SKU-input note sha256  67d7624eddd8f915c9a6fb5308b694dcb6f5bfdafbebdf3c6e05fb9d56c09d79
+E128 closure  first normal J615 CL evctl_index=0 and accelerator packed-feature bit39=0 fixed at dormant owner graph; generic serializer parameterization and all live RunCompute producers unchanged
+
+private evidence checkpoint E129  89944d6112e834a0751e97a224d46255e37e5c58
+E129 Linux checkpoint  65451e3d5cc8ebc582433abf874811c7eada79b9
+E129 Linux tree  7d9dce6e7d31964e1510a989be75b410f25575ad
+E129 module sha256  2e0b960a2d69686696888523c03053693b3c20cc6f4af80d45c1d5fe736f7358
+E129 patch 0046 sha256  5a25d57ee310108032636fa8cca8b6f53f92043660ad68151b089da570846741
+E129 private result sha256  32d78f330dcef8125efa6e4bcc7ee8031aac4ec16aaccc7f7e647c78bd21bca2
+E129 public GART soft-fault note sha256  67da714c00c0936fe96baa42e9b2da5ebec7503b7f43deb89de4f3476e62c116
+E129 closure  ordinary IOGPU type-5 options=0 chain fixes J615 gart_soft_fault_enabled=false at dormant owner graph; generic serializer remains parameterized; no live Queue/RunCompute producer
+
+private evidence checkpoint E130  5da3af454bbd19a3290e39f8a6c656dae18b0791
+E130 Linux checkpoint  635fca8e84b3d6ba27f6f7dd760275c635cd3495
+E130 Linux tree  7ffe7e70a303ccefc7e46d9595fb33de09d6b1d4
+E130 module sha256  f58313ed791123de197c9094199867cd50e5e3fc4c04d96eb8f00a67f5732039
+E130 patch 0047 sha256  c92763d73d9587e0e7c4116e5721c8238c94e6e4c1acb35f4b00690b1b790796
+E130 private result sha256  7aee7971b4712788e02f066e0c2e0f7be4f9fdd071a6764870c7f76076353104
+E130 public Compute-stats owner note sha256  1be374e8aad43e7fb02522f303fcaef9add941efbf5d27b87a26f0186b60c778
+E130 closure  AGXFirmware +0x228/+0x268 exact 0xe10 zero-initialized Compute statistics object maps to manager-owned Linux G15StatsComp; raw target firmware_state_fwva removed; generic serializer remains parameterized; no live Queue/RunCompute producer
+
+private evidence checkpoint E131  f269b876eeb330263a775b6281f30c1b8837e760
+E131 Linux checkpoint  251a60a085f3bb9bfdcb04f1d6fd28f24dbf2cbb
+E131 Linux tree  a54e4d9c9792d286e70607aa388f5c0dc61dbe9a
+E131 module sha256  affcea840e5e49f362a562c4a20f0933a64741a7f44385b17ae4600ab77aec90
+E131 patch 0048 sha256  6b3d93b5a39003e650fb6ddfe4ce8994358d3e2d9da0e1897d7cf0395a73ed66
+E131 private result sha256  4c88fc22c93b9b39c7451f3b53dcc9679e26a7e9177d9b0b6e84bbf35ad7b171
+E131 public RunCompute-source note sha256  be74351706891bc389ae8e6460b34c6dae4c322aba1408b74c9ad6e98c1bdfcb
+E131 closure  command-local stock-empty SKU inputs derive from typed RunCompute +0x04/+0x10/+0x7f0/+0x7f8/+0x808/+0x80c/+0x828/+0x830; target scalar finalize-input bag removed; no live Queue/RunCompute writer
+
+private evidence checkpoint E132  50e2f3c8f82a44d8cd835f4477aceb79378436b7
+E132 private result sha256  feb8167a46725650aa63613573ee33326ab3a7e9b6b60690746420584d9c0aea
+E132 exact AGXMetalG15G_C0 sha256  d262a98d865cde1d9af8df0ed318bd5109efcfbc940968d8ef9fa8402565ae88
+E132 public JobParameters2 note current sha256  df258ea0265b742092ad73197c9f27d431702bfa11ebae7b61eba9b55f027614
+E132 closure  exact 23J220 userspace producer proves stock-empty RunCompute +0x774/+0x77c/+0x784/+0x78c/+0x7a4/+0x7ac/+0x7b4/+0x7bc and G15JobMeta.engine_state +0x7e4 are zero; Linux E131 unchanged; E133 later corrects the then-open pre-micro source; no install/RunCompute
+
+
+private evidence checkpoint E133  93a3906f839b17b459a84f0a97d814eaa69463c1
+E133 Linux checkpoint  f09bed89530e5fa482240c55653545a3bed3e292
+E133 Linux tree  6e3a8f1ed53a8890f0f6c1437db18a5a541e221d
+E133 module sha256  b4f6dddbaa80a53ee853ac18d424f6e91cb13969849ff50912c26eba13a2444f
+E133 patch 0049 sha256  9ecc99bd4273bd2e894c88dc73cfb95d80909cdd98987d96fb58bf233406eb14
+E133 private result sha256  795d021f10c31ee2b2817fef5d990d2f3390f2883530b58e237b5387c1bca565
+E133 public pre-micro raw-source note sha256  1df99809d819af1f21bc98aea31f99fc43511505e4e2c05fbd569ca9fd89b405
+E133 closure  exact caller/prologue tracing corrects RunCompute +0x740/+0x748/+0x750 from queue-state aliases to raw Compute +0xc0/+0xd8; matching 23J220 stock-empty producer proves all three values zero; Linux bytes unchanged, semantic names/comments corrected; no install/RunCompute
+
+
+private evidence checkpoint E134  ef1eeade54c62ea7f89cce4d590f8d1479b2bdef
+E134 Linux checkpoint  a244a846e3014b9eebdec580f852e39d27a1a50d
+E134 Linux tree  179518d4f4d3d41ce658800f2f0e92ad7b2d176e
+E134 module sha256  b6f65074d982472119d326a1eebb286a0680aa57c002fda0c9f0ec32ef9747e9
+E134 patch 0050 sha256  4c0ea24e0581fc0f4ce8e6de1fc9ed1fce25cffb91d68ae3a628fc58f3bacbd0
+E134 private result sha256  f2da44daa128f46127de5e165a787297f355096cc1ac599304701cd645740e88
+E134 public two-phase fence-arm note sha256  cbc9603a831808031d5f528eadd7f3302879723f06ab798243258ba9a1eace95
+E134 closure  dormant two-phase phase1 now acquires one RAII JobFence command reference before event/SKU retirement binding and carries it through finalize; explicit failure/abort/completion asset rollback precedes pending-count release; live submit_compute and RunCompute bytes unchanged; no install/RunCompute
+
+
+private evidence checkpoint E135  a125e34c17580e9ef01315d91927a9087e1e55b9
+E135 private result sha256  5fef175bdee32993407502c8e202f97bad90e012b512f8848161a4393037945b
+E135 public shared-Compute UMA placement note sha256  f8b935f54fa07cd8cea22a03d9d9affb5dd2905b6aef783b7ce8045c83a2317b
+E135 closure  accelerator +0x2a08 owns one 0x100-entry UMAPool HardwareBuffer-ID namespace; normal CL channels select/reuse shared Compute pools by priority class; UMAPool +0x80 pool ID is global creation-order state, not a Compute constant; direct per-Queue all-in-one owner-graph placement blocked; Linux E134 unchanged; no install/RunCompute
+
+private evidence checkpoint E136  29d519cacb9df7fbe5cd919e2ecc6ca42f6c7efb
+E136 Linux checkpoint  7c7e4d68082f8ff349c191bc3021c2f7d023009e
+E136 Linux tree  f6dc1e1f4a7bd308991dec1de29b41879a56f452
+E136 module sha256  efe3e1ed324db6d3abf77ac6b930a5f7a16ef27c45ad9b187c10c123bb925d9b
+E136 patch 0051 sha256  19cdffd3af93a7d0043572e23f9edac69dd02aca8228e2b476a4b802a52deb91
+E136 private result sha256  385950bed45d7a70189c53502e1c77d5830a7a4c5e1d422d90bcdc2d6ee9d3cc
+E136 public shared-Compute UMA owner-split note sha256  3bb6ad29e425811151ee1b07f65380d451bee90d4c74b7ea56feaafc43346121
+E136 closure  definition-only ownership split puts the 0x100 UMAPool HardwareBuffer-ID namespace plus pool-ID sequence behind one device-global state, moves FList into a reusable priority-class shared Compute pool owner, and removes FList construction from dormant channel/command ownership; no GpuManager/Queue placement, submit_compute change, install or RunCompute
+
+private evidence checkpoint E137  340353045505b09e7fc4fe09c53fe458afe6a5c1
+E137 private result sha256  41554eb8321e75ba8522c4662aca9fe8abf282159a286c4a1a012d6fd413c09d
+E137 private lifecycle proof sha256  a625440ccdb72b57be2037057ad44d08f02fdc76b55fbafbbb4f242116e97afe
+E137 public shared-UMAPool lifecycle note sha256  e3bf35db681b56bae7b849f939250374018fcbe1dff3d4b259a74a2d286ed7d0
+E137 closure  exact shared UMAPool container slots are weak references promoted by nonzero-only atomic try-retain; direct channel refs are separate from pool +0x20 active-epoch retain; last-reference finalize pointer-checks/clears the weak slot and cleanup releases pool-owned container reference; Linux E136 unchanged, no install/RunCompute
+
+private evidence checkpoint E138  1f1cafd96199af664f668f876f839caa43d26b9a
+E138 Linux checkpoint  f2cb03001da02b1bde833550f38700b247ca30c2
+E138 Linux tree  1e10f2d211ddb16995ac73de2c7c5243f9f6d1b0
+E138 module sha256  3f9406c6b481c57e6d15082414968b128e330dc035c8a9fe1c0e8330586ead9e
+E138 patch 0052 sha256  708529d42db6c1f162d8a8e37c754a23e7e25bef364c1349a9f4b11680488b57
+E138 private result sha256  1a86e03571d4447fda7b654ec27dfb0ab635d8f6754b2c071720da82b4896a5b
+E138 private placement proof sha256  5a20490e5292e02d641aa0e421880a6d5926a2e5862fa544ced8dec36fc1d096
+E138 public device-global UMA host-state note sha256  ac85ddbce26ebf53653bdca6fedd071a844001d05db3d7f52638f25568c84258
+E138 closure  exact command-queue/workqueue paths create no pool eagerly; J615 newTA/new3D/newCL factories at +0xb38/+0xb40/+0xb48 are reached lazily; one zero-seeded G15 UMA host state is placed in GpuManager without UMAPool construction, pool-ID consumption, Queue exposure, install or RunCompute
+
+private evidence checkpoint E139  b73fba381b02ff8c6b77d36df1052d640f859616
+E139 private result sha256  7f40703f316e2c9221f27944b23714829ea9df966a89ad941d37570c23e9f706
+E139 private address-space proof sha256  40ca4179a816deaf4497d6f83705f20bcf5898ad301d309d4a357b026c006112
+E139 public FList client-address-space note sha256  f4eebf11c5d99383572e6b198d2a4ddcbf124563a068df429a63ace4829a188c
+E139 closure  AGXShared +0x1b8 owns the weak shared-pool container; AGXShared +0x50/+0x58 carry client task/IOGPUTask; both range-5 FList lists map through that client IOGPUTask; Linux per-file::Vm range-5 allocator is correct; no Linux delta/install/RunCompute
+
+private evidence checkpoint E140  aa9390fe98c6d9f6dadb3864f1671c6bd25fab89
+E140 Linux checkpoint  e48a1f854d3adf675374aad6b6bff352805904bf
+E140 Linux tree  0975d080969e61298bb5b36f6f0d4e1748586a89
+E140 module sha256  02821df79de9b52dc509c64a1a8e35ba3aa734921a20d27d2e8ab44c6e71ee68
+E140 patch 0053 sha256  edc7855793bb335953815aa232e9b9552a37138f560cdf3a075f6617a9df3ad3
+E140 private result sha256  17577a10f8a53dddea3137a1f5fe235ef93e39c9c5be8bc9dd3a96716583d28e
+E140 private placement proof sha256  12cc4a8a7f80cfa7e6445dd1bf4a17adec4bb7a459e5aca4581b5b8c499f49a4
+E140 public client UMA weak-slot note sha256  d38fe04d6361a33139a2fe2b9d2280b40c27eb84310ac29a6cf3ea3bd23d5b98
+E140 closure  AGXShared free releases/zeros its +0x1b8 container while container free owns no pool slots; Linux places one empty four-slot non-owning identity state at file::Vm lifetime beside range-5 allocators; no Queue accessor, pool ID, UMAPool, install or RunCompute
+
+private evidence checkpoint E141  531903b8450f162331f51075bc4543cdd1454e91
+E141 Linux checkpoint  a301b5b72feff2e32f69dd9e5e560a4c61a2ed60
+E141 Linux tree  f607a93285a3f615d554d424b100d09094ecc69d
+E141 module sha256  411f9dd5f5e1cfc3f4f16fcdbef994e6234dfd15e1148d93f332211c3262de6c
+E141 patch 0054 sha256  e90b953a3ef2e6549a7973ad2ef0e6b7d7b4fdb6e260fc6375522ae235a17f2d
+E141 private result sha256  4edabbb38416140253917607c36532895e5213ed3b4b2c2bbda90116e2e6ad4f
+E141 private promotion proof sha256  4b4f7d8940842786bb060a27a0028551c5081a9672f786af63cd8c518dc31c37
+E141 public weak-UMAPool-promotion note sha256  6c630e1e0ad344f8cdf6f2c8c7d1d5bc091de06f478aaf42971c8acc34cf1e78
+E141 closure  safe identity-only nonzero promotion under client-container mutex; direct-channel and active-epoch lifetimes tracked separately; final zero clears only matching identity; no pool-owner coupling, Queue accessor, pool ID, install or RunCompute
+
+private evidence checkpoint E142  8786a3f9a5c3daf0f1d3d30b6307368ec961ccc2
+E142 Linux checkpoint  594d39b1b85e35ae315d048d60528cfe9a8b0d10
+E142 Linux tree  1a469e6be6435ff56048209f298d57dc458f45dc
+E142 module sha256  ba5c556ce93c9b50e1450e4e050b7ad43dae3618c23c75a2e8eae97e9d0f88ae
+E142 patch 0055 sha256  9ab879b373f5ff5c9191ab5bace4c8d32f11d325928c64d5c3094dd84c77f783
+E142 private result sha256  f51d733cfe172373727fd7889d9231efe297b459c411fb5d949e51e98ee6df2d
+E142 private transaction proof sha256  59903734eafb5f188b946e98d1a2d584e4e85617e9043f20c44c4258b0b25c9f
+E142 public shared-UMAPool transaction note sha256  45310bd8f3cb183837f9094c0ea12a78e344c29746b8b15c0288d29b7d98b182
+E142 closure  exact container lock spans failed promotion through new shared-pool construction and slot publication; Linux actual-pool storage is logically weak and dropped at final zero; no Queue accessor/caller, pool ID, install or RunCompute
+
+private evidence checkpoint E143  12f41994bd500a046348b1a9917cb45bbfe3a6f5
+E143 Linux checkpoint  848a9d426b2d1bb25a3f917ed37b15300b6d7f53
+E143 Linux tree  198d50e59b1e8a238d8ff39d49f6627a118f05cf
+E143 module sha256  31e59ac611927530043b2352fe753faa4c178adaa9ec79498a50c6b2971164c3
+E143 patch 0056 sha256  d1e0d2724a77fe1a46d33b0af557d7023eed61b6f149ac4aadcb059ea4a4acb0
+E143 private result sha256  9b58010d2a66bcf8feeccadd3406c358b075f95f39744b581174751930f30235
+E143 private placement proof sha256  bd5298a1007e0c0ca47e54350861c26e80066778fbe3dd72dabbd056d5ed90fb
+E143 public client UMA Queue-context note sha256  19179b3e54079ba9078c0695e7724794ea95a9e456bcfbabe279e9d221152b95
+E143 closure  exact command queue +0x488 shared object feeds AGXShared +0x1b8 at lazy channel init; Linux retains same per-VM container in QueueInner only; no pool selection/construction, pool ID, install or RunCompute
+
+private evidence checkpoint E144  82b232116c9796fc4f900f796636563e3c12a31f
+E144 Linux checkpoint  6c65dc3a73c6c724d198015b6addfcf3bdfce5f3
+E144 Linux tree  c62064dd8399232215e5fb8328ead9061548e522
+E144 module sha256  4dba06a8fd5958322d009342464858fb2f2a942d075065e50e9c6e46c0863e0e
+E144 patch 0057 sha256  826d187ed1077baeb9a42c04725f81da20e3651f603644cbd09fa738790a7556
+E144 private result sha256  989630bb12c23d9a303755f7a1eab6073363ebf07671fee61d1b7efeef175aa2
+E144 private context proof sha256  4ac007329f937f467832bf1528118932df7c2f1b01247c3af56b5130540a8d8a
+E144 public lazy Compute-channel context note sha256  fc091fd38ea19c22c2ef00c0530d861652d86dc6445ae643b555b87e977d98f9
+E144 closure  QueueInner retains exact client range5 cached/uncached plus bank1/q22 handles beside shared-pool container; constructors remain uncalled; no pool ID, install or RunCompute
+
+private evidence checkpoint E145  f2a9d8e625eef815a31ed5a330b99e24fb7da6db
+E145 Linux checkpoint  899f1b6b8ba7bbf81b33c7aa75dcbdd56a1c9ed4
+E145 Linux tree  1d826ecb520897149f09a2b2336fee7c93ab38d2
+E145 module sha256  22f09c1223e162a6465c96b4d1ff6d8eabcbf37b52a4c0c3987b48b9b8aebb82
+E145 patch 0058 sha256  815c348bb9a61aec72eacad6626a354c01641c04931928ddc0dabc406d3da74d
+E145 private result sha256  ec166bd1b991c87042a11b0c23f18581fa2c70faebe919ef24f31613d76a3ec6
+E145 private assembly proof sha256  a7bc08cd91d84285da6a6c35702b01e99e9b8be69c9739bc36d04c3466cac448
+E145 public dormant-channel-assembly note sha256  b1b814f017e9a3a4cfb539854ac0d4899a04aa76bc296d7ea41ec8ff5e695d3a
+E145 closure  zero-caller bundle type-connects client weak-pool selection, device-global UMA identity/FList construction and channel-local exact owners; arbitrary host owner-cookie removed; no live pool creation, install or RunCompute
+
+private evidence checkpoint E146  da11c029cd6b02fc593fb4ed11fb655304dbef90
+E146 Linux checkpoint  b06c8650159bf700c3d4766542da8c976ef19048
+E146 Linux tree  604d859c910c383246f3316c9de1d5fe480388eb
+E146 module sha256  27cca5cf07d8f2737cddb9160a3f87b1e43888517d02ad68b3b9d349ddbda302
+E146 patch 0059 sha256  40386ce8796e4e57927f7ad4df6a105b2220866491285de2a19baacc44ba89dc
+E146 private result sha256  b9142f6ed4be64636eced2c0f08cbb47b7dae64733b5b47ee0746b975f47587f
+E146 private priority-class proof sha256  c57610dcb2a3969004a46bbe930b929fb2dddef2a49bcce1d36600f30e1916b9
+E146 public normal-compute-pool-class note sha256  3cf8043b0845e3c72ec7c60414c9563de3d93ae67986a2ba4a8560f526446706
+E146 closure  exact normal J615 context types 3/1/2 map invariantly to shared Compute pool class 1; raw class input removed; no live pool creation, install or RunCompute
+
+private evidence checkpoint E147  d3da47b9c656c6be2a599f3c0e604966e9afac1b
+E147 Linux checkpoint  b06c8650159bf700c3d4766542da8c976ef19048
+E147 Linux tree  604d859c910c383246f3316c9de1d5fe480388eb
+E147 private result sha256  57bf8efbc0adcf0fd487bdd432a6205bd64324a03906229079a36302f1bcbd39
+E147 private global-resource-stack proof sha256  163ad2182bbe831cae6314f75c2422fd427f74f32ba4d0b13f61aefb641f93c0
+E147 public global-resource-stack note sha256  1494ad4ffe9b3a2f4ce49221c4d3fc53d44fbd543be06b1a0bf6d0420fe5a3de
+E147 closure  exact five firmware stacks are accelerator-global, eagerly backed and dynamically select/release independent global indices; no Linux delta, install or RunCompute
+
+private evidence checkpoint E148  4269a854c3e577592d58b99f14e060d65f7a32f1
+E148 Linux checkpoint  1308998922f430f77c5e19ecee33dc5799bfdb8f
+E148 Linux tree  8c1d9c20f68a199ae0ca777bb51ce75265da545c
+E148 module sha256  5e7b8335fe27806e451a2dd9e34d4606529cbe959499ea7cec327272cc2ebd46
+E148 patch 0060 sha256  dbe93a8bddf28239f270d5634d77d6b9d787d7b0a90a3c26a2ba7f85bd29baf7
+E148 private result sha256  90552426cb02b742c1eafc87b9b8f8e78f2770442c6044b91f8cd7bd3627fb63
+E148 private bookkeeping model sha256  3bc1468177bc257f0bc18d729883149ebf44ded51196ac1072e161d1cbc25b0d
+E148 public global-resource-lease note sha256  983baa0523e08a0ea784d4cad1b77fb2041920e1b0b369d4d31209af81902ff1
+E148 closure  device-global exact logical selector/use-count state plus Queue/channel RAII global-index leases; no mapped stack backing, selected FWVA, install or RunCompute
+
+private evidence checkpoint E149  f71da09bbea04e94f31406a384b4f62ee8afeed3
+E149 Linux checkpoint  368783dd61e2dd709d99b696feb4a8af9c7ec767
+E149 Linux tree  cebe8170d2e83af5c51d82ed2a358a7093b63205
+E149 module sha256  9050511799b03ab7db6d81977309321aaeebc5f4e0dc8854edc39b6e6d6d3e15
+E149 patch 0061 sha256  2bccb08fe73be8201512acedd095501b6664d2926f8f1c992d046c2e519717b7
+E149 private result sha256  2e7b0c6c47d6c2db10d885b6938b48fbb2218ac60a655ada43deaa0b503a3c62
+E149 private mode0 backing-lifetime proof sha256  65fd130bbb6aaf5169239cbb7763882e818c0abd5bfceb74737e7a40457897ce
+E149 public mode0 lifetime note sha256  6c9ff91c68105eec6d04bb44e983469b64523d468bd0325c7b08d9b54d2700b4
+E149 closure  exact mode0 backing seed/destruction/hole-regrowth semantics; host bookkeeping corrected; no mapped backing, selected FWVA, install or RunCompute
+
+private evidence checkpoint E150  fe7563ae9858bfbed814ba7e2740e77ff0360fb3
+E150 Linux checkpoint  f17014117d4a77e7029a7f61abf85bf8c5aea5cf
+E150 Linux tree  592a70d8a512843c61cb5d36ad6f72d9ff62a03b
+E150 module sha256  952ee4dc51157f01de43ec1f404da8e71dba5ba12a2dab63c0f8fe09e7905e8a
+E150 patch 0062 sha256  9405244ada3d6e47d7d120edc31a10520a7f7611cb4dc87e975633084e875f5a
+E150 private result sha256  cfb59b19562cc3398bd350c31e04a212a2dd7a773001b859c5fd1af89f752e50
+E150 private exact-provenance sha256  2fe050d84dd1fe0b62cc3804b1b11ec165b669979b034a802ca67fd1cc27fce4
+E150 public mapped-resource note sha256  0d128f2c58f127677e17a5e74fc33aa01f4377db29a942633acf65d4ebd97818
+E150 closure  exact mapped backing definitions and private selected-FWVA arithmetic bound to global mode0 slots; constructor/accessor zero-caller, no runtime map/install/RunCompute
+
+private evidence checkpoint E151  0251b8f217610ab097cc9cfd7100687e308887f5
+E151 Linux checkpoint  823fb161085e61788585bdfb57fdf0e8481d6aea
+E151 Linux tree  fcf4097b98e20b6c341e010468039056d2b7c6f8
+E151 module sha256  7de35a06a1a2f038cb4392f07429651d05d30499a089e068740b18a10a84e556
+E151 patch 0063 sha256  97645134b0095277f2b8c6a8130bd6b0a81d9dad7f7c949406aba9742e31e029
+E151 private result sha256  4c71f07ee41e7b060aa745d0253ec69e2077cc0fa0dd5d28cb3150626da5dd79
+E151 private exact bootstrap-order proof sha256  aea9ffa0f99d261a09553ba994cca697bc34bbb3f70f17c90341afb3d9294d5a
+E151 private exact-provenance sha256  72ce12e2817dc3cf89c9b6c26045724855c4eb5480740843731891fc6d1e8c5a
+E151 public q22-bootstrap-order note sha256  8b8f274bd838ee8dcb098c345fe37b24514179da7440d3916b3236e13a56f9d2
+E151 closure  exact constructor-zero q22 gate and eager pre-prepare resource mappings; dormant monotonic activation policy added, mapped owner/activation zero-caller, no runtime map/install/RunCompute
+
+private evidence checkpoint E152  077796a05c8d89278fe53c68f08a4499c167d55d
+E152 Linux checkpoint  d9f5cf4cddeb2a109cc9c074fff080102d5d89dd
+E152 Linux tree  55edccc4efa3efb01c4ed516f70b2ce282a11ec7
+E152 module sha256  f7978bab4daf1987d442b58b83407d40ddfbaebdd03eb7013fa492fc892402ab
+E152 patch 0064 sha256  760456b4cbdd39a532ac6dc4e5b52d4a01993a96bf1ccf5ed8c8b52efa1e7cff
+E152 private result sha256  72daf7efbde14cf715a8dc3b9f9a4b69dfd346542942097756551bee8c7628fa
+E152 private lifetime-order proof sha256  99967910f3646a162011e6c5cbeeb337b2e3b22eda30df39c2fd610c446c4317
+E152 public activation note sha256  9eb8cd24eac7c71ec9b3701779938dad894654b792e4b61bad43d4330345ab6e
+E152 closure  mapped global resource owners integrated at manager lifetime; q22 activates after firmware_ready before DRM; E075 gate/install/RunCompute remain closed
+
+private evidence checkpoint E153  c0890f6447f6f95c863ba08497f4d99df89f9daf
+E153 Linux checkpoint  4a72f743dd25bcd3d50d77722c153d395a23dbad
+E153 Linux tree  064d0af89ea546355d8112963d850147d4f18ba4
+E153 module sha256  94fa75a5e3c103661333429030517e89fdd18f293920f16f685fb157797a4dc5
+E153 patch 0065 sha256  d29abdff0f53a641bbd19d111d3c52dbee611421931ee53ec3de97ad27b78985
+E153 private result sha256  eb063a1251d5697923e4c698e536e49d150dcc9290840bd531b5be585abd2531
+E153 private timestamp producer sha256  3efb7cf7920fc38c7e7e1ea5403e5afb558faded35b4f506a6863f06bd4541fd
+E153 private selected-state bridge sha256  f3ebd40dac5b9a83157c6b0d24cdccc8b0c313cd2a70361ebe45cdf3a87549f7
+E153 private byte-audit output sha256  be97c5ed2f819567960a7a18d62ba0d13d3f513392aa9914c8b4c966c47dba6c
+E153 public selected-state note sha256  72fd0deb91805fe4f4face4ce707afda282c8ca182b56f3b2db1b1910a015990
+E153 closure  exact ordinary timestamp mode false; real global selected states initialized at Queue/channel lifetime; E127 duplicate backing/slot layer removed; no install/RunCompute
+
+private evidence checkpoint E154  14512c79f5f7601ca52d7563e611017fd1db067c
+E154 Linux checkpoint  1e74793c7d14144b70f1c5e383e25fe1397eba08
+E154 Linux tree  888152d04b2997863753ed527d530040136dbe1e
+E154 module sha256  65ee61e61d540d431a293383f9013e42dd466f0be578ea6ad21ef7c7e8b1bea9
+E154 patch 0066 sha256  a8d9b4953646e7982d241b928cddc687c29bf548946aa9204ec7af7ee8fe40d1
+E154 private result sha256  d1ae89f7825f4007f8c5b0c4ea874e03b3eae781a397f0ecb5b35676417f1ae7
+E154 private scalar-producer proof sha256  e12fae2458b4171ce513b5aacfc4955ab2b1a498fe07ebe0ffea0784d6e3ca79
+E154 private Linux bridge sha256  d7da93da3a6965b8acbaa7f5014e615789eeafeda6154e1d5a5766fcda7a9549
+E154 public channel-scalar note sha256  a8df7b4b81016defa5ba16c97ee6bff56aaa761b3cfe68bee1c9e2d79dfbc0cc
+E154 closure  exact process-PID QueueInfo source and non-foreground priority/QoS tuple bridged internally; final scalar input bag removed; assembler still zero-caller, no install/RunCompute
+
+private evidence checkpoint E155  049700723764c36befc624d2e3688a2dac9ca1a3
+E155 Linux checkpoint  440e026d0d9c3a04555a9f9446bf35cd1a364e15
+E155 Linux tree  b3dc7d0b8ee9f9418a1d8f6f492ec251ad648dc8
+E155 module sha256  91bb534a91af0c566677b1a62844d2df011ddd9a79231af3a602ef1f96e8fb93
+E155 patch 0067 sha256  adf6581faf35dd0cf82794b110485fadb515b436d0d2e50e96bfd74ae5c39823
+E155 private result sha256  710e7e65b0de91a79156cac08fac3349698c0b922d67d888885f5f31f8db13b3
+E155 private lifetime audit sha256  e7dd8fde563a2622fc0a000a96ec5d4aaf714019bf60021b0e0dcb764fa4a71d
+E155 private exact lifetime chain sha256  9ae8ea1d7082af726134cc29e0ad0c716ca0ed5cff9a661a990ebd915a652cc0
+E155 public WorkQueue/channel lifetime note sha256  054a8f9634d98769919482425b10ab0fc22207a1b1f15a92f0a09e3aed825d4e
+E155 closure  exact CL WorkQueue owns channel and releases it before base teardown; Linux WorkQueue Arc lifetime anchored to empty dormant channel slot; no setter/install/RunCompute
+
+private evidence checkpoint E156  4ef94a70bcb95f579a19ab794e3a829149aae058
+E156 Linux checkpoint  4463837493947d05a8a1e44b9d11329f96467856
+E156 Linux tree  8fc5403bbb85848f7c49011452a9b67ea97514b1
+E156 module sha256  928a0ac15e93dff5a3b83855b67240bbe3ab6d70c9c51d889732924f3d9165a8
+E156 patch 0068 sha256  14b488f59f95efe2bfc66561d017db7c75f254d7774af108d8836cf3086f3e08
+E156 private result sha256  1f27982b8ef4bdc7b970d4686b8aad353da4a2cf55e2c931536e4b51fffe940e
+E156 exact publication-order sha256  5cb4a8f2c52caafd39bad6c6f1c18f39840e77192b2190f7bab1b1da4ad24a61
+E156 lock-order audit sha256  a41d13de0b2e8f3c9d784941dac9f0d332d052d75b7ba259edf600d21c69bb46
+E156 public lazy-ensure note sha256  e8fd9724165d0f4ecd5afe3c2add7911ec8d814f1809092e7625b6b8b743763b
+E156 closure  serialized local-construct then publish channel slot; helper remains zero-caller; no install/RunCompute
+
+private evidence checkpoint E157  bdbb1971c1065e0a4fbd2bd64b60875e973470e6
+E157 Linux checkpoint  1ec97a9499cefbcd5ade19ea7bc61202478bff75
+E157 Linux tree  5e41c1b93109d8c828f72d6763e63fa1666a0741
+E157 module sha256  97421a8dbacc0ea95d7ddd890dac79e4393e24560aea76b25589a00b7ef250b7
+E157 patch 0069 sha256  3c1dc27434199742248f44db8ff011e16f042e91ae4b4b4306b994485db7291c
+E157 private result sha256  04e9038f7999e4d03dcf9e4a6b75d53e9e1f62ef0b828b1374fe0ae3de3353da
+E157 private live proof sha256  2d665ea7a04ad70d858799a72462b824342eecaefd0d4f30fd30345b3edbb3b8
+E157 private source audit sha256  6d491264bcd417443bcc700a3a5ea2aef05eacd1d8ef379f78125d8ccfd7e3e7
+E157 public persistent-manager note sha256  b74f99516ff012a4b8292e9be4e24666ddc606fe4736a380b0923f3a86fe4248
+E157 closure  current E147-E152 mapped global resource graph live-proven through RTKit q21-ready/q22-active and >2 min fault-free idle; DRM deliberately unregistered, E156 ensure zero-caller, no RunCompute
+
+private evidence checkpoint E158  78e3c7971094a1d2ac3a4bbae1f9ebd6ae81b173
+E158 Linux checkpoint  f73850e8fe51096c74d2b98e419eb06d491bd6a0
+E158 Linux tree  3de2f1a6e88b34dbc9e2fad767d71a630b5d5b9c
+E158 module sha256  74068c785dc4daf0479e806f3463b753d47d9f9d7aa975c1fd627c0856293abf
+E158 patch 0070 sha256  c0a9c76a9f93da4c5b80b027e19030af2be0cfb0bc86385e116f43d30d2869cd
+E158 private result sha256  795a9233cd6078a3b67fa24c6ff6b90f3d592cb65fedb9ff66f72b2309ac0d56
+E158 private live proof sha256  92c5e9358e87a0c25103b397aa1219efce4ee2557f8a9fb5201dd6f8a059f1c1
+E158 private source audit sha256  0782b202b3ad229f9c8c143fd1edd7fd45b1520448321451ea2170a5ed47a719
+E158 restored-artifact proof sha256  6ddd0807a659a3f0b37d03ff59e6846fc728f7f063003352a97801a7ca28b4de
+E158 public DRM-open-gate note sha256  510f2ee80623cb0a4a63df9c717586cda636416a95f3f4007787126a3a1dd40f
+E158 closure  current persistent graph plus DRM registration live-proven with render node present; hard G15 File-open ENODEV contains all client/VM/Queue/channel/submission state; no RunCompute
+
+private evidence checkpoint E159  7b8b3cc7f7c90402069fb667fcbe5e8f206ff658
+E159 Linux checkpoint  d2fd43167928898a8bca816454fe7e4a3e53c93f
+E159 Linux tree  2662423cdaff567bedf3602e6b298b7e76723cc8
+E159 module sha256  ff442de62b218d17a8d2fa845b1b204499c5e4005eaf12308fdf37ce2989ae33
+E159 patch 0071 sha256  4bf2fdce0af85ce447f7d8d82a060718a865984099605cc599d2b5dc490ddde7
+E159 private result sha256  aa724206056c34f296468eb7b1fb291b550ee10ee902d39a984719984b2af9af
+E159 private live proof sha256  204ceff930cdd3952b3502eb1bc31a4b56349393fab6ec07e8f322a96e8532f3
+E159 private source audit sha256  39f7cad0ca61eeb07cc265e56fffe09bcc94e777c8224e2e4c0c0d057360fae4
+E159 public discovery-file note sha256  a4f90e8a2519e26a798f3cec8162cc6cd7d643e1f6ac757c75f8aa424f5227bd
+E159 closure  persistent bootstrap + DRM + File discovery live-proven; only GET_PARAMS/GET_TIME allowed, all client mutation pre-gated; no q22 runtime publication or RunCompute
+
+private evidence checkpoint E160  1c5cf774c5c519e829fb4888d3275f249c0353d6
+E160 Linux checkpoint  14e6cd225690021730d1723200367e0bab39fe04
+E160 Linux tree  a1522ab12d9d1749e54e55cf97a6b4e811b1d547
+E160 module sha256  8b68f6f3f0da915c64f3349a8b4a7f457c7b802ddd37aa925177178ca64eaeab
+E160 patch 0072 sha256  3be7565a0df0c4043969d12c0f5995927b6915199827a8be0cee9b7e39db1498
+E160 private result sha256  7714de18edf70fea1ad80128668f4c94ed5e73566ad2e546df41a9de8f27879c
+E160 private live proof sha256  5a6e88fae8e2f7a23ca463482a30585f72829226354210eb89fb3c6a502110c1
+E160 private VM lifetime audit sha256  e3b68b78bee5b07f4f2d9b3454787279dde505d039b0045bbc05fc6704e95444
+E160 private source audit sha256  47003770d2ea38e9f21c652b70ac768ed6b87d258a7c60f1ff89551949350c35
+E160 public private-VM note sha256  a6ae6aec8e2a7881111490daceb846589e0548e859b88aa4a116a6ed5f0583d5
+E160 closure  private bank-0 VM create/destroy live-proven with no user UAT bind/q22 runtime publication; GEM/Queue/submission remain gated; no RunCompute
+
+private evidence checkpoint E161  c26eeb438715259cea7e23b2c8268f64909c08e1
+E161 Linux checkpoint  34848b4519467fa079402e117f97fe653e32b833
+E161 Linux tree  6817992ccda823dfd3f41b5083288f23d50546c8
+E161 module sha256  f34bdb261ab5db3b971edd7420ad1cf26b0c8411fc8bcf18c24c9dd40a3baaa2
+E161 patch 0073 sha256  b86a9b0926ed5274e0338573fe186c03690d5d1769c24bed08a90beda342ae26
+E161 private result sha256  76e5419d6de2ccac89c499410fc67b9369eecb15946c240d3a422c618e88e97b
+E161 private live proof sha256  6fefbc4f31c00295533c7624be530aa9fdf043c59b319d5cb7352ecf96a99a72
+E161 private GEM host-lifetime audit sha256  1bc2b3a8967560284f17c956be1dc8dc473784703dbd68be563e1eede983fb1b
+E161 private source audit sha256  f41f206a684bb187f5ab3fb2da08fe902c8c79a12fa0a4f979366cd14ecd52eb
+E161 public host-GEM note sha256  1ccc685a00e9cf24c678ca9219e0b2301abb047f1929aeb2a970cdd3ca4a7182
+E161 closure  public/private host GEM create+mmap live-proven; VM_BIND/Queue/submission gated; no user UAT bind/q22 runtime publication or RunCompute
+
+private evidence checkpoint E162  d3a9eb5dc29c9a14f599440c8ca9ba342f3e7c42
+E162 Linux checkpoint  87bcd27a516d0fc8d6b81e32c034c1fc2b2795d5
+E162 Linux tree  817a3c7734d7efb288343363c86f62835fcf70e1
+E162 module sha256  a68a03de7977c41f27f9feaf65016aafefe73e99d55a78026f9d1bc183be6a70
+E162 patch 0074 sha256  c2dca9451e04d17f20e1d1f4e4d79c461ab2c6674e270b244fec8595c8d09020
+E162 private result sha256  e0eb043ae9e1804b70eb329d27db5a7912d6c17de1d85bb6272a53eb635ec149
+E162 private live proof sha256  56543e41105a598ff56d82a57c92358528510be4ddbdea8006d8ed7d832b1f0f
+E162 private source audit sha256  534628fe89846530a84d5078ac19e47a84987f76f316fe775b9d02c33da21213
+E162 restored-artifact proof sha256  6ddd0807a659a3f0b37d03ff59e6846fc728f7f063003352a97801a7ca28b4de
+E162 public unbound-VM note sha256  c9f7796b42a7dd4bf50e13822fd5d438691cd976dcc8ffb7e102c1bea3800a87
+E162 closure  private bank-0 VM_BIND/unbind live-proven while firmware context/Queue/q22/channel/submission remain blocked; no RunCompute
+
+private evidence checkpoint E163  aed31c62ab1515635aaec6ac7c2ccbfcb1685bd0
+E163 Linux checkpoint  0e43b64df4bf8c2c1b56f45e8077232510159448
+E163 Linux tree  b27c301d33790e9d38dc4bf6268bc2fa8a4166fe
+E163 module sha256  04dec44fefaa1fe5038fc0c99dcd0a439116411d9f761a579910d25a9f8ee35f
+E163 patch 0075 sha256  4bc79fc615e0e75ed3f6e94716a0c2a07a538dc63b670a21e9f89b6374deccc6
+E163 private result sha256  89815c9855b70b3f94fa65aea7c1429af70104dcda4f7e6bde47d5ed7f823522
+E163 private live proof sha256  a1a582f2d986c433811529227ec69f29a0a8e53eb5a247c516c4391a64da0d96
+E163 private source audit sha256  723501683f445ec394060a47e8fa067954f3e1d2892e741fb56943a06aabd73b
+E163 restored-artifact proof sha256  6ddd0807a659a3f0b37d03ff59e6846fc728f7f063003352a97801a7ca28b4de
+E163 public passive-Queue note sha256  0a969350ac880bb38f577e074e6b49c5d57656922534d4bd22980b616cd19af2
+E163 closure  passive Queue create/destroy + bounded q22-backed resource lifetime live-proven; context/QueueInfo/channel/submission still blocked; q22 read-cursor proof next; no RunCompute
+
+private evidence checkpoint E164  94af5d3ab7999b4b0d76d920d767db305284a80e
+E164 Linux checkpoint  688651b7bfe16f552a8b2fc71e5b295323b08686
+E164 Linux tree  62bd6c7b5fb7bacf76a5d6e59b1e156a57eb3d80
+E164 module sha256  a3b63e5fd6f3ed0dc5d47a7d11daf79dc04cb365c5a3cf0e29b61db5e7539e8c
+E164 patch 0076 sha256  146c3564cb8760e6258dbd8aed85fae27bb5cc8bc58c1155a37bdab61d10faba
+E164 private result sha256  b977281e07c0f65175b03ed7f092f204cd2cc2473790879cccd325a50c906c34
+E164 private live proof sha256  9ec9af55b2269e2f0365636bca219062cc914e25bfee9037053575e7c41ce369
+E164 private q22 cursor proof sha256  83b168588ffe768636b3a194bdc220b2ef04e019eac88cec2d8c668086391506
+E164 private source audit sha256  84cf12d46df5a831912e8ce552cbc1fd3d5813aacb0ece6cd12eeb29c4719e59
+E164 restored-artifact proof sha256  6ddd0807a659a3f0b37d03ff59e6846fc728f7f063003352a97801a7ca28b4de
+E164 public q22 cursor note sha256  8416958bb3064e01ade615ddf6bfc24664db9d19762ee769af28b2e548a71d4b
+E164 closure  native pressure threshold live-proven to advance firmware q22 read_idx 0->194; QueueInfo/context/channel/submission blocked; no RunCompute
+
+private evidence checkpoint E165  1e19e44ea1c85c00d0722172be1762571eeaf618
+E165 Linux checkpoint  f962a8a435d2673ca0e26daf92697dcd163c4e71
+E165 Linux tree  a60f278451922180d581ce9a99b9f136fc9ce05d
+E165 module sha256  6fb38244350b03bd85f76ace27976c441b1eac325a7271908cdf173eb31a0e66
+E165 patch 0077 sha256  a58926c6217b4b8af04d85b0c4931e658597329d48cbed763a5e39ee5238027a
+E165 private result sha256  7799f3058770d671ad2b8b1820ac37b9d899042d584492d85ea45c1201274853
+E165 private live proof sha256  6cfe619ed19f1f97cbf9a30b43da1b904a81b712d4e34af594cb0c5d9cbc3179
+E165 private context-bind audit sha256  a253d832ca26e80db057c3713d5fc901235346b6389bb8f3b2e43775095a3006
+E165 private source audit sha256  51cee9703249f32149e4d5a798ffc4e77c2e0ae20e1243c396a0d2bd0bdb3139
+E165 restored-artifact proof sha256  6ddd0807a659a3f0b37d03ff59e6846fc728f7f063003352a97801a7ca28b4de
+E165 public VM-context note sha256  40f46adefca24f4891c95c390f00654cb49cc1bc330854230188015abab871b0
+E165 closure  signed VM-context GPTBAT publication live-proven across slots 1..18; QueueInfo/channel/commands blocked; ordinary SUBMIT ENODEV; no RunCompute
+
+# 2026-10-15 autonomous frontend closure checkpoint
+E703 Linux research commit  347ea0444159c0897cb9c04e9bfa82da96add307
+E703 role  restore G15 startup YUV matrices; compile-only correctness fix, non-causal for first-opcode stall
+E692-E717 public research note sha256  f6e626eb8ed8136a39334a620075c67a709d516d6fd13038ab5143a0aa894e4b
+E692-E717 closure  software/shared/startup/reset/common-activation/known-diagnostic planes closed; surviving boundary is autonomous G15 entry-interpreter admission before instruction 0
