@@ -1,6 +1,6 @@
 # Canonical project checkpoint — J615 / G15
 
-Updated: **2026-10-24**
+Updated: **2026-10-25**
 
 This file is the single resume point for the AirM3Gpu project. Older “current frontier” statements are historical only.
 
@@ -102,13 +102,47 @@ The Asahi GPU was intentionally blacklisted for E1091. This is therefore a nativ
 
 Private E1091 `RESULT.md` SHA-256: `d350acf59fc23ce1d219cb3d5e046dd0c29fcdcaddd1416aaad01a175472a486`. The exact source delta against E1075 base `a4778ca2a3f4791245cf1f7f42f26ccf2b17f5f7` is preserved privately as `E1091-SOURCE-DIFF.patch`, SHA-256 `691b050993339adfa50d1419479a6fe0453662d2938007c34faae01dc2de25a3`.
 
+## 4. E1092 — simultaneous native display + G15G Render
+
+E1092 keeps the exact E1091 kernel/display source and changes only the handoff/runtime policy needed to enable the already-qualified GPU path. The combined handoff SHA-256 is `9b0b8bbc44c4de447381e12e5eea2d825856abb08f3eecbc75343f1839636502` and contains the J615 GPU, GPU-power-standin and DCP opt-ins. The cmdline retains `asahi.t8122_start=1 asahi.t8122_pstate_cap=1`.
+
+On one boot:
+
+- native `apple-drm`, `eDP-1` and `appledrmfb` remain operational;
+- G15G reaches `firmware-running`, exposes `renderD128`, and remains capped at 338 MHz;
+- the isolated G15G Vulkan stack completes `988 runs in 1.0 s, 0 wrong pixels`;
+- kernel independently reports first Render completion `168708 ns` and first Compute completion `25791 ns`;
+- no fatal GPU, DART or RTKit fault occurs.
+
+Private E1092 `RESULT.md` SHA-256: `7d303dfa0e8e563fcefcc31fd2413be82ea07b0baa52c68138de5590f8151d0c`.
+
+## 5. E1093 — first direct G15G DMA-BUF -> native Apple DCP/KMS presentation
+
+E1093 removes the E1078 CPU pixel-copy bridge.
+
+A bounded helper asks Honeykrisp for a full-mode 2880x1800 linear `VK_FORMAT_B8G8R8A8_UNORM` exportable DMA-BUF. The mechanically checked layout is offset 0, row pitch 11520 bytes (exactly 2880*4 and 64-byte aligned), allocation 20,736,000 bytes. Native Apple DRM PRIME import succeeds and `drmModeAddFB2(XRGB8888, pitch=11520, offset=0)` succeeds.
+
+For the decisive run the GPU clears the image magenta and waits for GPU completion before export. The same DMA-BUF is PRIME-imported into `apple-drm`, made KMS fb44 and committed to the native J615 CRTC. The driver-owned DCP debugfs oracle records:
+
+```text
+before:   swaps 7, active_fb 42, imported 0
+present:  swaps 8, active_fb 44, imported 1
+restore:  swaps 9, active_fb 42, imported 0
+```
+
+This is stronger than a successful userspace ioctl. Source inspection shows `dcp_v14_present()` advances `swaps` and `active_fb` only after the synchronous firmware `A(407)` swap returns success, and `imported` is derived from the active framebuffer GEM object's import attachment. The informational dmesg `swap N complete` line is intentionally emitted only for swaps 1..3, explaining its absence for E1093.
+
+No GPU image mmap or CPU pixel copy is used. The native panel remains connected and the original framebuffer is deterministically restored.
+
+Private E1093 `RESULT.md` SHA-256: `1180520285949fb309aa2ca099ae48e5ebce6e014715ad308b1645c457ecac38`. Evidence manifest SHA-256: `013b8d032f407445efcc694d02d945de8a703d20c9d824f6f4801ddc9a772f8e`.
+
 ### Current hard boundary
 
-`native J615 DCP/KMS PASS + G15G Compute/Render PASS (independently) -> [simultaneous display + GPU qualification] -> [native KMS/dma-buf/fence presentation of a GPU-produced buffer] -> compositor/desktop acceleration`
+`G15G Compute/Render PASS + native DCP/KMS PASS + simultaneous operation PASS + direct imported GPU-buffer presentation PASS -> [native compositor/window-system integration + repeated fence/pageflip/vsync qualification] -> endurance/performance`
 
-The next experiment must combine the two already-proven subsystems without changing their internals.
+Basic execution and one-buffer native presentation are closed milestones for the repaired lineage.
 
-## 4. Historical execution localization retained
+## 6. Historical execution localization retained
 
 E972/E974/E989–E1005 remain valid for the older E933/E950-style failing lineage:
 
@@ -118,28 +152,26 @@ E972/E974/E989–E1005 remain valid for the older E933/E950-style failing lineag
 
 Preserve those negatives, but do not present them as the current repaired-lineage frontier.
 
-## 5. Do not repeat
+## 7. Do not repeat
 
 - Do not reopen instruction-0, token5→token7, shader, TA/fragment, Queue/RunCompute/UAT/PagePool/power/parser/MMIO hypotheses without contradictory evidence.
 - Do not use the legacy manager-backend `G15Debug::SelfTest` bit47 as a current qualification gate.
 - Do not interpret `Cannot find any display!`, softpipe Wayland EGL, or Xwayland no-DRI3 as GPU Render failures.
 - Do not replace system Mesa merely to continue the display investigation; the isolated G15G userspace path is already qualified.
 
-## 6. Immediate next actions
+## 8. Immediate next actions
 
-1. Restore the live-test free-space safety margin without deleting E1091 evidence or its source/build lineage.
-2. Prepare one E1092 boot that keeps the exact E1091 native-display kernel/handoff and changes only the GPU policy: remove the Asahi blacklist and add the already-proven E1075 startup/pstate-cap parameters.
-3. Require both native `apple-drm`/`eDP-1` health and G15G `firmware-running`/render-node health before submitting any job; then run exactly one bounded offscreen `vk-render-check`.
-4. Only if combined-device qualification passes, present one GPU-produced buffer through native KMS/dma-buf/fence plumbing, with no CPU framebuffer bridge.
+1. Keep E1092/E1093 as the fixed subsystem and direct-presentation controls; do not repeat them unless a later change needs regression qualification.
+2. Build one bounded native compositor/window-system discriminator on `apple-drm` using the qualified G15G render path, while observing DCP `swaps/active_fb/imported` plus pageflip/fence timing.
+3. Distinguish explicit/implicit synchronization failures from compositor policy or WSI issues before broad desktop enablement.
+4. Only after repeated native presentation is stable, broaden into compositor/desktop acceleration and then endurance/performance qualification.
 
-Only after that direct native-presentation proof should compositor/desktop acceleration and endurance/performance qualification begin.
+## 9. Recovery state
 
-## 7. Recovery state
-
-After E1091, the machine was recovered back to Golden:
+After E1093, the machine was recovered back to Golden:
 
 - Golden kernel: `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`.
-- Current verified Golden boot ID after the later recovery: `d45645c3-7ca3-4049-b01c-87e264dd74ed`.
+- Current verified Golden boot ID after E1093 recovery: `db06411a-f5ab-450f-a799-8694ab6d9674`.
 - Known-good m1n1 `boot.bin` SHA-256: `a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d`.
 - Original `/boot/grub/custom.cfg` SHA-256: `cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462`.
 - Persistent and next boot are Ubuntu; no pending GRUB one-shot entry and no experimental render node.
@@ -152,3 +184,5 @@ After E1091, the machine was recovered back to Golden:
 - E1078: `/home/macmac/m3-gpu-lab/experiments/E1078-visible-triangle-bridge/RESULT.md`.
 - E1086: `/home/macmac/m3-gpu-lab/experiments/E1086-wayland-presentation-differential/RESULT.md`.
 - E1091: `/home/macmac/m3-gpu-lab/experiments/E1091-t8122-pmp-reordered-devices/RESULT.md`.
+- E1092: `/home/macmac/m3-gpu-lab/experiments/E1092-j615-native-display-plus-g15g/RESULT.md`.
+- E1093: `/home/macmac/m3-gpu-lab/experiments/E1093-g15g-prime-to-appledrm/RESULT.md`.
