@@ -2,98 +2,106 @@
 
 Updated: **2026-10-24**
 
-This file is the single resume point for the AirM3Gpu project. Read it before opening historical notes or starting a new experiment. Historical documents remain valuable evidence, but any older "current frontier" statement is superseded by this file.
+This file is the single resume point for the AirM3Gpu project. Older “current frontier” statements are historical only.
 
-## Target and evidence authority
+## Target and authority
 
 - Hardware: MacBook Air M3, J615 / T8122, GPU G15G C0.
-- Exact ABI authority: macOS 14.8.3 / 23J220 plus the matching retained G15G C0 components.
-- Current macOS/Xcode observations are **structural or dynamic oracles** unless explicitly back-translated to 23J220.
-- Persistent Linux safety baseline remains the Golden kernel; observer/test branches are sacrificial candidates, not a replacement Golden image.
-- Raw/proprietary captures remain machine-local. Public repositories contain derived facts, reproducible probes, selected captured profiler pages, and source history only.
+- Exact ABI authority: macOS 14.8.3 / 23J220 plus matching retained G15G C0 components.
+- Newer macOS/Xcode observations are structural/dynamic oracles unless back-translated.
+- Persistent safety baseline: Golden Linux `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`.
+- Raw captures and proprietary binaries remain machine-local.
 
-## Current hard execution boundary
+## 1. Same-J615 startup breakthrough — E1075
 
-The last mechanically closed execution boundary remains:
+E1075 is a **live causal pass**, not an oracle-only result.
 
-`exact RunCompute/SKU/RegisterArray + selected ChannelState/DAG + UAT/PagePool/UMA -> common Compute activation -> entry VA fetch-visible -> [autonomous G15 entry-interpreter admission/execute transition fails] -> instruction 0 not interpreted -> context-store/quiesce/replay`
+Base: the E1065 negative runtime lineage, which reached q21 firmware-ready, published DeviceControl entry 1, but firmware never consumed it (`read=0/retired=0`) and timed out after two seconds.
 
-No evidence found after E717 demonstrates successful Linux interpretation of instruction 0. Later work materially improved **observation and comparison of that autonomous interval**; it did not move the Linux execution boundary past instruction 0.
+Single changed variable: restore the exact 20-u32 T8122 HwDataA image at `+0x418c..+0x41db`:
 
-## What progressed after the old E717 handoff
+`1, 500, 5, 12500x5, 3000x3, 12500x8, 1`
 
-### E740–E764 — RDE observer integration
+This block was originally recovered from Apple's exact J615/C0 producer in E056 (`populateDPELeakageUpdateConfig`). E1075 Linux source commit:
 
-The kernel fork gained bounded RDE observation on the live Compute path, lifetime binding, synchronized sampler ownership, kick-boundary triggering, late trace windows, sampler-active SKU modeling, and split source mapping/ownership. These are observer changes, not a new execution path.
+`geocausa/linux:wip/g15-e1075-hwdata418c @ a4778ca2a3f4791245cf1f7f42f26ccf2b17f5f7`
 
-### E776–E828 — CSInvocation / APS / producer tracing
+Live J615 outcome:
 
-The observer path was progressively narrowed from four-lane CSInvocation correlation to APS USC topology, source-buffer ownership, launch selector, counter-control image, runtime installation, selected-observer integration, raw-ring snapshots and ring-control preservation. E808 exposed transition status. E817–E823 explored source cacheability and START/STOP timing/gates. E825 opened bounded firmware KTrace around APS/power events.
+- InitData self-check passes;
+- q21 firmware-ready appears;
+- readiness moves to `magic=0xabcdabcd runtime=1 newA=1/1 newB=0` within milliseconds;
+- kernel reports `firmware accepted owned initdata and device controls`;
+- verdict is `firmware-running`;
+- Asahi DRM registers and `/dev/dri/renderD128` appears;
+- no GPU/DART/RTKit fault, panic, Oops or DeviceControl timeout in the captured boot;
+- no user compute/render workload was submitted.
 
-A crucial correction is preserved at **E826**: the earlier trace window had not allowed the proven 2 ms firmware config-refresh settle, so absence of KTrace records before that point was not a valid negative result. E827/E828 then extend the bounded observer to producer-side power-event trace classes. Latest kernel observer head:
+**Interpretation:** months-old exact Apple reduction directly fixed a newly reconstructed J615 runtime startup barrier. This is a real advancement. It does not by itself solve the older first-state-operation execution failure, because E980 proved the older E933/E950 RLD line already carried this block.
 
-`geocausa/linux wip/g15-e828-producer-ktrace @ 3070021adff4108337d19c53070c1f95359b86f5`
+Independent public J613 hardware results using the same T8122 block report firmware start, first Compute and Render completion, GL/Vulkan readback and longer accelerated workloads. Treat that as strong external corroboration for the block, not as a substitute for J615 job qualification.
 
-This branch is diagnostic/observer history. It is not evidence that Linux shader execution succeeded.
+## 2. Exact execution-semantic frontier — E972/E974/E989–E1005
 
-### E848–E972 — offline APS parser/token bridge
+The former generic label “before instruction 0” is now too vague.
 
-Research then moved off the risky live path and into reproducible parser/token replay:
+### E972 — first semantic Apple/Linux divergence
 
-- E848 recovers the Xcode 16.x G15 v4r5 parser/decoder surface.
-- E850 independently recovers the Xcode 15.4 v4r4 token jump table, providing cross-version continuity evidence.
-- E862–E872 recover token-wire fields/classes and controlled parser state transitions without GPU access.
-- E877–E900 reconstruct production profiler policy/masks and replay captured Linux APS pages.
-- **E907** preserves and replays a known-working Apple APS positive page and decodes its token wire.
-- **E950** preserves/replays full Linux RegisterArray APS pages.
-- **E955** preserves/replays Linux Statics RLD pages.
-- **E972** embeds same-program Apple E932 and Linux E934 pages and replays both through the exact recovered Xcode 16.3 token decoder. The source explicitly performs **no GPU access**.
+Same-program Apple E932 and Linux E934 core0 APS pages were replayed through the exact Xcode 16.3 `(15,4,5)` token decoder.
 
-The E972 replay code and page inputs are durable. The human-readable CI stdout/conclusion was not committed as a result document, so **do not infer a closed E972 semantic conclusion merely from the existence of the harness**. Recover/persist that output before using it as a premise.
+After excluding timestamp/counter cadence and submission identity, both systems produce the same pre-execution semantic sequence:
 
-## Parallel macOS command-construction oracle — E814
+`token11(subtype 5) -> token5(mode=1, raw_index=1)`
 
-The local E814 held-command A/B oracle remains useful but is no longer the newest frontier:
+Apple then immediately emits a 60-bit **token7** carrying the selected Launch/outer-ESL PC. Linux emits timing metadata instead and never emits token7 anywhere in the page.
 
-- A = configured Compute encoder with no dispatch; B = otherwise matched one-thread dispatch.
-- Four repeated A/B pairs completed successfully; B writes `0xe814`.
-- KCB used size changes from `0x3dc` (A) to `0x404` (B).
-- Repeatable dispatch-specific stable byte spans were isolated in a small subset of tag-100 mappings.
-- Local Ubuntu copy: `/home/macbuntu/e814-work/` plus `e814-{oracle,label,complete}.tgz`.
+There is no earlier same-USC execution/control token missing on Linux.
 
-Treat the E814 byte spans as differential candidates until mechanically named; they are not automatically firmware ABI fields.
+### E974 — state 0x61 named correctly
 
-## Other preserved closed oracles that still matter
+Xcode's parser constructs mode-1 state IDs as `0x60 | (raw_index & 7)`. Therefore `0x61` is simply **outer ESL slot 1** in the reserved `0x60..0x67` ESL-clique namespace. It is not a hidden hardware-enable value.
 
-- E280: exact 23J220 compiler backend can still produce the old-stack CompileReply under current macOS via the compatibility bridge.
-- E503: current-macOS timing oracle places Compute KickStart only microseconds before modeled execution start; shared CPU-visible sentinel timing is not a first-instruction discriminator.
-- E810: current Xcode 27 G15G/C0 APS parser has 4 KiB chunk geometry and token-16 chunk-skip semantics. This is **not** silently promoted to a 23J220 payload rule.
-- EOT `0x15349` is closed constant zero on the matched G15 path.
-- EOT `0x15351` Apple semantics/lifetime are closed as transient 64-byte-aligned ESL upload GPUVA, but an equivalent Linux producer remains a separate implementation gap.
+So the real observation is:
 
-## Closed families — do not reopen without contradictory evidence
+`outer ESL slot opened (token5) -> [missing hardware producer event] -> initial outer ESL PC published (token7)`
 
-Do not restart broad sweeps of Queue/WorkQueue transport, scheduler acceptance, CDM root fetch, generic UAT/PTE visibility, PagePool/FList/UMA ownership, RunCompute/SKU/RegisterArray construction, selected ChannelState layout, retained startup/power RMW state, PMGR continuous-power hypotheses, replay/reason-5 recovery, or already-audited diagnostic paths. Those families were used to reach the first-opcode boundary and have later observer work layered on top of them.
+### E989–E1005 — RLD-specific theory superseded
 
-The later APS/RDE work does **not** justify random MMIO or GPU-state mutation. It exists to name a concrete discriminator first.
+Working Apple publishes the same token5→token7→token6 lifecycle for both RLD/LoadDev and complete valid LoadShader state operations. Linux opens token5 for both but publishes neither token7 nor token6. E999/E1000/E1001 also recover a common frontend pulse family that covaries with token7 on working Apple and remains absent on Linux.
 
-## Resume here
+The unresolved execution edge is therefore **generic to complete G15 entry-state/IOTO operations**, not one RLD opcode, addressing form, user shader, or parser quirk.
 
-1. Recover and persist the **actual E972 Apple-E932 vs Linux-E934 token-sequence output** (or an equivalent exact replay) as a result file, with tool/binary hashes.
-2. Reduce the first meaningful semantic difference to a named APS/RLD/ESL state or producer. Keep current-Xcode facts labeled as current-Xcode facts.
-3. Back-translate that candidate to exact 23J220 producer/consumer evidence.
-4. Cross-check against E907 positive Apple page, E950 RegisterArray pages, E955 Statics RLD pages, and the E814 command differential only where mechanically relevant.
-5. Only after a concrete causal producer/state survives those checks should one bounded Linux live candidate be designed.
+Current hard execution boundary:
 
-**Do not resume by rebuilding E814, redoing RunCompute mapping, or re-proving the E717 closed families.**
+`exact startup + exact VM/PTE + exact RunCompute/RegisterArray + common Compute activation + outer ESL slot-open(token5) -> [autonomous complete state-operation accept/commit/retire edge missing] -> no initial-PC token7 -> no slot token6 -> no next-opcode progress`
 
-## Canonical repository heads at consolidation
+## 3. What later audits closed
 
-The consolidation branch merges and preserves these previously divergent histories:
+E979/E1003/E1014/E1016/E1018–E1021 found no surviving host/RTKit/RegisterArray/UAT/parser/current-Apple private producer that can simply be transplanted to cross token5→token7. Broad re-opening of Queue, RunCompute layout, generic UAT/PTE, PagePool/FList/UMA, PMGR power, parser state IDs, profiler control, or blind MMIO is therefore not justified.
 
-- old `main` temporary-CI history through `cea6044cdd1b0f38d7fd86e9f422c09ebde74754`;
-- E972 research chain through `767337aa6e32bbd13d75b3ef046faaa0a8fd1c0a`;
-- E814 Xcode 16.3 parser-continuity branch through `7c2eb2adca1294c2ed02ebdc839b189405bec693`;
-- E850 Xcode 15.4 token-continuity branch through `895e53c25897dc52010a94695f12690e03f64e6e`.
+## 4. Immediate next gate — E1076
 
-See `docs/RECENT-EXPERIMENTS.md` for the experiment ledger, `docs/NEW-CHAT-HANDOFF.md` for the short operational handoff, and `docs/REPOSITORIES.md` for repository roles.
+Use the **already live-proven E1075 kernel unchanged** and enable only built-in `asahi.g15_debug` bit 47 (`0x800000000000`). That self-test submits exactly one empty Compute/CL job after firmware init and polls its stamp for at most 2000 ms; it never makes probe success depend on the job.
+
+E1076 was prepared in the private lab but was **not executed** because the remote reboot command was blocked by the control layer. No candidate boot or GPU work occurred. The temporary GRUB entry was removed and `next_entry` cleared; the machine remains on Golden.
+
+If E1076 retires cleanly, proceed to the smallest userspace compute/readback. Only after compute is clean should a bounded render/readback (and then a first triangle) be attempted.
+
+## Do not lose these distinctions
+
+- **E1075 is a genuine startup breakthrough.**
+- **E1075 is not proof of user shader execution on J615.**
+- **E972 output is no longer missing.** Its result is the token5→token7 semantic boundary.
+- **State 0x61 is not a hardware mode.** It is parser ESL slot 1.
+- **The old RLD-only theory is obsolete.** The failure is common to complete state operations.
+- **E1076 is not a result yet.** It is the next bounded live test.
+
+## Repository / evidence pointers
+
+- Public research: `geocausa/AirM3Gpu`.
+- Linux implementation: `geocausa/linux`.
+- Active private lab on Golden M3 Linux: `/home/macmac/m3-gpu-lab`.
+- E1075 result: `experiments/E1075-t8122-hwdata-418c-positive-control/RESULT.md`.
+- E972 result: `experiments/E972-rld-core0-semantic-sequence/RESULT.md`.
+- E974 result: `experiments/E974-rld-state61-parser-semantics/RESULT.md`.
+- E1076 staging record: `experiments/E1076-e1075-empty-compute-selftest/RESULT.md`.

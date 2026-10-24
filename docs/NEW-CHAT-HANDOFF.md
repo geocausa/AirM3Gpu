@@ -1,47 +1,30 @@
-# New-chat handoff — J615 / G15 Compute bring-up
+# New-chat handoff — J615 / G15
 
 Generated: **2026-10-24**
 
-**First read:** `docs/CANONICAL-CHECKPOINT.md`. It supersedes older "current frontier" text elsewhere in the history.
+**First read:** `docs/CANONICAL-CHECKPOINT.md`.
 
 ## One-sentence state
 
-Linux reaches normal G15 Compute activation with the entry program fetch-visible but still fails before instruction 0 is interpreted; subsequent E740–E972 work built RDE/APS observers and an Apple-vs-Linux token/RLD replay path to identify the autonomous frontend difference without blind GPU mutation.
+J615 now has a genuine startup breakthrough: E1075 restores the exact E056-derived T8122 HwDataA `+0x418c` block and moves the current runtime from first-DeviceControl timeout to running firmware + DRM render node; useful state-operation execution is still blocked at the hardware edge observed as outer-ESL `token5 -> token7(initial PC)`.
 
-## Target / authority
+## Latest hard facts
 
-- MacBook Air M3 / J615 / T8122 / G15G C0.
-- Exact ABI authority: macOS 14.8.3 / 23J220.
-- Newer macOS/Xcode: oracle only until back-translated.
-- Keep the Golden Linux kernel untouched; later G15 branches are sacrificial observer/test candidates.
+- **E1075 LIVE PASS:** firmware reaches `magic=0xabcdabcd`; `/dev/dri/renderD128` exists; no fault/timeout; no user GPU job submitted.
+- Linux source: `geocausa/linux:wip/g15-e1075-hwdata418c @ a4778ca2a3f4791245cf1f7f42f26ccf2b17f5f7`.
+- The causal 20-u32 block was recovered months earlier in **E056** from Apple's J615/C0 `populateDPELeakageUpdateConfig` path. E1075 proves that reduction was directly useful.
+- **E972:** same-program Apple/Linux semantic stream is identical through ESL slot-open token5; Apple immediately emits token7 with the initial outer-ESL PC, Linux never does.
+- **E974:** parser state `0x61` = ESL slot 1 (`0x60 | raw_index`), not a hardware enable state.
+- **E989–E1005:** valid LoadShader reproduces the same Apple token5→token7→token6 lifecycle and Linux token5-only failure, so the problem is generic state-operation commit/admission, not RLD-specific.
 
-## Latest preserved checkpoints
+## Next action
 
-- Research replay frontier: **E972**, commit `767337aa6e32bbd13d75b3ef046faaa0a8fd1c0a` before consolidation.
-- Latest kernel observer branch: **E828**, `wip/g15-e828-producer-ktrace @ 3070021adff4108337d19c53070c1f95359b86f5`.
-- Known-working Apple APS positive comparison: **E907**.
-- Full Linux RegisterArray replay pages: **E950**.
-- Linux Statics RLD replay pages: **E955**.
-- Held Metal no-dispatch/dispatch differential oracle: **E814**, locally under `/home/macbuntu/e814-work/`.
+**E1076:** unchanged E1075 kernel + only `asahi.g15_debug` bit 47. Built-in self-test submits one empty Compute job and polls for no more than 2 seconds.
 
-## Hard boundary
+E1076 has **not run**. The remote control layer blocked the reboot. Its temporary one-shot GRUB state was rolled back completely; Golden remains the persistent/current boot and `next_entry` is clear.
 
-`exact command/shared state -> common Compute activation -> entry fetch-visible -> autonomous interpreter transition missing -> instruction 0 not interpreted -> recovery`
+When a controlled reboot is available, run E1076 first. If it retires, immediately advance to the smallest userspace compute/readback. If compute is clean, the next meaningful visual milestone is a bounded render/readback/triangle.
 
-Nothing after E717 proves Linux instruction-0 execution. E740–E828 are observer instrumentation; E848–E972 are parser/replay work.
+## Do not repeat
 
-## Critical correction not to lose
-
-E826 proves the earlier E825 KTrace-negative interpretation was invalid because the firmware config refresh needs the already-proven ~2 ms settle after ForceConfigSnapshot. Do not cite E825's absence of KTrace as a real negative.
-
-## Immediate next task
-
-Recover and durably record the actual **E972 Apple E932 vs Linux E934 decoded token sequence**, then name the earliest semantic difference and back-translate its producer to exact 23J220. The replay source and pages are preserved, but its stdout/result interpretation was not committed.
-
-After that, compare only against the relevant E907/E950/E955 pages and E814 differential. A new live Linux test is justified only when this yields one concrete causal state/producer.
-
-## Do not restart
-
-Do not redo broad Queue/WorkQueue, scheduler, CDM root, UAT/PTE, PagePool/FList/UMA, RunCompute/SKU/RegisterArray, selected ChannelState, PMGR/power, replay/reason-5, or generic cache/DMA sweeps without contradictory evidence.
-
-Do not treat current-Xcode APS token/chunk behavior as exact 23J220 ABI without a bridge.
+Do not re-open broad Queue/RunCompute/UAT/PagePool/power/parser/profiler sweeps. Do not call E972 output missing. Do not call `0x61` a hardware state. Do not treat E1075 as proof that J615 shader execution is solved.

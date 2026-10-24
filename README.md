@@ -1,25 +1,26 @@
 # AirM3Gpu
 
-Experimental bring-up and reverse-engineering work for the Apple M3 / T8122 J615 G15G C0 GPU on Asahi Linux.
+Experimental clean-room bring-up and reverse-engineering work for Apple M3 / T8122 J615 G15G C0 on Linux.
 
-This repository is the **canonical public research checkpoint**. The compilable Linux kernel history lives in the subordinate `geocausa/linux` fork; raw proprietary and machine-local evidence stays outside the public repositories.
+This repository is the canonical public research checkpoint. Compilable Linux implementation history lives in `geocausa/linux`; raw proprietary and machine-local evidence remains private.
 
 ## Current state — 2026-10-24
 
-Linux reaches exact command/shared-state publication, normal Compute activation and entry visibility, but still fails **before instruction 0 is interpreted**. Later work did not claim Linux shader success: it progressed through bounded RDE/APS observation on Linux (through E828) and offline Apple-vs-Linux APS/RLD token replay (through E972).
+A real same-J615 startup breakthrough has now been demonstrated.
 
-The immediate research gate is to recover and durably preserve the actual E972 Apple-E932 vs Linux-E934 decoded token output, identify the earliest semantic differential, and back-translate its producer/consumer to exact macOS 14.8.3 / 23J220 before another live mutation.
+**E1075** restores the exact 20-u32 T8122 HwDataA block at `+0x418c..+0x41db` that was originally recovered from Apple's J615/C0 producer in **E056**. With that single change, the previously unread first DeviceControl command is consumed, firmware reaches `magic=0xabcdabcd`, the kernel reports `firmware-running`, and `/dev/dri/renderD128` appears. No user GPU job was submitted in E1075.
 
-**Start here:**
+Separately, the older mature execution line is now semantically localized much more tightly than the former generic “before opcode 0” description. **E972** proves Apple and Linux both open the same outer ESL slot, but Apple immediately publishes token7 carrying the initial ESL PC while Linux does not. **E974** proves parser state `0x61` is simply ESL slot 1. E989–E1005 then show this is not RLD-specific: valid LoadShader paths on working Apple cross the same token5→token7→token6 lifecycle, while Linux opens token5 and never publishes token7.
 
-1. [`docs/CANONICAL-CHECKPOINT.md`](docs/CANONICAL-CHECKPOINT.md) — authoritative frontier, closed families, and next gate.
-2. [`docs/NEW-CHAT-HANDOFF.md`](docs/NEW-CHAT-HANDOFF.md) — short operational continuation point.
-3. [`docs/RECENT-EXPERIMENTS.md`](docs/RECENT-EXPERIMENTS.md) — post-E717 observer/replay chronology.
-4. [`docs/WORKFLOW.md`](docs/WORKFLOW.md) — anti-repeat and publication discipline.
-5. [`docs/REPOSITORIES.md`](docs/REPOSITORIES.md) — repository and machine-local evidence roles.
+So the project currently has two distinct facts:
 
-Historical pre-E718 state and experiment ledgers are retained unchanged in `docs/HISTORICAL-STATE-THROUGH-E717.md`, `docs/HISTORICAL-EXPERIMENTS-THROUGH-E717.md`, and `manifests/HISTORICAL-HASHES-THROUGH-E717.txt`.
+1. **Startup/runtime:** E1075 materially advances J615 to running firmware + DRM render node.
+2. **Useful state-operation execution:** the unresolved hardware edge is still the generic outer-ESL state-operation accept/commit transition represented by `token5 -> token7(initial PC)`.
+
+The next bounded live gate is **E1076**: boot the already-proven E1075 kernel with only built-in `g15_debug` bit 47 enabled, causing exactly one empty Compute self-test with a 2-second poll ceiling. E1076 has been staged/documented but **not run** because the remote reboot action was blocked; the machine was restored to Golden boot state with no pending one-shot entry.
+
+Start with `docs/CANONICAL-CHECKPOINT.md`, then `docs/NEW-CHAT-HANDOFF.md` and `docs/RECENT-EXPERIMENTS.md`.
 
 ## Safety/status
 
-This is research code, not general M3 GPU enablement. Keep the Golden Linux boot path untouched, use bounded one-variable experiments, and do not reopen closed Queue/RunCompute/UAT/power families without contradictory evidence.
+This is research code, not general M3 GPU enablement. Keep Golden boot persistent, use one-variable bounded experiments, and do not confuse E1075 startup success with closure of the token5→token7 execution frontier.
