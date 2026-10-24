@@ -6,21 +6,24 @@ This repository is the canonical public research checkpoint. Compilable Linux im
 
 ## Current state — 2026-10-24
 
-A real same-J615 startup breakthrough has now been demonstrated.
+**E1076 is the first mechanically verified correct userspace Compute execution on the physical J615.**
 
-**E1075** restores the exact 20-u32 T8122 HwDataA block at `+0x418c..+0x41db` that was originally recovered from Apple's J615/C0 producer in **E056**. With that single change, the previously unread first DeviceControl command is consumed, firmware reaches `magic=0xabcdabcd`, the kernel reports `firmware-running`, and `/dev/dri/renderD128` appears. No user GPU job was submitted in E1075.
+The enabling startup fix is E1075: restore the exact 20-u32 T8122 HwDataA block at `+0x418c..+0x41db` originally recovered from Apple's J615/C0 producer in E056. That moves the reconstructed runtime from an unread first DeviceControl command to `firmware-running` with `/dev/dri/renderD128` present.
 
-Separately, the older mature execution line is now semantically localized much more tightly than the former generic “before opcode 0” description. **E972** proves Apple and Linux both open the same outer ESL slot, but Apple immediately publishes token7 carrying the initial ESL PC while Linux does not. **E974** proves parser state `0x61` is simply ESL slot 1. E989–E1005 then show this is not RLD-specific: valid LoadShader paths on working Apple cross the same token5→token7→token6 lifecycle, while Linux opens token5 and never publishes token7.
+E1076 then qualified the actual userspace path. The ordinary distro Mesa is too old for the 600-byte M3-aware GET_PARAMS ABI, and retained ordinary `mesa-m3` explicitly lacks the G15 command stream. An isolated, SHA-256-pinned `mesa-m3-g15c` build contains the real G15G/AGX3 path. With only its documented experimental admission gate `ASAHI_M3_EXPERIMENTAL=1`, it explicitly admitted chip `0x8122`, 1 cluster, 10 cores and identified `Apple M3 (G15G C0)`.
 
-So the project currently has two distinct facts:
+A bounded one-second compute/readback then passed:
 
-1. **Startup/runtime:** E1075 materially advances J615 to running firmware + DRM render node.
-2. **Useful state-operation execution:** the unresolved hardware edge is still the generic outer-ESL state-operation accept/commit transition represented by `token5 -> token7(initial PC)`.
+`65536 invocations x 256 steps; 788 runs; 0 wrong results`
 
-The next bounded live gate is **E1076**: boot the already-proven E1075 kernel with only built-in `g15_debug` bit 47 enabled, causing exactly one empty Compute self-test with a 2-second poll ceiling. E1076 has been staged/documented but **not run** because the remote reboot action was blocked; the machine was restored to Golden boot state with no pending one-shot entry.
+The kernel independently reported:
+
+`M3 G15G verdict: job-completed: the first compute job finished ... 773625 ns of GPU time`
+
+This supersedes the old project-wide statement that current Linux never reaches instruction 0. That statement remains historically valid for the older E933/E950 token5-only lineage; it is not the current repaired E1075/E1076 frontier.
+
+**Next gate:** one bounded render/readback using the now-qualified G15G stack, then the smallest visible triangle if render is clean.
+
+The machine was restored after E1076 to Golden Linux `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`, known-good m1n1, and the original GRUB configuration.
 
 Start with `docs/CANONICAL-CHECKPOINT.md`, then `docs/NEW-CHAT-HANDOFF.md` and `docs/RECENT-EXPERIMENTS.md`.
-
-## Safety/status
-
-This is research code, not general M3 GPU enablement. Keep Golden boot persistent, use one-variable bounded experiments, and do not confuse E1075 startup success with closure of the token5→token7 execution frontier.

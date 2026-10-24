@@ -8,22 +8,30 @@ Target: MacBook Air M3 J615 / T8122 / G15G C0. Exact reference: macOS 14.8.3 / 2
 
 ## Headline
 
-**E1075 is the newest live advancement:** restoring the exact T8122 HwDataA `+0x418c..+0x41db` 20-word image, originally recovered in E056 from Apple's J615/C0 producer, changes the current J615 runtime from an unread first DeviceControl command and timeout into running firmware with `/dev/dri/renderD128` present.
+**E1076 is the newest live advancement and the first correct J615 userspace Compute/readback pass.**
 
-E1075 changes one variable only and is preserved in `geocausa/linux` at `a4778ca2a3f4791245cf1f7f42f26ccf2b17f5f7` (`wip/g15-e1075-hwdata418c`). No user GPU workload was submitted in that boot.
+E1075 first repaired startup by restoring the exact E056-derived T8122 HwDataA `+0x418c..+0x41db` 20-word image. With the exact qualified handoff, firmware reaches `magic=0xabcdabcd`, reports `firmware-running`, and exposes `/dev/dri/renderD128`.
 
-This startup success is separate from the older useful-execution frontier. E972 now gives the exact first semantic Apple/Linux divergence: both open the same mode-1 ESL slot, then working Apple publishes token7 with the initial outer-ESL PC while Linux does not. E974 proves parser state `0x61` means ESL slot 1, not a hardware mode. E989–E1005 prove the missing token7 event is common to complete RLD/LoadDev and valid LoadShader state operations, so the old RLD-only theory is closed.
+E1076 then used an isolated G15G-capable `mesa-m3-g15c` userspace. `ASAHI_M3_EXPERIMENTAL=1` caused the driver to explicitly admit chip `0x8122`, 1 cluster, 10 cores and identify `Apple M3 (G15G C0)`.
 
-Current execution boundary:
+Bounded compute/readback result:
 
-`outer ESL slot-open (token5) -> [autonomous complete state-operation accept/commit/retire edge missing] -> no initial-PC token7 -> no slot-close token6 -> no next-opcode progress`
+`65536 invocations x 256 steps; 788 runs in 1.0 s; 0 wrong results`
+
+Kernel completion evidence:
+
+`M3 G15G verdict: job-completed: the first compute job finished ... 773625 ns of GPU time`
+
+The current execution frontier is therefore **past instruction 0 and past real Compute retirement/readback** on the repaired E1075/E1076 lineage.
+
+## Historical boundary retained
+
+E972/E974/E989–E1005 remain valid descriptions of the older failing E933/E950-style lineage: common ESL token5 followed by missing Linux token7/initial PC. Do not delete or reopen those experiments, but do not present that boundary as current for E1076.
 
 ## Next bounded gate
 
-**E1076:** boot the unchanged E1075 kernel with only `asahi.g15_debug` bit 47 enabled. The built-in self-test submits one empty Compute job and polls at most two seconds. It is staged/documented but was not run because the remote reboot action was blocked. Boot configuration was restored to Golden and no `next_entry` remains.
+Run one bounded **render/readback** on the same qualified E1075 runtime and isolated G15G userspace stack, retaining the 338 MHz cap and exact recovery path. If render/readback is correct, move to the smallest visible triangle.
 
-If the one-job self-test passes, move to the smallest userspace compute/readback. Only after that should render/readback and a triangle be attempted.
+## Safety state
 
-## Closed / do not restart broadly
-
-Do not return to generic Queue/WorkQueue, RunCompute layout, UAT/PTE, PagePool/FList/UMA, PMGR power, parser-state IDs, profiler-control, or blind MMIO sweeps without contradictory evidence. E979/E1003/E1014/E1016/E1018–E1021 found no surviving software producer that can simply be toggled to cross token5→token7.
+E1076 was fully recovered after the test. Fabric confirmed Golden Linux `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`, known-good m1n1 SHA `a81993b...`, original GRUB SHA `cf011eee...`, and no experimental one-shot entry.

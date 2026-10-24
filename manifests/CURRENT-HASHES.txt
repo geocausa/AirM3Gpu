@@ -9,15 +9,29 @@ SAME-J615 STARTUP BREAKTHROUGH
 E1075 Linux branch: wip/g15-e1075-hwdata418c
 E1075 Linux commit: a4778ca2a3f4791245cf1f7f42f26ccf2b17f5f7
 E1075 single variable: exact E056-derived T8122 HwDataA +0x418c..+0x41db 20-u32 block
-E1075 outcome: DeviceControl consumed; magic=0xabcdabcd; firmware-running; DRM render node present; no user job submitted
+E1075 outcome: DeviceControl consumed; magic=0xabcdabcd; firmware-running; DRM render node present
 
-EXECUTION-SEMANTIC FRONTIER
-E972: first semantic Apple/Linux divergence = common ESL token5 followed by Apple token7(initial outer-ESL PC), absent on Linux
+SAME-J615 COMPUTE BREAKTHROUGH
+E1076 status: LIVE PASS
+E1076 private RESULT SHA256: ed0f8e6166310f017713c4b9215d897bf3a3a386c116f81030d0b2e55f395f1b
+E1076 mesa-m3-g15c package SHA256: 552c94de1a98a25cc5e0dbd9e3a4cf5fdd738fb5d95689b41428f9dee3aa0936
+E1076 userspace gate: ASAHI_M3_EXPERIMENTAL=1
+E1076 admission: Apple M3 G15G C0; chip 0x8122; 1 cluster; 10 cores
+E1076 compute/readback: 65536 invocations x 256 steps; 788 runs; 0 wrong results
+E1076 kernel: first compute job completed; GPU time 773625 ns
+
+HISTORICAL EXECUTION LOCALIZATION
+E972: older failing lineage first semantic divergence = common ESL token5 followed by missing Linux token7(initial outer-ESL PC)
 E974: parser state 0x61 = ESL slot 1
-E989-E1005: same missing token7 across complete RLD/LoadDev and valid LoadShader classes; generic state-operation boundary, not RLD-specific
+E989-E1005: older failure generic to complete state operations, not RLD-specific
+Classification: historical evidence retained; not current repaired-lineage frontier
 
 NEXT GATE
-E1076: unchanged E1075 + built-in g15_debug bit47 one-empty-Compute self-test, <=2 s poll
-E1076 status: NOT RUN; remote reboot blocked; GRUB next_entry and temporary custom entry rolled back; Golden active
+One bounded render/readback using same E1075 runtime and isolated G15G-capable userspace; then smallest visible triangle if clean
+
+RECOVERY
+Known-good boot.bin SHA256: a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d
+Original custom.cfg SHA256: cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462
+Fabric recovery reboot succeeded to Golden
 
 Historical pre-E718 hash/evidence ledger: manifests/HISTORICAL-HASHES-THROUGH-E717.txt
