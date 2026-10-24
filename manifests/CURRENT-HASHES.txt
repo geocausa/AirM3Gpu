@@ -20,18 +20,38 @@ E1076 admission: Apple M3 G15G C0; chip 0x8122; 1 cluster; 10 cores
 E1076 compute/readback: 65536 invocations x 256 steps; 788 runs; 0 wrong results
 E1076 kernel: first compute job completed; GPU time 773625 ns
 
+SAME-J615 RENDER / TRIANGLE BREAKTHROUGH
+E1077 status: LIVE PASS
+E1077 private RESULT SHA256: db13fb493401d0e1eba7ff397752d0dbc59d7fb46e23f926135a6f7c0aae8f58
+E1077 vk-render-check SHA256: 94c353da38d75cb97f0204a76d788a62e1890097061beb151375a5e2c3664bd8
+E1077 result output SHA256: 4494d663f4a383a2af4db7edbc816d1e4969f4c6e9b64684af58f6bb6a361d09
+E1077 render/readback: 64x64 clear + 48x48 triangle; 1174 runs; 0 wrong pixels
+E1077 kernel: first render job completed; GPU time 127875 ns; TA and fragment timing non-zero
+
+ACTIVE-PANEL FRAMEBUFFER BRIDGE
+E1078 status: PASS
+E1078 private RESULT SHA256: 196cef3d28007c10c2fcdacf810bdd9fc19b20d6221e5fd29a257954daa6389b
+E1078 raw GPU triangle readback SHA256: 949b6175a756379bf58f27c4543a1f15a294b259c54e9a0464fe860605e309cd
+E1078 derived PPM SHA256: d7fc3f96818af6b5b3f34bba357e709e72b404f8e2f1c4b5443322a3f13f7e8d
+E1078 panel image SHA256: 23f4bf863f03c29bcc2832c625edaadd20f2e5cb656015b494358df2415898dc
+E1078 displayed fb readback SHA256: 23f4bf863f03c29bcc2832c625edaadd20f2e5cb656015b494358df2415898dc
+E1078 pre/restored fb SHA256: 1b86724c5caa46dc35dfca1d5a9976e9d43810c071422facc0c28e076ee2db95
+E1078 classification: GPU-rendered triangle -> verified CPU-visible readback -> CPU copy -> active simpledrm framebuffer; not native DCP/KMS scanout
+
 HISTORICAL EXECUTION LOCALIZATION
 E972: older failing lineage first semantic divergence = common ESL token5 followed by missing Linux token7(initial outer-ESL PC)
 E974: parser state 0x61 = ESL slot 1
 E989-E1005: older failure generic to complete state operations, not RLD-specific
 Classification: historical evidence retained; not current repaired-lineage frontier
 
-NEXT GATE
-One bounded render/readback using same E1075 runtime and isolated G15G-capable userspace; then smallest visible triangle if clean
+CURRENT FRONTIER
+Native DCP/KMS/display ownership and GPU-buffer presentation, followed by compositor/desktop and endurance/performance qualification
+Do not reopen instruction0, generic frontend admission, Queue/RunCompute/UAT/PagePool/power/parser/MMIO without contradictory evidence
 
 RECOVERY
+Recovery boot ID: dbb9862d-d4fa-4e33-beec-0afecf0feaf8
 Known-good boot.bin SHA256: a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d
 Original custom.cfg SHA256: cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462
-Fabric recovery reboot succeeded to Golden
+Fabric recovery reboot succeeded to Golden; no next_entry, render node or live-owner marker remains
 
 Historical pre-E718 hash/evidence ledger: manifests/HISTORICAL-HASHES-THROUGH-E717.txt

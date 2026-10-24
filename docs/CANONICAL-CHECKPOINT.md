@@ -9,83 +9,135 @@ This file is the single resume point for the AirM3Gpu project. Older “current 
 - Hardware: MacBook Air M3, J615 / T8122, GPU G15G C0, 10/10 cores.
 - Exact ABI authority: macOS 14.8.3 / 23J220 plus matching retained G15G C0 components.
 - Persistent safety baseline: Golden Linux `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`.
-- Raw captures, proprietary binaries and exact machine-specific evidence remain private.
+- Raw captures, proprietary binaries and machine-specific evidence remain private.
 
-## 1. Current headline — E1076 real Compute pass
+## 1. Current headline — real Compute, Render and triangle pixels on J615
 
-**E1076 is a live hardware execution/readback pass on the physical J615.**
+The repaired E1075 runtime lineage now executes both Compute and graphics correctly on the physical J615.
 
 Qualified runtime:
 
 - Linux source: `geocausa/linux:wip/g15-e1075-hwdata418c @ a4778ca2a3f4791245cf1f7f42f26ccf2b17f5f7`.
-- Kernel: `7.1.12-e1075-hwdata418c-ga4778ca2a3f4`.
+- Experimental kernel: `7.1.12-e1075-hwdata418c-ga4778ca2a3f4`.
 - E1075 startup correction: exact Apple-derived T8122 HwDataA `+0x418c..+0x41db` 20-u32 image originally recovered in E056.
-- Exact identity-capable boot handoff was used for the live discriminator.
-- Firmware reached `magic=0xabcdabcd runtime=1 newA=1/1 newB=0`, reported `firmware-running`, and exposed `/dev/dri/renderD128`.
-- Runtime was capped at pstate 1 / 338 MHz.
+- Exact E1043-D identity-capable boot handoff used for live qualification.
+- Firmware reaches `magic=0xabcdabcd runtime=1 newA=1/1 newB=0`, reports `firmware-running`, and exposes `/dev/dri/renderD128`.
+- Runtime capped at pstate 1 / 338 MHz.
 
-Userspace qualification:
+Qualified userspace:
 
-- Ubuntu system Mesa was rejected before VM creation because it requested the old 592-byte GET_PARAMS ABI rather than the 600-byte M3-aware ABI.
-- Retained ordinary `mesa-m3` was M3-aware but explicitly lacked the G15 command stream.
-- The isolated Aurora experimental `mesa-m3-g15c 26.1.4.g15c1-2` package, SHA-256 `552c94de1a98a25cc5e0dbd9e3a4cf5fdd738fb5d95689b41428f9dee3aa0936`, contains the real G15G/AGX3 path.
-- With only `ASAHI_M3_EXPERIMENTAL=1`, that driver printed `G15G admitted: chip 0x8122, 1 cluster, 10 cores; scheduling stalls on` and identified `Apple M3 (G15G C0)`.
+- System Mesa is too old for the 600-byte M3-aware GET_PARAMS ABI.
+- Retained ordinary `mesa-m3` is M3-aware but explicitly lacks the G15 command stream.
+- Isolated Aurora `mesa-m3-g15c 26.1.4.g15c1-2`, package SHA-256 `552c94de1a98a25cc5e0dbd9e3a4cf5fdd738fb5d95689b41428f9dee3aa0936`, contains the working G15G/AGX3 path.
+- With `ASAHI_M3_EXPERIMENTAL=1`, it prints `G15G admitted: chip 0x8122, 1 cluster, 10 cores; scheduling stalls on` and identifies `Apple M3 (G15G C0)`.
 
-Decisive one-second compute/readback:
+### E1076 — real Compute/readback
+
+Bounded one-second result:
 
 `65536 invocations x 256 steps; 788 runs; 0 wrong results`
 
-Kernel independent completion evidence:
+Kernel independent completion:
 
 `M3 G15G verdict: job-completed: the first compute job finished ... 773625 ns of GPU time`
 
-**Interpretation:** the repaired E1075/E1076 lineage crosses real command construction, VM/queue submission, firmware scheduling, G15 state-operation/frontend admission, shader execution, retirement and CPU-visible readback. The current project frontier is no longer “before instruction 0.”
+This crosses real command construction, VM/queue submission, firmware scheduling, G15 frontend/state-operation admission, shader execution, retirement and CPU-visible readback.
+
+### E1077 — real Render + triangle readback
+
+Using the same runtime and userspace, `vk-render-check` performs a 64x64 clear plus a 48x48 triangle and verifies every output pixel.
+
+Bounded one-second result:
+
+`PASS: 1174 runs in 1.0 s, 0 with wrong pixels`
+
+Kernel independent completion:
+
+`M3 G15G verdict: job-completed: the first render job finished ... 127875 ns of GPU time`
+
+The timing stream records non-zero TA and fragment time. This crosses graphics command construction, tile/render state, vertex/fragment execution, render completion and CPU-visible pixel readback.
+
+Private E1077 `RESULT.md` SHA-256: `db13fb493401d0e1eba7ff397752d0dbc59d7fb46e23f926135a6f7c0aae8f58`.
+
+### E1078 — GPU triangle reaches active internal-panel framebuffer
+
+The already-passing E1077 checker was instrumented only at Vulkan allocation/map/unmap boundaries. It still passed `1258 runs / 0 wrong pixels` and exposed one exact 16384-byte host-visible readback: 64x64x4 RGBA8.
+
+Decoded GPU output:
+
+- background RGBA `(32,64,96,255)`;
+- triangle bbox `x=8..55, y=8..55` = 48x48;
+- 2304 non-background pixels;
+- center pixel `(128,128,0,255)`;
+- raw GPU readback SHA-256 `949b6175a756379bf58f27c4543a1f15a294b259c54e9a0464fe860605e309cd`.
+
+Display side of this boot:
+
+- simpledrm/simple-framebuffer owns the internal panel, separate from the Asahi render-only DRM card;
+- connected connector: `card0-Unknown-1`;
+- mode: 2880x1800;
+- `/dev/fb0`: 32 bpp, stride 11520;
+- device-tree format: `x2r10g10b10`.
+
+The exact GPU output was nearest-neighbour scaled 28x, centered, converted pixel-for-pixel to `x2r10g10b10`, and written to the active framebuffer. Intended panel image and immediate framebuffer readback both hashed to:
+
+`23f4bf863f03c29bcc2832c625edaadd20f2e5cb656015b494358df2415898dc`
+
+The original framebuffer was then restored exactly; pre-display and restored SHA-256 both equal:
+
+`1b86724c5caa46dc35dfca1d5a9976e9d43810c071422facc0c28e076ee2db95`
+
+Private E1078 `RESULT.md` SHA-256: `196cef3d28007c10c2fcdacf810bdd9fc19b20d6221e5fd29a257954daa6389b`.
+
+**Interpretation:** this is an end-to-end visible-pixel bridge from real J615 GPU rendering to the active internal-panel framebuffer. It is deliberately **not** claimed as native Asahi/DCP/KMS scanout: a CPU copy bridges the working GPU render device to the existing simpledrm framebuffer.
 
 ## 2. Why E1075 mattered
 
-E1075 is the causal startup prerequisite for the successful E1076 lineage. It restores the exact T8122 HwDataA block:
+E1075 restores the exact T8122 HwDataA block:
 
 `1, 500, 5, 12500x5, 3000x3, 12500x8, 1`
 
-Without that block the reconstructed E1065 runtime reached q21 firmware-ready and published DeviceControl entry 1, but firmware never consumed it and timed out. With the block, DeviceControl is consumed, readiness advances to `0xabcdabcd`, firmware runs and DRM registers.
+Without it, the E1065 lineage reaches q21 firmware-ready and publishes DeviceControl entry 1, but firmware never consumes it. With it, DeviceControl is consumed, readiness advances to `0xabcdabcd`, firmware runs and DRM registers. The old E056 Apple-side reduction therefore became a directly causal Linux startup fix.
 
-This is direct proof that the months-old E056 Apple-side reduction was not merely descriptive: it fixed a real J615 runtime barrier.
+## 3. Historical execution localization retained
 
-## 3. Historical execution localization — E972/E974/E989–E1005
+E972/E974/E989–E1005 remain valid for the older failing E933/E950-style lineage:
 
-These results remain valid for the older failing lineage and explain what that lineage was doing:
+- E972: Apple and Linux match through outer-ESL token5; Apple then emits token7 carrying the initial PC while Linux does not.
+- E974: parser state `0x61` is ESL slot 1, not a hidden hardware mode.
+- E989–E1005: the old failure is generic to complete state operations, not RLD-specific.
 
-- **E972:** Apple and Linux match semantically through `token11(subtype5) -> token5(mode1/raw1)`; Apple then emits token7 carrying the initial outer-ESL PC while Linux never does.
-- **E974:** parser state `0x61` is ESL slot 1 in the reserved `0x60..0x67` namespace, not a hidden hardware mode.
-- **E989–E1005:** the same token5→token7→token6 lifecycle appears for working RLD/LoadDev and valid LoadShader operations, proving the old failure was generic state-operation admission/commit rather than RLD-specific.
+Do not erase those negatives, but do not present them as the current repaired-lineage frontier. E1076/E1077 cross real Compute and Render execution.
 
-Do **not** erase those negatives. Reclassify them as lineage-specific: they describe E933/E950-style failing runtime/command experiments, not the repaired E1075/E1076 path that now executes Compute correctly.
+## 4. Closed false starts / do not repeat
 
-## 4. E1076 false starts that are now closed
+- Old `G15Debug::SelfTest` bit47 belongs to the inactive legacy manager backend, not the active M3 runtime backend.
+- Ordinary known-good boot.bin does not provide the qualified E1075 identity/ABI handoff.
+- System Mesa and ordinary retained `mesa-m3` fail before GPU submission for explicit ABI/command-stream reasons.
+- Direct Vulkan `vkcube --wsi display` on this boot reports `Cannot find any display!`: the Asahi device is render-only while simpledrm owns the panel.
+- Do not restart broad Queue/RunCompute/UAT/PagePool/power/parser/MMIO searches without contradictory evidence.
 
-- The old `G15Debug::SelfTest` bit47 hook belongs to the inactive legacy manager backend, not the active M3 runtime backend. Its absence is not a GPU failure and it should not be used as the current qualification gate.
-- A boot using the ordinary known-good boot.bin stopped at the earlier identity/ABI gate; repeating with the exact E1075 qualified handoff reproduced `firmware-running` and render-node creation.
-- Ordinary Mesa paths failed before GPU submission for explicit ABI/command-stream reasons. Those failures are userspace qualification results, not hardware execution failures.
+## 5. Current frontier
 
-## 5. Immediate next gate
+The next major engineering layer is **native DCP/KMS/display ownership and GPU-buffer presentation**, followed by broader compositor/desktop and endurance qualification.
 
-Use the same qualified E1075 runtime and isolated G15G-capable userspace stack for **one bounded render/readback discriminator**. Preserve the 338 MHz cap and the same recovery envelope. If render completes with correct output/readback, move directly to the smallest visible triangle.
+The GPU-side milestones are now mechanically passed on the repaired lineage:
 
-Do not restart broad Queue/RunCompute/UAT/PagePool/power/parser/MMIO searches unless new contradictory evidence appears. Real Compute has crossed the old frontier.
+`firmware-running -> Compute correct -> Render correct -> triangle pixels correct -> active panel framebuffer bridge`
 
 ## 6. Recovery state
 
-After E1076, the machine was restored and Fabric reboot reconciliation confirmed:
+After E1077/E1078, Fabric reboot reconciliation confirmed a return to Golden:
 
 - Golden kernel: `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`.
+- Recovery boot ID: `dbb9862d-d4fa-4e33-beec-0afecf0feaf8`.
 - Known-good m1n1 `boot.bin` SHA-256: `a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d`.
 - Original `/boot/grub/custom.cfg` SHA-256: `cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462`.
-- No experimental one-shot GRUB entry remains armed.
+- No pending GRUB one-shot entry, no render node and no live-owner marker.
 
 ## Evidence pointers
 
-- Private E1076 result: `/home/macmac/m3-gpu-lab/experiments/E1076-e1075-empty-compute-selftest/RESULT.md`.
-- Private E1076 result SHA-256: `ed0f8e6166310f017713c4b9215d897bf3a3a386c116f81030d0b2e55f395f1b`.
-- E1075 result: `experiments/E1075-t8122-hwdata-418c-positive-control/RESULT.md`.
-- E972 result: `experiments/E972-rld-core0-semantic-sequence/RESULT.md`.
-- E974 result: `experiments/E974-rld-state61-parser-semantics/RESULT.md`.
+- E1075: `/home/macmac/m3-gpu-lab/experiments/E1075-t8122-hwdata-418c-positive-control/RESULT.md`.
+- E1076: `/home/macmac/m3-gpu-lab/experiments/E1076-e1075-empty-compute-selftest/RESULT.md`.
+- E1077: `/home/macmac/m3-gpu-lab/experiments/E1077-vk-render-readback/RESULT.md`.
+- E1078: `/home/macmac/m3-gpu-lab/experiments/E1078-visible-triangle-bridge/RESULT.md`.
