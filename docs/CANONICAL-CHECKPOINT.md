@@ -11,9 +11,7 @@ This file is the single resume point for the AirM3Gpu project. Older “current 
 - Persistent safety baseline: Golden Linux `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`.
 - Raw captures, proprietary binaries and machine-specific evidence remain private.
 
-## 1. Current headline — real Compute, Render and triangle pixels on J615
-
-The repaired E1075 runtime lineage now executes both Compute and graphics correctly on the physical J615.
+## 1. Proven repaired-lineage GPU milestones
 
 Qualified runtime:
 
@@ -27,113 +25,97 @@ Qualified runtime:
 Qualified userspace:
 
 - System Mesa is too old for the 600-byte M3-aware GET_PARAMS ABI.
-- Retained ordinary `mesa-m3` is M3-aware but explicitly lacks the G15 command stream.
+- Retained ordinary `mesa-m3` is M3-aware but lacks the G15 command stream.
 - Isolated Aurora `mesa-m3-g15c 26.1.4.g15c1-2`, package SHA-256 `552c94de1a98a25cc5e0dbd9e3a4cf5fdd738fb5d95689b41428f9dee3aa0936`, contains the working G15G/AGX3 path.
-- With `ASAHI_M3_EXPERIMENTAL=1`, it prints `G15G admitted: chip 0x8122, 1 cluster, 10 cores; scheduling stalls on` and identifies `Apple M3 (G15G C0)`.
+- With `ASAHI_M3_EXPERIMENTAL=1`, it admits chip `0x8122`, 1 cluster, 10 cores and identifies `Apple M3 (G15G C0)`.
 
 ### E1076 — real Compute/readback
 
-Bounded one-second result:
+`65536 invocations x 256 steps; 788 runs in 1.0 s; 0 wrong results`
 
-`65536 invocations x 256 steps; 788 runs; 0 wrong results`
-
-Kernel independent completion:
-
-`M3 G15G verdict: job-completed: the first compute job finished ... 773625 ns of GPU time`
-
-This crosses real command construction, VM/queue submission, firmware scheduling, G15 frontend/state-operation admission, shader execution, retirement and CPU-visible readback.
+Kernel independently reports first Compute completion, `773625 ns` GPU time. This crosses command construction, VM/queue submission, firmware scheduling, shader execution, retirement and CPU-visible readback.
 
 ### E1077 — real Render + triangle readback
 
-Using the same runtime and userspace, `vk-render-check` performs a 64x64 clear plus a 48x48 triangle and verifies every output pixel.
+Canonical bounded result:
 
-Bounded one-second result:
+`vk-render-check: 64x64 clear + 48x48 triangle`
 
 `PASS: 1174 runs in 1.0 s, 0 with wrong pixels`
 
-Kernel independent completion:
+Kernel independently reports first Render completion, `127875 ns` GPU time, with non-zero TA and fragment timing. Private E1077 `RESULT.md` SHA-256: `db13fb493401d0e1eba7ff397752d0dbc59d7fb46e23f926135a6f7c0aae8f58`.
 
-`M3 G15G verdict: job-completed: the first render job finished ... 127875 ns of GPU time`
+### E1078 — GPU triangle reaches active panel through a verified CPU-copy bridge
 
-The timing stream records non-zero TA and fragment time. This crosses graphics command construction, tile/render state, vertex/fragment execution, render completion and CPU-visible pixel readback.
+The passing render path yielded an exact 16384-byte 64x64 RGBA8 GPU readback, raw SHA-256 `949b6175a756379bf58f27c4543a1f15a294b259c54e9a0464fe860605e309cd`, triangle bbox `x=8..55, y=8..55`.
 
-Private E1077 `RESULT.md` SHA-256: `db13fb493401d0e1eba7ff397752d0dbc59d7fb46e23f926135a6f7c0aae8f58`.
-
-### E1078 — GPU triangle reaches active internal-panel framebuffer
-
-The already-passing E1077 checker was instrumented only at Vulkan allocation/map/unmap boundaries. It still passed `1258 runs / 0 wrong pixels` and exposed one exact 16384-byte host-visible readback: 64x64x4 RGBA8.
-
-Decoded GPU output:
-
-- background RGBA `(32,64,96,255)`;
-- triangle bbox `x=8..55, y=8..55` = 48x48;
-- 2304 non-background pixels;
-- center pixel `(128,128,0,255)`;
-- raw GPU readback SHA-256 `949b6175a756379bf58f27c4543a1f15a294b259c54e9a0464fe860605e309cd`.
-
-Display side of this boot:
-
-- simpledrm/simple-framebuffer owns the internal panel, separate from the Asahi render-only DRM card;
-- connected connector: `card0-Unknown-1`;
-- mode: 2880x1800;
-- `/dev/fb0`: 32 bpp, stride 11520;
-- device-tree format: `x2r10g10b10`.
-
-The exact GPU output was nearest-neighbour scaled 28x, centered, converted pixel-for-pixel to `x2r10g10b10`, and written to the active framebuffer. Intended panel image and immediate framebuffer readback both hashed to:
-
-`23f4bf863f03c29bcc2832c625edaadd20f2e5cb656015b494358df2415898dc`
-
-The original framebuffer was then restored exactly; pre-display and restored SHA-256 both equal:
-
-`1b86724c5caa46dc35dfca1d5a9976e9d43810c071422facc0c28e076ee2db95`
+On that boot simpledrm/simple-framebuffer owns the internal panel (2880x1800, `x2r10g10b10`) while Asahi is a separate render-only DRM device. The exact GPU output was converted to the panel format and CPU-copied to `/dev/fb0`; intended image and immediate framebuffer readback both hashed to `23f4bf863f03c29bcc2832c625edaadd20f2e5cb656015b494358df2415898dc`. The original framebuffer was restored byte-for-byte, pre/restored SHA-256 `1b86724c5caa46dc35dfca1d5a9976e9d43810c071422facc0c28e076ee2db95`.
 
 Private E1078 `RESULT.md` SHA-256: `196cef3d28007c10c2fcdacf810bdd9fc19b20d6221e5fd29a257954daa6389b`.
 
-**Interpretation:** this is an end-to-end visible-pixel bridge from real J615 GPU rendering to the active internal-panel framebuffer. It is deliberately **not** claimed as native Asahi/DCP/KMS scanout: a CPU copy bridges the working GPU render device to the existing simpledrm framebuffer.
+**Classification:** E1078 is real GPU-rendered pixels reaching the active panel, but by a CPU copy. It is not native Asahi/DCP/KMS scanout.
 
-## 2. Why E1075 mattered
+## 2. E1086 — native-presentation differential
 
-E1075 restores the exact T8122 HwDataA block:
+E1086 extends E1077/E1078; it does not replace or renumber them.
 
-`1, 500, 5, 12500x5, 3000x3, 12500x8, 1`
+The exact E1075 runtime was reproduced again through Fabric. Independent graphics controls remained clean:
 
-Without it, the E1065 lineage reaches q21 firmware-ready and publishes DeviceControl entry 1, but firmware never consumes it. With it, DeviceControl is consumed, readiness advances to `0xabcdabcd`, firmware runs and DRM registers. The old E056 Apple-side reduction therefore became a directly causal Linux startup fix.
+- Vulkan `vk-render-check`: `1084 runs in 1.0 s`, `0 wrong pixels`; kernel first Render completion `127708 ns` GPU time.
+- Zink over Honeykrisp with `MESA_LOADER_DRIVER_OVERRIDE=zink`: renderer `zink Vulkan 1.4(Apple M3 (G15G C0) (MESA_HONEYKRISP))`; `1028 runs in 1.0 s`, `0 wrong pixels`.
+- No GPU, DART or RTKit fault, panic or Oops during the sequence.
+
+Presentation discriminators:
+
+1. `vkcube --wsi display` admits G15G, then reports `Cannot find any display!`; the render GPU exposes no Vulkan direct-display object for the simpledrm-owned panel.
+2. GDM/GNOME Wayland starts on `card0/simpledrm`. Attempts by old system Mesa to use the G15G render device are rejected by the kernel's explicit 592-vs-600-byte GET_PARAMS gate, so Mutter remains on simpledrm/CPU.
+3. A Wayland EGL window can render and `eglSwapBuffers`, but follows the compositor's simpledrm device and therefore uses softpipe even when the isolated prefix, Zink override and `DRI_PRIME=1` are supplied.
+4. Honeykrisp `vkcube --wsi wayland --c 60` selects `Apple M3 (G15G C0)` and causes GPU activity, but does not finish within the 10-second bound. At the corresponding time Mutter logs `Invalid sequence for VSYNC frame info`. No GPU/DART/RTKit fault occurs.
+5. `VK_PRESENT_MODE_IMMEDIATE_KHR` is unsupported on this Wayland surface, so the FIFO/vsync path cannot be bypassed that way.
+6. Xwayland is software-only and reports no DRI3, so Honeykrisp XCB presentation is unavailable in this session.
+
+Private E1086 `RESULT.md` SHA-256: `0e78deb6a85e6ca3030ff712d44e160295d065739dd987b07379b35fac4b6a54`.
+
+### Current hard boundary
+
+`correct G15G Compute + TA/fragment triangle render/readback -> GPU Wayland swapchain/job activity -> [cross-device simpledrm/render-GPU presentation + vsync/fence integration] -> native presented GPU buffer`
+
+This is now a display/presentation problem, not a GPU execution problem.
 
 ## 3. Historical execution localization retained
 
-E972/E974/E989–E1005 remain valid for the older failing E933/E950-style lineage:
+E972/E974/E989–E1005 remain valid for the older E933/E950-style failing lineage:
 
 - E972: Apple and Linux match through outer-ESL token5; Apple then emits token7 carrying the initial PC while Linux does not.
 - E974: parser state `0x61` is ESL slot 1, not a hidden hardware mode.
 - E989–E1005: the old failure is generic to complete state operations, not RLD-specific.
 
-Do not erase those negatives, but do not present them as the current repaired-lineage frontier. E1076/E1077 cross real Compute and Render execution.
+Preserve those negatives, but do not present them as the current repaired-lineage frontier.
 
-## 4. Closed false starts / do not repeat
+## 4. Do not repeat
 
-- Old `G15Debug::SelfTest` bit47 belongs to the inactive legacy manager backend, not the active M3 runtime backend.
-- Ordinary known-good boot.bin does not provide the qualified E1075 identity/ABI handoff.
-- System Mesa and ordinary retained `mesa-m3` fail before GPU submission for explicit ABI/command-stream reasons.
-- Direct Vulkan `vkcube --wsi display` on this boot reports `Cannot find any display!`: the Asahi device is render-only while simpledrm owns the panel.
-- Do not restart broad Queue/RunCompute/UAT/PagePool/power/parser/MMIO searches without contradictory evidence.
+- Do not reopen instruction-0, token5→token7, shader, TA/fragment, Queue/RunCompute/UAT/PagePool/power/parser/MMIO hypotheses without contradictory evidence.
+- Do not use the legacy manager-backend `G15Debug::SelfTest` bit47 as a current qualification gate.
+- Do not interpret `Cannot find any display!`, softpipe Wayland EGL, or Xwayland no-DRI3 as GPU Render failures.
+- Do not replace system Mesa merely to continue the display investigation; the isolated G15G userspace path is already qualified.
 
-## 5. Current frontier
+## 5. Immediate next actions
 
-The next major engineering layer is **native DCP/KMS/display ownership and GPU-buffer presentation**, followed by broader compositor/desktop and endurance qualification.
+1. Map the display stack precisely: simpledrm ownership, available/missing native Apple DCP/KMS components, relevant DT nodes/drivers, and why no native display DRM device replaces simpledrm.
+2. Trace Honeykrisp Wayland first-present around dma-buf format/modifier, implicit/explicit synchronization, fence ownership and Mutter VSYNC sequencing without changing GPU command construction.
+3. Design one bounded native KMS/DCP discriminator that scans out a GPU-produced buffer directly, avoiding E1078's CPU framebuffer copy.
 
-The GPU-side milestones are now mechanically passed on the repaired lineage:
-
-`firmware-running -> Compute correct -> Render correct -> triangle pixels correct -> active panel framebuffer bridge`
+Only after native presentation succeeds should broader compositor/desktop acceleration and endurance/performance qualification begin.
 
 ## 6. Recovery state
 
-After E1077/E1078, Fabric reboot reconciliation confirmed a return to Golden:
+After E1086, Fabric reconciled the machine back to Golden:
 
 - Golden kernel: `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`.
-- Recovery boot ID: `dbb9862d-d4fa-4e33-beec-0afecf0feaf8`.
+- Recovery boot ID: `548c1cb2-a5f6-4aa4-8fe9-69a3740a14c9`.
 - Known-good m1n1 `boot.bin` SHA-256: `a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d`.
 - Original `/boot/grub/custom.cfg` SHA-256: `cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462`.
-- No pending GRUB one-shot entry, no render node and no live-owner marker.
+- Persistent and next boot are Ubuntu; no pending GRUB one-shot entry and no experimental render node.
 
 ## Evidence pointers
 
@@ -141,3 +123,4 @@ After E1077/E1078, Fabric reboot reconciliation confirmed a return to Golden:
 - E1076: `/home/macmac/m3-gpu-lab/experiments/E1076-e1075-empty-compute-selftest/RESULT.md`.
 - E1077: `/home/macmac/m3-gpu-lab/experiments/E1077-vk-render-readback/RESULT.md`.
 - E1078: `/home/macmac/m3-gpu-lab/experiments/E1078-visible-triangle-bridge/RESULT.md`.
+- E1086: `/home/macmac/m3-gpu-lab/experiments/E1086-wayland-presentation-differential/RESULT.md`.

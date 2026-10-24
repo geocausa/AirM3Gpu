@@ -6,7 +6,7 @@ Golden kernel: 7.1.6-ubuntu-m3-usbpd-gc5037a961e4d
 Startup prerequisite: E1075 PASS
 E1075 Linux branch: wip/g15-e1075-hwdata418c
 E1075 Linux commit: a4778ca2a3f4791245cf1f7f42f26ccf2b17f5f7
-E1075 result: exact E056-derived T8122 HwDataA +0x418c..+0x41db 20-u32 image crosses first DeviceControl barrier; firmware-running; /dev/dri/renderD128 present
+E1075 result: exact E056-derived T8122 HwDataA +0x418c..+0x41db crosses first DeviceControl barrier; firmware-running; render node present
 
 Compute milestone: E1076 PASS
 E1076 userspace: isolated mesa-m3-g15c 26.1.4.g15c1-2
@@ -17,31 +17,41 @@ E1076 kernel completion: first compute job completed; 773625 ns GPU time
 E1076 private RESULT SHA256: ed0f8e6166310f017713c4b9215d897bf3a3a386c116f81030d0b2e55f395f1b
 
 Render milestone: E1077 PASS
-E1077 render: 64x64 clear + 48x48 triangle; 1174 runs in 1.0 s; 0 wrong pixels
+E1077 canonical render: 64x64 clear + 48x48 triangle; 1174 runs in 1.0 s; 0 wrong pixels
 E1077 kernel completion: first render job completed; 127875 ns GPU time; non-zero TA and fragment timing
 E1077 private RESULT SHA256: db13fb493401d0e1eba7ff397752d0dbc59d7fb46e23f926135a6f7c0aae8f58
-E1077 render output SHA256: 4494d663f4a383a2af4db7edbc816d1e4969f4c6e9b64684af58f6bb6a361d09
 
 Panel framebuffer bridge: E1078 PASS
-E1078 instrumented render: 1258 runs; 0 wrong pixels; exact 16384-byte 64x64 RGBA8 readback captured
 E1078 raw GPU readback SHA256: 949b6175a756379bf58f27c4543a1f15a294b259c54e9a0464fe860605e309cd
 E1078 GPU triangle bbox: x=8..55 y=8..55; 2304 non-background pixels
-E1078 panel format: simpledrm 2880x1800 x2r10g10b10
+E1078 panel: simpledrm 2880x1800 x2r10g10b10
 E1078 intended/displayed framebuffer SHA256: 23f4bf863f03c29bcc2832c625edaadd20f2e5cb656015b494358df2415898dc
 E1078 pre/restored framebuffer SHA256: 1b86724c5caa46dc35dfca1d5a9976e9d43810c071422facc0c28e076ee2db95
 E1078 private RESULT SHA256: 196cef3d28007c10c2fcdacf810bdd9fc19b20d6221e5fd29a257954daa6389b
-E1078 classification: real GPU-rendered pixels bridged by CPU copy into active simpledrm panel framebuffer; NOT native Asahi/DCP/KMS scanout
+E1078 classification: GPU-rendered triangle -> verified CPU-visible readback -> CPU copy -> active simpledrm framebuffer; NOT native DCP/KMS scanout
+
+Native-presentation differential: E1086
+E1086 private RESULT SHA256: 0e78deb6a85e6ca3030ff712d44e160295d065739dd987b07379b35fac4b6a54
+E1086 Vulkan reproduction: 1084 runs in 1.0 s; 0 wrong pixels; first render GPU time 127708 ns
+E1086 Zink/Honeykrisp: 1028 runs in 1.0 s; 0 wrong pixels; renderer Apple M3 G15G C0
+E1086 display topology: GNOME Wayland on card0/simpledrm; Asahi is separate render GPU
+E1086 direct-display: no Vulkan display object
+E1086 Wayland Vulkan: Apple M3 G15G selected; GPU activity observed; bounded present did not complete; Mutter logged Invalid sequence for VSYNC frame info; no GPU/DART/RTKit fault
+E1086 immediate present: unsupported
+E1086 Xwayland: no DRI3
+E1086 current boundary: correct GPU render -> GPU Wayland activity -> missing cross-device simpledrm/render-GPU dma-buf/fence/vsync integration -> native presented GPU buffer
 
 Historical execution-semantic closure: E972/E974/E989-E1005
-Historical failing-lineage boundary: common outer-ESL token5 followed by missing Linux token7(initial PC)
-Classification correction: retained historical negative for E933/E950-style lineage; NOT the current repaired-lineage frontier
+Classification: retained historical negative for E933/E950-style lineage; NOT the current repaired-lineage frontier
 
-Current next gate: native DCP/KMS/display ownership and GPU-buffer presentation; then compositor/desktop and endurance qualification
+Current next gate: map native DCP/KMS/display ownership, trace dma-buf/modifier/fence/VSYNC path, then one bounded direct GPU-buffer scanout discriminator
 
-Recovery after E1077/E1078: Golden active
-Recovery boot ID: dbb9862d-d4fa-4e33-beec-0afecf0feaf8
+Recovery after E1086: Golden active
+Recovery boot ID: 548c1cb2-a5f6-4aa4-8fe9-69a3740a14c9
 Known-good boot.bin SHA256: a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d
 Original custom.cfg SHA256: cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462
-No pending one-shot, render node, or live-owner marker
+Persistent boot: Ubuntu
+Next boot: Ubuntu
+No pending one-shot entry or experimental render node
 
 Historical pre-E718 ledgers remain preserved under their HISTORICAL-* names.

@@ -8,50 +8,51 @@ Target: MacBook Air M3 J615 / T8122 / G15G C0. Exact reference: macOS 14.8.3 / 2
 
 ## Headline
 
-**J615 now has mechanically verified correct Compute, Vulkan Render, triangle pixels, and an active-panel framebuffer bridge.**
+**J615 basic GPU execution is solved on the repaired E1075 lineage; native presentation is now the frontier.**
 
-E1075 is the startup prerequisite: restoring the exact E056-derived T8122 HwDataA `+0x418c..+0x41db` 20-word image, together with the exact qualified handoff, moves the reconstructed runtime to `firmware-running` with `/dev/dri/renderD128` present.
+E1075 restores the exact E056-derived T8122 HwDataA `+0x418c..+0x41db` image and reaches `firmware-running` with `/dev/dri/renderD128`.
 
-E1076 proves real Compute/readback:
+E1076 proves correct Compute/readback:
 
 `65536 invocations x 256 steps; 788 runs in 1.0 s; 0 wrong results`
 
-Kernel completion evidence:
+E1077 proves canonical correct Vulkan Render/triangle readback:
 
-`M3 G15G verdict: job-completed: the first compute job finished ... 773625 ns of GPU time`
+`64x64 clear + 48x48 triangle; 1174 runs in 1.0 s; 0 wrong pixels`
 
-E1077 proves real graphics execution and pixel-correct triangle readback:
+Kernel first Render completion is `127875 ns` GPU time with non-zero TA and fragment timing.
 
-`vk-render-check: 64x64 clear + 48x48 triangle, 1 s`
+E1078 captures the exact GPU-produced 64x64 RGBA8 triangle and bridges it by CPU copy into the active 2880x1800 `x2r10g10b10` simpledrm framebuffer. Intended/displayed framebuffer SHA-256 is `23f4bf863f03c29bcc2832c625edaadd20f2e5cb656015b494358df2415898dc`; the original framebuffer is restored byte-for-byte. This is visible output but **not native Asahi/DCP/KMS scanout**.
 
-`PASS: 1174 runs in 1.0 s, 0 with wrong pixels`
+## E1086 — presentation localization
 
-Kernel completion evidence:
+E1086 independently reproduces correct graphics and then probes native presentation:
 
-`M3 G15G verdict: job-completed: the first render job finished ... 127875 ns of GPU time`
+- Vulkan Render reproduction: `1084 runs / 0 wrong pixels`; first Render GPU time `127708 ns`.
+- Zink/Honeykrisp GLES reproduction: `1028 runs / 0 wrong pixels`; renderer `zink Vulkan 1.4(Apple M3 (G15G C0) (MESA_HONEYKRISP))`.
+- `vkcube --wsi display`: G15G admitted, then `Cannot find any display!`.
+- GNOME Wayland runs on `card0/simpledrm`; old system Mesa is rejected on the separate G15G render device by the 592-vs-600-byte GET_PARAMS gate.
+- Wayland EGL follows simpledrm and uses softpipe even with the isolated Mesa prefix, Zink override and `DRI_PRIME=1`.
+- Honeykrisp `vkcube --wsi wayland --c 60` selects the real Apple M3 G15G and causes GPU work, but the 10-second bound expires; Mutter concurrently logs `Invalid sequence for VSYNC frame info`.
+- No GPU, DART or RTKit fault occurs.
+- Immediate present mode is unsupported; Xwayland has no DRI3.
 
-The render timing stream has non-zero TA and fragment time. The private E1077 `RESULT.md` SHA-256 is `db13fb493401d0e1eba7ff397752d0dbc59d7fb46e23f926135a6f7c0aae8f58`.
+Current boundary:
 
-E1078 then instruments only the Vulkan map/unmap boundary of the already-passing checker. It still passes `1258 runs / 0 wrong pixels` and captures the exact 16384-byte 64x64 RGBA8 GPU readback. The triangle occupies a 48x48 bbox (`x=8..55, y=8..55`), with raw readback SHA-256 `949b6175a756379bf58f27c4543a1f15a294b259c54e9a0464fe860605e309cd`.
+`correct Compute + TA/fragment Render -> GPU Wayland swapchain/job activity -> [simpledrm/render-GPU dma-buf/fence/vsync integration] -> native presented GPU buffer`
 
-Those exact GPU-produced pixels were converted to the active internal panel's `x2r10g10b10` simple-framebuffer format and written to `/dev/fb0`. Intended image and immediate framebuffer readback both hash to `23f4bf863f03c29bcc2832c625edaadd20f2e5cb656015b494358df2415898dc`. The pre-display framebuffer and restored framebuffer both hash to `1b86724c5caa46dc35dfca1d5a9976e9d43810c071422facc0c28e076ee2db95`.
+Private E1086 result SHA-256: `0e78deb6a85e6ca3030ff712d44e160295d065739dd987b07379b35fac4b6a54`.
 
-**Important distinction:** E1078 is a GPU-render -> CPU-copy -> simpledrm framebuffer bridge. It demonstrates the real GPU triangle reaching active panel scanout memory, but it is not native Asahi/DCP/KMS presentation.
+## Next work
 
-## Current frontier
+Map native Apple DCP/KMS/display ownership, then trace the first-present dma-buf/modifier/fence/vsync path and build one bounded direct GPU-buffer scanout discriminator. Do not modify GPU command construction merely to solve presentation.
 
-The next major engineering layer is **native DCP/KMS/display ownership and GPU-buffer presentation**, then compositor/desktop and endurance qualification.
-
-The current repaired-lineage progression is:
-
-`firmware-running -> correct Compute -> correct Render -> correct triangle pixels -> active panel framebuffer bridge`
-
-Do not return to broad Queue/RunCompute/UAT/PagePool/power/parser/MMIO searches without contradictory evidence.
+Do not return to broad instruction-0, token5→token7, Queue/RunCompute/UAT/PagePool/power/parser/MMIO searches without contradictory evidence.
 
 ## Historical boundary retained
 
-E972/E974/E989–E1005 remain valid for the older failing E933/E950-style lineage: common outer-ESL token5 followed by missing Linux token7/initial PC. Preserve those results, but do not present them as the current E1075/E1077 frontier.
+E972/E974/E989–E1005 remain valid for the older failing E933/E950-style lineage. Preserve those results, but do not present them as the current E1075/E1086 frontier.
 
 ## Safety state
 
-After E1077/E1078, Fabric reconciled the machine back to Golden Linux `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`, boot ID `dbb9862d-d4fa-4e33-beec-0afecf0feaf8`, known-good m1n1 SHA `a81993b...`, original GRUB SHA `cf011eee...`, no pending one-shot entry, no render node and no live-owner marker.
+After E1086, Fabric reconciled Golden Linux `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`, boot ID `548c1cb2-a5f6-4aa4-8fe9-69a3740a14c9`, known-good m1n1 SHA `a81993b...`, original GRUB SHA `cf011eee...`, Ubuntu persistent/next boot, no pending one-shot entry and no experimental render node.
