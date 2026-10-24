@@ -1,4 +1,4 @@
-=== CURRENT 2026-10-24 CHECKPOINT ===
+=== CURRENT 2026-10-25 CHECKPOINT ===
 Canonical state: docs/CANONICAL-CHECKPOINT.md
 Canonical handoff: docs/NEW-CHAT-HANDOFF.md
 Target: J615 / T8122 / G15G C0
@@ -7,54 +7,47 @@ Persistent Golden kernel: 7.1.6-ubuntu-m3-usbpd-gc5037a961e4d
 
 STARTUP / COMPUTE / RENDER
 E1075 Linux commit: a4778ca2a3f4791245cf1f7f42f26ccf2b17f5f7
-E1075: firmware-running after exact E056-derived T8122 HwDataA +0x418c..+0x41db restoration
 E1076 private RESULT SHA256: ed0f8e6166310f017713c4b9215d897bf3a3a386c116f81030d0b2e55f395f1b
 E1076 mesa-m3-g15c package SHA256: 552c94de1a98a25cc5e0dbd9e3a4cf5fdd738fb5d95689b41428f9dee3aa0936
-E1076 Compute: 788 runs / 0 wrong; 773625 ns first Compute GPU time
 E1077 private RESULT SHA256: db13fb493401d0e1eba7ff397752d0dbc59d7fb46e23f926135a6f7c0aae8f58
-E1077 canonical Render: 1174 runs / 0 wrong pixels; 127875 ns first Render GPU time; TA/fragment timing non-zero
 
-PANEL BRIDGE
+PANEL BRIDGE / OLD PRESENT LOCALIZATION
 E1078 private RESULT SHA256: 196cef3d28007c10c2fcdacf810bdd9fc19b20d6221e5fd29a257954daa6389b
 E1078 raw GPU triangle SHA256: 949b6175a756379bf58f27c4543a1f15a294b259c54e9a0464fe860605e309cd
 E1078 panel image/readback SHA256: 23f4bf863f03c29bcc2832c625edaadd20f2e5cb656015b494358df2415898dc
 E1078 pre/restored framebuffer SHA256: 1b86724c5caa46dc35dfca1d5a9976e9d43810c071422facc0c28e076ee2db95
-E1078 classification: GPU triangle -> CPU-visible readback -> CPU copy -> simpledrm panel; not native scanout
-
-E1086 NATIVE-PRESENTATION DIFFERENTIAL
 E1086 private RESULT SHA256: 0e78deb6a85e6ca3030ff712d44e160295d065739dd987b07379b35fac4b6a54
-E1086 independent Vulkan output SHA256: 7a7287188bc5768db179316415541ac18aea081915ad1d733bbceb124cbb0f62
-E1086 independent Zink output SHA256: 8fb6b234ac47a47a5b304bce98f78c991d7401c93fbf1bdc290f2ec066c96c9a
-E1086 Honeykrisp Wayland vkcube output SHA256: 7a0c6c9a281984eef012817fcadd307e3af2591d99d6de66f8d85b08c62da4f8
-E1086 fault scan SHA256: 54946c6791f9aecfca32483160bdf89f010f89b951653fcdccfd6139448e2db7
-E1086 Vulkan reproduction: 1084 runs / 0 wrong pixels; 127708 ns first Render GPU time
-E1086 Zink/Honeykrisp: 1028 runs / 0 wrong pixels; renderer zink Vulkan 1.4 Apple M3 G15G C0
-E1086 direct-display: no display object
-E1086 GNOME: compositor on simpledrm; separate G15G render GPU
-E1086 Honeykrisp Wayland: G15G selected and GPU activity observed; bounded present stalls; Mutter logs Invalid sequence for VSYNC frame info; no GPU fault
-E1086 immediate present: unsupported
-E1086 Xwayland: no DRI3
-
 
 E1091 NATIVE DCP/KMS DISPLAY
 E1091 private RESULT SHA256: d350acf59fc23ce1d219cb3d5e046dd0c29fcdcaddd1416aaad01a175472a486
 E1091 source delta vs E1075 SHA256: 691b050993339adfa50d1419479a6fe0453662d2938007c34faae01dc2de25a3
 E1091 evidence manifest SHA256: 86fcaa3dca8f09c0fd338d49423422284796afb06755e51fa5910035633018e9
 E1091 kernel SHA256: 538b06b8dfe52139c21c60bc6ac831c0085e7e69fae820195ab7fafb26bb7566
-E1091 display handoff SHA256: 2c908a8ddbc592a43a298298051f7727eec2081b1e75aa5aa535cdbb36b60a81
-E1091: native apple-drm + eDP-1 + appledrmfb PASS; Asahi GPU intentionally blacklisted
+E1091 display-only handoff SHA256: 2c908a8ddbc592a43a298298051f7727eec2081b1e75aa5aa535cdbb36b60a81
+
+E1092 SIMULTANEOUS NATIVE DISPLAY + G15G
+E1092 private RESULT SHA256: 7d303dfa0e8e563fcefcc31fd2413be82ea07b0baa52c68138de5590f8151d0c
+E1092 combined DCP+GPU handoff SHA256: 9b0b8bbc44c4de447381e12e5eea2d825856abb08f3eecbc75343f1839636502
+E1092 retained SPIRV compatibility wrapper SHA256: 81775f08e39f31b64409ef667a595b292f3dee4f098a389d5fd165bda3bcba19
+E1092: Vulkan Render 988 runs / 0 wrong; first Render 168708 ns; first Compute 25791 ns
+
+E1093 DIRECT NATIVE GPU-BUFFER PRESENTATION
+E1093 private RESULT SHA256: 1180520285949fb309aa2ca099ae48e5ebce6e014715ad308b1645c457ecac38
+E1093 evidence manifest SHA256: 013b8d032f407445efcc694d02d945de8a703d20c9d824f6f4801ddc9a772f8e
+E1093 observed helper source SHA256: ff0c16c5758716408c2bd29e64cdd2a123587994770a128eb3241b0bc4fc37cf
+E1093 observed helper binary SHA256: f7bbfcb075c9457a8be3fc16343eff9ede903f40d4e0fb0f9270545ba5d81844
+E1093 DCP oracle: before swaps7 active_fb42 imported0; present swaps8 active_fb44 imported1; restore swaps9 active_fb42 imported0
+E1093 classification: direct G15G DMA-BUF -> apple-drm PRIME -> synchronous native DCP swap -> restore; no CPU pixel copy
 
 CURRENT FRONTIER
-Simultaneous native Apple DCP/KMS + G15G operation, then native KMS/dma-buf/fence presentation of a GPU-produced buffer
-Do not reopen instruction0, token5->token7, shader, TA/fragment, Queue/RunCompute/UAT/PagePool/power/parser/MMIO without contradictory evidence
-
-HISTORICAL EXECUTION LOCALIZATION
-E972/E974/E989-E1005: retained older-lineage evidence; not current repaired-lineage frontier
+Native compositor/window-system integration and repeated synchronization/pageflip/VSYNC qualification on the proven E1093 direct-presentation path.
+Do not reopen instruction0, token5->token7, shader, TA/fragment, Queue/RunCompute/UAT/PagePool/power/parser/MMIO without contradictory evidence.
 
 RECOVERY
-Recovery boot ID: d45645c3-7ca3-4049-b01c-87e264dd74ed
+Recovery Fabric operation: rbt_ff2d704eb89a419799305de2c53d6c91
+Recovery boot ID: db06411a-f5ab-450f-a799-8694ab6d9674
 Known-good boot.bin SHA256: a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d
 Original custom.cfg SHA256: cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462
-Fabric recovery succeeded to Golden; Ubuntu persistent/next boot; no pending next_entry or experimental render node
+Golden verified: Ubuntu persistent/next, empty GRUB one-shot, owner marker absent, no experimental render node / Asahi module.
 
 Historical pre-E718 hash/evidence ledger: manifests/HISTORICAL-HASHES-THROUGH-E717.txt

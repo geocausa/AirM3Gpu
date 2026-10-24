@@ -1,66 +1,63 @@
-AirM3Gpu canonical checkpoint date: 2026-10-24
+AirM3Gpu canonical checkpoint date: 2026-10-25
 Target: J615 / T8122 / G15G C0
-Exact target authority: macOS 14.8.3 / 23J220
-Golden kernel: 7.1.6-ubuntu-m3-usbpd-gc5037a961e4d
+Exact ABI authority: macOS 14.8.3 / 23J220
+Persistent Golden kernel: 7.1.6-ubuntu-m3-usbpd-gc5037a961e4d
 
-Startup prerequisite: E1075 PASS
-E1075 Linux branch: wip/g15-e1075-hwdata418c
-E1075 Linux commit: a4778ca2a3f4791245cf1f7f42f26ccf2b17f5f7
-E1075 result: exact E056-derived T8122 HwDataA +0x418c..+0x41db crosses first DeviceControl barrier; firmware-running; render node present
+E1075 STARTUP: PASS
+Linux commit: a4778ca2a3f4791245cf1f7f42f26ccf2b17f5f7
+Result: exact E056-derived T8122 HwDataA +0x418c..+0x41db crosses the first DeviceControl barrier; firmware-running; render node present.
 
-Compute milestone: E1076 PASS
-E1076 userspace: isolated mesa-m3-g15c 26.1.4.g15c1-2
-E1076 package SHA256: 552c94de1a98a25cc5e0dbd9e3a4cf5fdd738fb5d95689b41428f9dee3aa0936
-E1076 admission gate: ASAHI_M3_EXPERIMENTAL=1
-E1076 compute: 65536 invocations x 256 steps; 788 runs in 1.0 s; 0 wrong results
-E1076 kernel completion: first compute job completed; 773625 ns GPU time
-E1076 private RESULT SHA256: ed0f8e6166310f017713c4b9215d897bf3a3a386c116f81030d0b2e55f395f1b
+E1076 COMPUTE: PASS
+Result: 65536 invocations x 256 steps; 788 runs in 1.0 s; 0 wrong results.
+Kernel: first Compute completed; 773625 ns GPU time.
+Private RESULT SHA256: ed0f8e6166310f017713c4b9215d897bf3a3a386c116f81030d0b2e55f395f1b
 
-Render milestone: E1077 PASS
-E1077 canonical render: 64x64 clear + 48x48 triangle; 1174 runs in 1.0 s; 0 wrong pixels
-E1077 kernel completion: first render job completed; 127875 ns GPU time; non-zero TA and fragment timing
-E1077 private RESULT SHA256: db13fb493401d0e1eba7ff397752d0dbc59d7fb46e23f926135a6f7c0aae8f58
+E1077 RENDER: PASS
+Result: 64x64 clear + 48x48 triangle; 1174 runs in 1.0 s; 0 wrong pixels.
+Kernel: first Render completed; 127875 ns GPU time; non-zero TA and fragment timing.
+Private RESULT SHA256: db13fb493401d0e1eba7ff397752d0dbc59d7fb46e23f926135a6f7c0aae8f58
 
-Panel framebuffer bridge: E1078 PASS
-E1078 raw GPU readback SHA256: 949b6175a756379bf58f27c4543a1f15a294b259c54e9a0464fe860605e309cd
-E1078 GPU triangle bbox: x=8..55 y=8..55; 2304 non-background pixels
-E1078 panel: simpledrm 2880x1800 x2r10g10b10
-E1078 intended/displayed framebuffer SHA256: 23f4bf863f03c29bcc2832c625edaadd20f2e5cb656015b494358df2415898dc
-E1078 pre/restored framebuffer SHA256: 1b86724c5caa46dc35dfca1d5a9976e9d43810c071422facc0c28e076ee2db95
-E1078 private RESULT SHA256: 196cef3d28007c10c2fcdacf810bdd9fc19b20d6221e5fd29a257954daa6389b
-E1078 classification: GPU-rendered triangle -> verified CPU-visible readback -> CPU copy -> active simpledrm framebuffer; NOT native DCP/KMS scanout
+E1078 PANEL BRIDGE: PASS, CPU-COPY ONLY
+Result: exact GPU triangle copied to active simpledrm framebuffer and original framebuffer restored byte-for-byte.
+Classification: visible GPU-derived pixels, not native GPU-buffer scanout.
+Private RESULT SHA256: 196cef3d28007c10c2fcdacf810bdd9fc19b20d6221e5fd29a257954daa6389b
 
-Native-presentation differential: E1086
-E1086 private RESULT SHA256: 0e78deb6a85e6ca3030ff712d44e160295d065739dd987b07379b35fac4b6a54
-E1086 Vulkan reproduction: 1084 runs in 1.0 s; 0 wrong pixels; first render GPU time 127708 ns
-E1086 Zink/Honeykrisp: 1028 runs in 1.0 s; 0 wrong pixels; renderer Apple M3 G15G C0
-E1086 display topology: GNOME Wayland on card0/simpledrm; Asahi is separate render GPU
-E1086 direct-display: no Vulkan display object
-E1086 Wayland Vulkan: Apple M3 G15G selected; GPU activity observed; bounded present did not complete; Mutter logged Invalid sequence for VSYNC frame info; no GPU/DART/RTKit fault
-E1086 immediate present: unsupported
-E1086 Xwayland: no DRI3
-E1086 current boundary: correct GPU render -> GPU Wayland activity -> missing cross-device simpledrm/render-GPU dma-buf/fence/vsync integration -> native presented GPU buffer
+E1086 PRESENTATION LOCALIZATION
+Result: Vulkan and Zink/Honeykrisp graphics remain correct; old simpledrm Wayland path stalls at cross-device presentation/VSYNC integration without a GPU/DART/RTKit fault.
+Private RESULT SHA256: 0e78deb6a85e6ca3030ff712d44e160295d065739dd987b07379b35fac4b6a54
 
-Native J615 DCP/KMS milestone: E1091 PASS
-E1091 kernel: 7.1.12-e1091-t8122-pmp-reordered
-E1091 kernel SHA256: 538b06b8dfe52139c21c60bc6ac831c0085e7e69fae820195ab7fafb26bb7566
-E1091 display handoff SHA256: 2c908a8ddbc592a43a298298051f7727eec2081b1e75aa5aa535cdbb36b60a81
-E1091 result: PMP request 0x20080 acknowledged with ack 0x200f0; DCP RTKit/DCPLink and PIODMA run; J615 2880x1800@60; apple-drm registered; eDP-1 connected/enabled; fb0=appledrmfb; simpledrm displaced
-E1091 GPU policy: Asahi intentionally blacklisted; display-only qualification
-E1091 private RESULT SHA256: d350acf59fc23ce1d219cb3d5e046dd0c29fcdcaddd1416aaad01a175472a486
-E1091 source delta vs E1075 SHA256: 691b050993339adfa50d1419479a6fe0453662d2938007c34faae01dc2de25a3
+E1091 NATIVE J615 DCP/KMS: PASS
+Kernel: 7.1.12-e1091-t8122-pmp-reordered
+Result: PMP request 0x20080 acknowledged with ack 0x200f0; DCP RTKit/DCPLink and PIODMA run; 2880x1800@60; apple-drm registered; eDP-1 connected/enabled; fb0=appledrmfb; simpledrm displaced.
+GPU policy: Asahi intentionally blacklisted for display-only qualification.
+Private RESULT SHA256: d350acf59fc23ce1d219cb3d5e046dd0c29fcdcaddd1416aaad01a175472a486
+Source delta vs E1075 SHA256: 691b050993339adfa50d1419479a6fe0453662d2938007c34faae01dc2de25a3
 
-Historical execution-semantic closure: E972/E974/E989-E1005
-Classification: retained historical negative for E933/E950-style lineage; NOT the current repaired-lineage frontier
+E1092 SIMULTANEOUS NATIVE DISPLAY + G15G: PASS
+Combined DCP+GPU handoff SHA256: 9b0b8bbc44c4de447381e12e5eea2d825856abb08f3eecbc75343f1839636502
+Result: native apple-drm/eDP-1 and G15G firmware-running/renderD128 coexist; Vulkan Render 988 runs in 1.0 s, 0 wrong pixels.
+Kernel: first Render 168708 ns; first Compute 25791 ns.
+Private RESULT SHA256: 7d303dfa0e8e563fcefcc31fd2413be82ea07b0baa52c68138de5590f8151d0c
 
-Current next gate: run E1091 native display together with the qualified E1075 G15G path, then one bounded direct native-KMS GPU-buffer presentation discriminator
+E1093 DIRECT NATIVE GPU-BUFFER PRESENTATION: PASS
+Buffer: 2880x1800 linear GPU DMA-BUF; offset 0; pitch 11520; allocation 20736000 bytes.
+Bridge: Honeykrisp export -> apple-drm PRIME import -> XRGB8888 AddFB2 -> native DCP/KMS commit; no CPU pixel map/copy.
+DCP oracle: swaps7/fb42/imported0 -> swaps8/fb44/imported1 -> swaps9/fb42/imported0 across present/restore.
+Interpretation: dcp_v14_present updates swaps/active_fb only after synchronous firmware A(407) success; direct native presentation is mechanically proven.
+Private RESULT SHA256: 1180520285949fb309aa2ca099ae48e5ebce6e014715ad308b1645c457ecac38
+Evidence manifest SHA256: 013b8d032f407445efcc694d02d945de8a703d20c9d824f6f4801ddc9a772f8e
 
-Recovery after E1091: Golden active
-Recovery boot ID: d45645c3-7ca3-4049-b01c-87e264dd74ed
+CURRENT FRONTIER
+Bounded native compositor/window-system qualification using E1093 as the direct-presentation control; observe DCP swaps/active_fb/imported plus pageflip/vblank/fence/VSYNC behavior, then repeated presentation and only afterward endurance/performance.
+Do not reopen instruction-0, token5->token7, shader, TA/fragment, Queue/RunCompute/UAT/PagePool/power/parser/MMIO hypotheses without contradictory evidence.
+
+RECOVERY AFTER E1093: GOLDEN VERIFIED
+Recovery Fabric operation: rbt_ff2d704eb89a419799305de2c53d6c91
+Recovery boot ID: db06411a-f5ab-450f-a799-8694ab6d9674
 Known-good boot.bin SHA256: a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d
 Original custom.cfg SHA256: cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462
 Persistent boot: Ubuntu
 Next boot: Ubuntu
-No pending one-shot entry or experimental render node
-
-Historical pre-E718 ledgers remain preserved under their HISTORICAL-* names.
+GRUB one-shot: empty
+Owner marker: absent
+Experimental render node / Asahi module on Golden: absent

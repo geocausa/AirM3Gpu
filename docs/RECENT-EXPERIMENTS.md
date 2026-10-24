@@ -2,46 +2,27 @@
 
 Current authority: `docs/CANONICAL-CHECKPOINT.md`.
 
-## 2026-10-24 — from semantic localization to native-presentation localization
+## 2026-10-24/25 — repaired-lineage progression
 
 | Experiment | Evidence class | Result | Decision |
 |---|---|---|---|
-| E972 | Offline exact Xcode16.3 replay | Apple/Linux older-lineage streams match through mode-1/raw-1 token5; Apple then emits token7 with initial outer-ESL PC, Linux does not | Historical failing-lineage semantic boundary. |
-| E974 | Exact Xcode16.3 static semantics | Parser state `0x61` = ESL slot 1 | Close hidden-hardware-state interpretation. |
-| E989-E1005 | Apple/Linux state-op controls | Working state operations share token5→token7→token6; older Linux remains token5-only | Historical failure is generic state-operation admission, not RLD-specific. |
-| **E1075** | **Same-J615 live causal pass** | Exact E056-derived HwDataA `+0x418c..+0x41db` crosses first DeviceControl barrier; `magic=0xabcdabcd`; firmware-running; render node | **Startup barrier crossed.** |
-| **E1076** | **Physical J615 Compute/readback** | `65536 x 256`, 788 runs, 0 wrong; kernel first Compute `773625 ns` | **Real Compute crossed.** |
-| **E1077** | **Physical J615 Vulkan Render/readback** | `64x64 clear + 48x48 triangle`; 1174 runs, 0 wrong pixels; first Render `127875 ns`; non-zero TA/fragment | **Real graphics and triangle correctness crossed.** |
-| E1078-A | Direct-display discriminator | Qualified Vulkan direct-display sees no display object | Render GPU does not own panel/KMS in this boot. |
-| E1078-B | Vulkan map-boundary instrumentation | Passing render remains 1258 runs / 0 wrong; exact 64x64 RGBA8 GPU readback captured | Exact GPU triangle buffer identified. |
-| **E1078-C** | **Active-panel framebuffer bridge** | Exact GPU triangle CPU-converted to panel format and copied to `/dev/fb0`; intended/readback hashes match; original framebuffer restored | **Visible-pixel bridge crossed.** Not native scanout. |
-| E1086-A | Independent Render reproduction | Vulkan triangle 1084 runs / 0 wrong; first Render `127708 ns`; no GPU fault | Confirms repaired-lineage graphics remains stable. |
-| E1086-B | Zink/Honeykrisp graphics control | GLES-through-Zink triangle 1028 runs / 0 wrong; renderer is Apple M3 G15G Honeykrisp | Zink graphics path itself works. |
-| E1086-C | GNOME/simpledrm topology | GNOME Wayland runs on `card0/simpledrm`; old system Mesa is rejected on separate G15G render device by 592-vs-600 GET_PARAMS gate | Compositor/display device and render GPU are split. |
-| E1086-D | Honeykrisp Wayland present | `vkcube --wsi wayland` selects Apple M3 G15G and causes GPU activity, but bounded present does not complete; Mutter logs `Invalid sequence for VSYNC frame info`; no GPU/DART/RTKit fault | **Current native-present boundary is cross-device dma-buf/fence/vsync integration.** |
-| E1086-E | WSI controls | Direct-display has no display; immediate mode unsupported; Xwayland has no DRI3; Wayland EGL on simpledrm remains software even with client Zink/PRIME overrides | Close these as basic bypass routes; investigate native DCP/KMS + sync path. |
-| E1087 | Native-display live baseline | DCP handoff reaches the PMP display-request acknowledgement gate; simpledrm retained | Display handoff/gate works; localize PMP startup. |
-| E1088 | T8122 PMP report compatibility | `apple-pmp-report` binds; next fail-soft gate is PMGR `pms_sram` lookup | T8122 report ABI accepted. |
-| E1089 | T8122 PMGR power-state lookup | PMGR power-state lookup passes; next gate is PMP tunables/PTD layout | Power-domain naming/lookup crossed. |
-| E1090 | PMP offset/layout iteration | Built/armed intermediate offset correction | Superseded by E1091; preserve as intermediate only. |
-| **E1091** | **Native J615 DCP/KMS live pass** | PMP request `0x20080` acknowledged (`ack 0x200f0`); DCP RTKit/DCPLink + PIODMA run; 2880x1800@60 display starts; `apple-drm` registers; `eDP-1` connected/enabled; `fb0=appledrmfb`; simpledrm displaced | **Native display ownership crossed. GPU intentionally blacklisted; simultaneous GPU+display is next.** |
+| E1075 | Same-J615 live causal pass | Exact T8122 HwDataA `+0x418c..+0x41db` crosses startup barrier; firmware-running; render node | Startup barrier crossed. |
+| E1076 | Physical J615 Compute/readback | 788 runs / 0 wrong; first Compute 773625 ns | Real Compute crossed. |
+| E1077 | Physical J615 Vulkan Render/readback | 1174 runs / 0 wrong pixels; first Render 127875 ns; non-zero TA/fragment | Real graphics crossed. |
+| E1078 | Active-panel framebuffer bridge | Exact GPU triangle copied to simpledrm panel and framebuffer restored | Visible GPU-derived pixels, but CPU-copy only. |
+| E1086 | Native-presentation differential | Vulkan/Zink remain correct; simpledrm Wayland path localizes cross-device presentation/VSYNC wall | Display/presentation problem, not GPU execution. |
+| E1091 | Native J615 DCP/KMS live pass | PMP ack; DCP RTKit/DCPLink + PIODMA; `apple-drm`; `eDP-1`; `appledrmfb`; simpledrm displaced | Native display ownership crossed. |
+| **E1092** | **Simultaneous native display + G15G** | Native `apple-drm/eDP-1` healthy while Vulkan Render completes 988 runs / 0 wrong; first Render 168708 ns | **Combined-device gate crossed.** |
+| **E1093** | **Direct G15G DMA-BUF -> native DCP/KMS** | Linear full-mode GPU DMA-BUF offset0/pitch11520; PRIME import + AddFB2 PASS; DCP `7/fb42/imported0 -> 8/fb44/imported1 -> 9/fb42/imported0`; no CPU pixel copy | **Direct one-buffer native presentation crossed.** |
 
 ## Current interpretation
 
-The repaired-lineage progression is:
-
-`E056 Apple HwDataA reduction -> E1075 firmware-running -> E1076 correct Compute -> E1077 correct Render/triangle -> E1078 panel-visible CPU-copy bridge -> E1086 native-present localization -> E1091 native DCP/KMS takeover`
+`E056 Apple HwDataA reduction -> E1075 firmware-running -> E1076 correct Compute -> E1077 correct Render/triangle -> E1078 panel-visible CPU-copy bridge -> E1086 presentation localization -> E1091 native DCP/KMS -> E1092 simultaneous GPU+display -> E1093 direct native GPU-buffer presentation`
 
 Current hard boundary:
 
-`native DCP/KMS PASS + G15G Render PASS -> [simultaneous GPU + native display] -> [native KMS/dma-buf/fence GPU-buffer presentation] -> compositor`
+`G15G Render PASS + native DCP/KMS PASS + simultaneous operation PASS + direct native GPU-buffer presentation PASS -> [compositor/window-system + repeated sync/pageflip/vblank/VSYNC] -> endurance/performance`
 
-The older E972 token5→token7 boundary remains valuable historical evidence for the older failing lineage, but it is not the current wall.
+Historical E972/E974/E989-E1005 token5->token7 results remain valid for the older failing lineage, but they are not the current repaired-lineage frontier.
 
-## Current next sequence
-
-**combined E1091 display + E1075 GPU boot -> bounded offscreen Render control -> native KMS GPU-buffer scanout -> compositor/desktop integration -> endurance/performance qualification**.
-
-Do not return to broad GPU frontend searches without contradictory evidence.
-
-Historical pre-E718 experiments remain archived in `docs/HISTORICAL-EXPERIMENTS-THROUGH-E717.md`.
+Current next sequence: **bounded native compositor/window-system qualification -> repeated fence/pageflip/vblank/VSYNC presentation -> desktop integration -> endurance/performance qualification**.
