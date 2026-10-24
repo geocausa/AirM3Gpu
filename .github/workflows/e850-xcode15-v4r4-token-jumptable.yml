@@ -1,0 +1,93 @@
+name: E850 Xcode15.4 v4r4 token jump table
+
+on:
+  push:
+    branches:
+      - e850-xcode15-v4r4-instruction-token-continuity
+    paths:
+      - '.github/workflows/e850-xcode15-v4r4-token-jumptable.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  jump-table:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dump v4r4 token table and handlers
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          XCODE=/Applications/Xcode_15.4.app
+          BIN="$XCODE/Contents/PlugIns/GPUDebugger.ideplugin/Contents/Frameworks/GTShaderProfiler.framework/Versions/A/GTShaderProfiler"
+          sudo rm -f /Applications/Xcode.app
+          sudo ln -s "$XCODE" /Applications/Xcode.app
+          cat > /tmp/e850jt.c <<'C'
+          #include <dlfcn.h>
+          #include <stdint.h>
+          #include <stdio.h>
+          int main(void) {
+            const char *p="/Applications/Xcode.app/Contents/PlugIns/GPUDebugger.ideplugin/Contents/Frameworks/GTShaderProfiler.framework/Versions/A/GTShaderProfiler";
+            void *h=dlopen(p,RTLD_NOW|RTLD_LOCAL); if(!h){fprintf(stderr,"%s\n",dlerror());return 2;}
+            void *q=dlsym(h,"agxps_aps_parser_parse"); Dl_info di={0}; if(!q||!dladdr(q,&di))return 3;
+            uintptr_t b=(uintptr_t)di.dli_fbase;
+            /* Recovered mechanically from Xcode 15.4 arm64 parser at 0x6ab8c4..0x6ab8d8:
+               table = adrp 0x90b000 + 0x288; anchor = ADR at 0x6ab8cc + 0x10 = 0x6ab8dc. */
+            const uint16_t *jt=(const uint16_t*)(b+0x90b288ULL);
+            const uintptr_t anchor=0x6ab8dcULL;
+            printf("base=%p table_off=0x90b288 anchor=0x%llx\n",(void*)b,(unsigned long long)anchor);
+            for(unsigned i=0;i<17;i++){
+              uintptr_t t=anchor+((uintptr_t)jt[i]<<2);
+              printf("token[%u] raw=0x%04x target_off=0x%llx first64=",i,jt[i],(unsigned long long)t);
+              const unsigned char *x=(const unsigned char*)(b+t);
+              for(unsigned j=0;j<64;j++)printf("%02x",x[j]);
+              putchar('\n');
+            }
+            dlclose(h); return 0;
+          }
+          C
+          clang -Wall -Wextra -O0 /tmp/e850jt.c -o /tmp/e850jt
+          /tmp/e850jt | tee out/token-map-runtime.txt
+          python3 - <<'PY'
+          import re,subprocess,pathlib
+          text=pathlib.Path('out/token-map-runtime.txt').read_text()
+          targets={int(a):int(b,16) for a,b in re.findall(r'token\[(\d+)\].*?target_off=0x([0-9a-fA-F]+)',text)}
+          bin='/Applications/Xcode_15.4.app/Contents/PlugIns/GPUDebugger.ideplugin/Contents/Frameworks/GTShaderProfiler.framework/Versions/A/GTShaderProfiler'
+          out=[]
+          for tok in range(17):
+              s=targets[tok]; e=s+0x900
+              cmd=['xcrun','llvm-objdump','--macho','--disassemble',f'--start-address=0x{s:x}',f'--stop-address=0x{e:x}',bin]
+              r=subprocess.run(cmd,text=True,capture_output=True,check=True)
+              out.append(f'===== TOKEN {tok} target 0x{s:x} =====\n'+r.stdout)
+          pathlib.Path('out/token-handlers.asm').write_text('\n'.join(out))
+          PY
+          # Focus exact patterns used by E848's token-7 and token-0 proof.
+          python3 - <<'PY'
+          import re,pathlib
+          t=pathlib.Path('out/token-handlers.asm').read_text().splitlines()
+          keep=[]
+          current=''
+          buf=[]
+          for line in t:
+              if line.startswith('===== TOKEN'):
+                  if current in ('===== TOKEN 0','===== TOKEN 7','===== TOKEN 9','===== TOKEN 16'):
+                      keep.extend(buf)
+                  current=line.split(' target ')[0]
+                  buf=[line]
+              elif current in ('===== TOKEN 0','===== TOKEN 7','===== TOKEN 9','===== TOKEN 16'):
+                  buf.append(line)
+          if current in ('===== TOKEN 0','===== TOKEN 7','===== TOKEN 9','===== TOKEN 16'): keep.extend(buf)
+          pathlib.Path('out/focus-handlers.asm').write_text('\n'.join(keep)+'\n')
+          PY
+          echo '=== token map ==='; cat out/token-map-runtime.txt
+          echo '=== focused handlers ==='; cat out/focus-handlers.asm
+
+      - name: Upload E850 jump-table evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: e850-xcode15.4-v4r4-token-jumptable
+          path: out/
+          retention-days: 3
+          if-no-files-found: error
