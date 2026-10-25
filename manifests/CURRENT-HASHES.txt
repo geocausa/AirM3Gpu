@@ -50,17 +50,26 @@ Astra/xhigh next experiments SHA256: 62550ac0ecd7a8d9e69ba3734fafeafc6b6dbb5c5ff
 E1094 qualification: FIFO10 rc0; FIFO60/30s timeout; mailbox60/30s rc0; real wl_buffer.release + wp_presentation_feedback.presented; DCP progresses.
 E1094 corrections: VSYNC warning persists; fifo_latest_ready invalid; FIFO/mailbox image-count confound; all-images-busy is downstream localization; Mutter software-composites.
 
+E1095 / E1096 OFFLINE QUALIFICATION & ROOT-CAUSE PROOF
+E1091-E1094 Linux commit (geocausa/linux wip/g15-e1091-t8122-pmp-reordered-devices): 25da27e55b1f8ea231a55fe64fdf845ad964273c
+E1095 wlcommit-proxy.c SHA256: 62eb8f328c47f479865f1a59ce06dc1ec41d0c011e3ec46e88d30b11db518668
+E1095 run-e1095-abca.sh SHA256: 75d3c4f5490378953035fbb44944f2f029193f33ac0ff732e84eb4a0707a5290
+E1095 OFFLINE-QUALIFICATION.md SHA256: a249c4118e0eb64ca3498d07f23d5f7063d5e87dc38c992f6f402a7701078148
+E1096 private RESULT SHA256: 1c6e994a44cf7695aa5ae048e1e8e3df1bac55bb6f98cef65b471068e0496428
+E1096 repro-mutter-commit-timing-stall.c SHA256: 94c33e55332d180db426fdda635f39015f9c61e715b2baf7386aceaa53c88f9d
+E1096 REPRO-OUTPUT.txt SHA256: 479b58d4337d08fac661774fcd172195bbba5dafe294e7d3187d5fbf4a4b63d1
+
 CURRENT FRONTIER
-Native Wayland compositor-mediated presentation is proven. Localize FIFO/timed transaction liveness and exact buffer/fence/composition/KMS ownership before compositor acceleration.
-Preferred next discriminator: prequalified transparent Wayland timestamp-filter proxy, FIFO60 A/B/C/A in one session.
+Native Wayland compositor-mediated presentation is proven; E1095 proxy and E1096 offline Mutter/DCP root-cause proof are complete.
+Preferred next discriminator: run prequalified E1095 FIFO60 A/B/C/A in one live session on next user-coordinated boot.
 Do not reopen instruction0, token5->token7, shader, TA/fragment, Queue/RunCompute/UAT/PagePool/power/parser/MMIO without contradictory evidence.
 
 GOLDEN SAFETY
 Historical E1093 recovery Fabric operation: rbt_ff2d704eb89a419799305de2c53d6c91
 Historical E1093 recovery boot ID: db06411a-f5ab-450f-a799-8694ab6d9674
+Post-E1094 Golden recovery boot ID: e5ac1a80-e174-4560-b1cd-f393e384b883
 Known-good boot.bin SHA256: a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d
 Original custom.cfg SHA256: cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462
-Historical E1093 recovery verified Ubuntu persistent/next, empty GRUB one-shot, owner marker absent, no experimental render node / Asahi module.
-Current post-E1094 host remains on experimental kernel; exact Golden recovery is pending and mandatory before another live GPU experiment.
+Current post-E1094 host is verified on Golden kernel 7.1.6-ubuntu-m3-usbpd-gc5037a961e4d with Ubuntu persistent/next, empty GRUB one-shot, owner marker absent, and /lib/modules/7.1.12-e1091-t8122-pmp-reordered permissions repaired (0755).
 
 Historical pre-E718 hash/evidence ledger: manifests/HISTORICAL-HASHES-THROUGH-E717.txt

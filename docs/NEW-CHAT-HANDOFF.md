@@ -17,6 +17,8 @@ Generated: **2026-10-25**
 - E1092 combined-device PASS: native display and G15G coexist; Vulkan Render `988 runs / 0 wrong pixels`.
 - E1093 direct-native-present PASS: GPU DMA-BUF -> Apple DRM PRIME/AddFB2 -> DCP imported framebuffer; exact restore; no CPU pixel copy.
 - E1094 native Wayland presentation PASS: Honeykrisp selects Apple M3/G15G, real GPU jobs occur, Wayland buffers are committed/released, real `wp_presentation_feedback.presented` events occur, and DCP progresses. FIFO10 completes; mailbox60 completes.
+- E1095 offline proxy & ABCA isolator PASS: `wlcommit-proxy` and `run-e1095-abca.sh` built and offline-qualified.
+- E1096 offline Mutter/DCP root-cause proof PASS: `repro-mutter-commit-timing-stall.c` dynamically loads `libmutter-clutter-18.so.0` and proves `schedule_update_target_time` `Bug A` (`0x67a3c`) and `Bug B` (`0x67ae0..0x67b40`) plus `drivers/gpu/drm/apple/dcp.c:127` (`seq = 0`) VSYNC warning/+1 sequence fallback in `libmutter-18.so.0` (`on_presented` at `0x16bfa8..0x16c010`).
 
 ## Audit corrections that must travel with E1094
 
@@ -45,4 +47,4 @@ Do **not** reopen instruction-0, token5->token7, shader, TA/fragment, generic Qu
 
 ## Operational safety
 
-Historical E1093 Golden recovery was verified, but it is no longer the current live state. At this checkpoint `macmac` remains on experimental kernel `7.1.12-e1091-t8122-pmp-reordered`; Golden recovery is pending. Do not call the host Golden until boot.bin/custom.cfg, GRUB, bless targets, owner marker and kernel are all re-verified.
+`macmac` has been recovered to and verified on persistent Golden (`7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`, boot ID `e5ac1a80-e174-4560-b1cd-f393e384b883`), with known-good `boot.bin` (`a81993b1...`), original `custom.cfg` (`cf011eee...`), `/lib/modules/7.1.12-e1091-t8122-pmp-reordered` permissions repaired (`0755`), and the `E1091`–`E1094` kernel branch (`25da27e55b1f8ea231a55fe64fdf845ad964273c`) pushed to `geocausa/linux` (`wip/g15-e1091-t8122-pmp-reordered-devices`).

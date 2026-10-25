@@ -56,9 +56,19 @@ Sol/xhigh audit SHA256: 7d16c74678af90ae885126b729b7081493f1663206a10246c3f9e463
 Astra focused review SHA256: 3cdf801d75fda1cfbf78371f47bec5a5d5e94975e08dcc214249cc5e89a61245
 Astra/xhigh report SHA256: c5253946dc22ea228a4ec99e34ed73400f562fa245ca06ac0882246a8e67da02
 
+E1095 OFFLINE WAYLAND TIMESTAMP-FILTER PROXY & ABCA ISOLATOR: PASS
+Proxy source SHA256: 62eb8f328c47f479865f1a59ce06dc1ec41d0c011e3ec46e88d30b11db518668
+ABCA runner SHA256: 75d3c4f5490378953035fbb44944f2f029193f33ac0ff732e84eb4a0707a5290
+Offline qualification SHA256: a249c4118e0eb64ca3498d07f23d5f7063d5e87dc38c992f6f402a7701078148
+
+E1096 OFFLINE MUTTER 50.1 & APPLE DCP VBLANK ROOT-CAUSE PROOF: PASS
+Result: proves drivers/gpu/drm/apple/dcp.c:127 seq=0 causes libmutter-18.so.0 on_presented (0x16bfa8..0x16c010) once-per-boot VSYNC warning and +1 sequence fallback; executes repro-mutter-commit-timing-stall against libmutter-clutter-18.so.0 proving schedule_update_target_time Bug A (0x67a3c) and Bug B (0x67ae0..0x67b40) on wp_commit_timer_v1 + wp_fifo_v1 while untimed FIFO presents 10/10 frames at 60 Hz with 0 spurious idle dispatches.
+Private RESULT SHA256: 1c6e994a44cf7695aa5ae048e1e8e3df1bac55bb6f98cef65b471068e0496428
+Reproducer source SHA256: 94c33e55332d180db426fdda635f39015f9c61e715b2baf7386aceaa53c88f9d
+Reproducer output SHA256: 479b58d4337d08fac661774fcd172195bbba5dafe294e7d3187d5fbf4a4b63d1
+
 CURRENT FRONTIER
-Native compositor-mediated presentation is crossed. Localize repeated FIFO/timed transaction liveness and the exact oldest buffer/fence/composition/KMS dependency; then G15G compositor acceleration and endurance/performance/power/suspend-resume.
-Preferred next discriminator after Golden recovery: offline-qualified transparent Wayland timestamp-filter proxy; one-session FIFO60 A/B/C/A = passthrough / drop only wp_commit_timer_v1.set_timestamp / passthrough+nowlts / passthrough.
+Native compositor-mediated presentation is crossed; offline root-cause proof (E1096) and transparent Wayland timestamp-filter proxy (E1095) are complete. Run one-session FIFO60 A/B/C/A live confirmation on next scheduled boot; then G15G compositor acceleration and endurance/performance/power/suspend-resume.
 Do not reopen instruction-0, token5->token7, shader, TA/fragment, Queue/RunCompute/UAT/PagePool/power/parser/MMIO hypotheses without contradictory evidence.
 
 HISTORICAL E1093 RECOVERY: GOLDEN VERIFIED
@@ -69,4 +79,4 @@ Original custom.cfg SHA256: cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e29
 At that recovery: persistent Ubuntu; next Ubuntu; GRUB one-shot empty; owner marker absent; experimental render node / Asahi module absent.
 
 CURRENT OPERATIONAL STATE
-After E1094, macmac remains on experimental kernel 7.1.12-e1091-t8122-pmp-reordered. Exact Golden recovery and re-verification of boot.bin/custom.cfg, GRUB, bless targets, owner marker and Golden kernel is mandatory before another live GPU experiment.
+Post-E1094 Golden recovery is verified on macmac (7.1.6-ubuntu-m3-usbpd-gc5037a961e4d, boot ID e5ac1a80-e174-4560-b1cd-f393e384b883); /lib/modules/7.1.12-e1091-t8122-pmp-reordered permissions repaired (0755); E1091-E1094 Linux kernel commit 25da27e55b1f8ea231a55fe64fdf845ad964273c pushed to geocausa/linux (wip/g15-e1091-t8122-pmp-reordered-devices).

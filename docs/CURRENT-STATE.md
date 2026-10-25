@@ -21,6 +21,8 @@ Target: MacBook Air M3 J615 / T8122 / G15G C0. Exact reference: macOS 14.8.3 / 2
 - **E1092:** native display and qualified G15G runtime coexist; Vulkan Render `988 runs / 0 wrong pixels`.
 - **E1093:** Honeykrisp full-mode linear DMA-BUF -> `apple-drm` PRIME import/AddFB2 -> synchronous native DCP commit; DCP oracle changes to the imported framebuffer and restores exactly; no CPU pixel copy.
 - **E1094:** Honeykrisp/G15G -> Wayland -> Mutter -> native Apple DRM/DCP presentation is proven by real buffer releases, presentation feedback, GPU Render activity and DCP progression. FIFO 10-frame completes; mailbox 60-frame completes; long FIFO runs expose intermittent release/pacing stalls.
+- **E1095:** Transparent Wayland timestamp-filter proxy (`wlcommit-proxy`) and 4-leg `ABCA` isolator (`run-e1095-abca.sh`) built and offline-qualified.
+- **E1096:** Offline binary + dynamic execution harness (`repro-mutter-commit-timing-stall.c`) against installed `libmutter-clutter-18.so.0` and `libmutter-18.so.0` proves the `drivers/gpu/drm/apple/dcp.c:127` `seq = 0` VSYNC warning/+1 sequence fallback in `on_presented` (`0x16bfa8..0x16c010`) and reproduces two `ClutterFrameClock` `schedule_update_target_time` state-machine defects (`Bug A` at `0x67a3c` and `Bug B` at `0x67ae0..0x67b40`) when `wp_commit_timer_v1` is used alongside `wp_fifo_v1`, while confirming untimed FIFO presents `10/10` frames at 60 Hz with `0` spurious idle dispatches.
 
 E1092 private result SHA-256: `7d303dfa0e8e563fcefcc31fd2413be82ea07b0baa52c68138de5590f8151d0c`.
 
@@ -48,4 +50,4 @@ Offline-qualify a transparent Wayland proxy that preserves bytes, FDs and object
 
 ## Operational state
 
-The prior E1093 recovery to Golden was mechanically verified. **Current state is different:** after E1094, `macmac` remains on experimental kernel `7.1.12-e1091-t8122-pmp-reordered`; exact Golden recovery is pending and is mandatory before another live GPU experiment. Do not describe the current host as Golden until known-good boot.bin/custom.cfg, GRUB, bless targets, owner marker and Golden kernel are re-verified.
+`macmac` has been recovered to and verified on the persistent Golden Ubuntu kernel (`7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`, boot ID `e5ac1a80-e174-4560-b1cd-f393e384b883`), with known-good `boot.bin` (`a81993b1...`), original `custom.cfg` (`cf011eee...`), `/lib/modules/7.1.12-e1091-t8122-pmp-reordered` permissions repaired (`0755`), and the compilable `E1091`–`E1094` kernel branch (`25da27e55b1f8ea231a55fe64fdf845ad964273c`) pushed to `geocausa/linux` (`wip/g15-e1091-t8122-pmp-reordered-devices`).

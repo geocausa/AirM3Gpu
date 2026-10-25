@@ -140,4 +140,4 @@ Astra/xhigh next-experiment plan SHA-256: `62550ac0ecd7a8d9e69ba3734fafeafc6b6db
 
 ## Operational state
 
-E1094 evidence is durable. At this checkpoint `macmac` is still running experimental kernel `7.1.12-e1091-t8122-pmp-reordered`. Exact Golden recovery remains the first operational action before any new live GPU experiment.
+E1094 evidence is durable. `macmac` has since been recovered to persistent Golden (`7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`, boot ID `e5ac1a80-e174-4560-b1cd-f393e384b883`), the `E1091`–`E1094` kernel branch (`25da27e55b1f8ea231a55fe64fdf845ad964273c`) has been pushed to `geocausa/linux` (`wip/g15-e1091-t8122-pmp-reordered-devices`), the `E1095` transparent Wayland timestamp-filter proxy (`wlcommit-proxy`) has been offline-qualified, and `E1096` (`repro-mutter-commit-timing-stall.c`) has completed the offline binary/execution proof of Mutter 50.1's `schedule_update_target_time` state-machine defects (`Bug A` and `Bug B`) and `drivers/gpu/drm/apple/dcp.c:127` (`seq = 0`) VSYNC sequence fallback.

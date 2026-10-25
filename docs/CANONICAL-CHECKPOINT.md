@@ -156,6 +156,13 @@ Private E1094 initial `RESULT.md` SHA-256: `a61a762a673600944bf0b49dd3a0cdef798c
 
 See `docs/E1094-AUDITED-PRESENTATION.md` for the corrected evidence model and next discriminator.
 
+### E1095 & E1096 — Offline ABCA Isolator Qualification & Mutter/DCP Root-Cause Proof
+
+- **E1095 (`experiments/E1095-wayland-timestamp-abca`):** Built and offline-qualified the transparent Wayland proxy (`wlcommit-proxy`, `wlcommit-proxy.c` SHA-256 `62eb8f328c47f479865f1a59ce06dc1ec41d0c011e3ec46e88d30b11db518668`) and the one-session 4-leg `ABCA` runner (`run-e1095-abca.sh` SHA-256 `75d3c4f5490378953035fbb44944f2f029193f33ac0ff732e84eb4a0707a5290`; `OFFLINE-QUALIFICATION.md` SHA-256 `a249c4118e0eb64ca3498d07f23d5f7063d5e87dc38c992f6f402a7701078148`).
+- **E1096 (`experiments/E1096-mutter-commit-timing-and-dcp-vblank-root-cause`):** Completed an offline static and dynamic execution proof (`repro-mutter-commit-timing-stall.c` SHA-256 `94c33e55332d180db426fdda635f39015f9c61e715b2baf7386aceaa53c88f9d`; `REPRO-OUTPUT.txt` SHA-256 `479b58d4337d08fac661774fcd172195bbba5dafe294e7d3187d5fbf4a4b63d1`; `RESULT.md` SHA-256 `1c6e994a44cf7695aa5ae048e1e8e3df1bac55bb6f98cef65b471068e0496428`):
+  1. **Exact mechanism of `"Invalid sequence for VSYNC frame info"` and `+1` presentation sequence deltas across stalls:** In `drivers/gpu/drm/apple/dcp.c:127` (`dcp_crtc_send_page_flip_event`), the Apple DCP driver hardcodes `unsigned int seq = 0` when calling `send_vblank_event(dev, e, seq, flip)`. In `libmutter-18.so.0` (`on_presented` at `0x16bfa8..0x16c010`), `frame_info->sequence == 0` with `COGL_FRAME_INFO_FLAG_VSYNC` logs `Invalid sequence for VSYNC frame info` once per boot (`+433`) and falls back to `wayland_output->presentation_sequence += 1` instead of `frame_info->sequence - last_sequence` (`0x16c154`).
+  2. **Full `E1094` `VKCUBE.txt` timeline reconstruction & `ClutterFrameClock` state-machine defects:** In `VKCUBE.txt` (`lines 2289–2498`), Frames 0..3 had no `wp_commit_timer_v1.set_timestamp`, Frames 4..8 had already-expired `set_timestamp` targets (3 vblanks behind their FIFO slot), and 100% of frames whose `target_time_us` was still in the future when `"after-update"` cleared `surface->fifo_barrier` (Frame 9 at `616.059293 s`, Frame 12 at `616.810914 s`, Frame 15 at `617.875963 s`) stalled immediately. Executing `repro-mutter-commit-timing-stall` against `/usr/lib/aarch64-linux-gnu/mutter-18/libmutter-clutter-18.so.0` demonstrated two `schedule_update_target_time` (`0x67908..0x67b40`) defects: **Bug A (`0x67a3c`)** sets `fc->pending_reschedule_now = 1` when `state == DISPATCHED_ONE (5)`, causing `notify_presented` to call `clutter_frame_clock_schedule_update_now` which zeroes `fc->has_next_presentation_time = 0`; **Bug B (`0x67ae0..0x67b40`)** transitions `IDLE (1) -> SCHEDULED_LATER (4)` in fixed refresh-rate mode (`vrr_mode == 0`) without setting `fc->has_next_presentation_time = 1` or `fc->next_presentation_time_us`, causing `before-update` at `Vblank - max_render_time_allowed_us` to run with `has_expected == 0` and block the transaction against `g_get_monotonic_time()`. Untimed FIFO (`E1095` Arm B / Arm C) avoids both defects (`10/10` frames at 60 Hz, `0` spurious idle dispatches).
+
 ### Current hard boundary
 
 `G15G Compute/Render PASS + native DCP/KMS PASS + direct GPU-buffer presentation PASS + native Wayland/Mutter presentation PASS -> [FIFO/timed transaction liveness + exact buffer/fence/composition/KMS dependency] -> G15G compositor acceleration -> endurance/performance/power/suspend-resume`
@@ -197,7 +204,7 @@ The E1093 recovery back to Golden was mechanically verified at the time:
 - Known-good m1n1 `boot.bin` SHA-256: `a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d`.
 - Original `/boot/grub/custom.cfg` SHA-256: `cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462`.
 
-That is now historical, not the current live state. After E1094, `macmac` remains on experimental kernel `7.1.12-e1091-t8122-pmp-reordered`. Exact Golden recovery is pending. Before any new live GPU experiment, verify the known-good `boot.bin`, original `custom.cfg`, empty GRUB one-shot, Ubuntu bless targets, absent owner marker, and Golden kernel.
+Post-E1094 recovery to persistent Golden has also been verified (`7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`, boot ID `e5ac1a80-e174-4560-b1cd-f393e384b883`), `/lib/modules/7.1.12-e1091-t8122-pmp-reordered` permissions have been repaired (`0755`), and the compilable `E1091`–`E1094` Linux kernel source (`25da27e55b1f8ea231a55fe64fdf845ad964273c`) has been pushed to `geocausa/linux` (`wip/g15-e1091-t8122-pmp-reordered-devices` and `wip/e1091-t8122-pmp-reordered-devices`).
 
 ## Evidence pointers
 
@@ -210,3 +217,5 @@ That is now historical, not the current live state. After E1094, `macmac` remain
 - E1092: `/home/macmac/m3-gpu-lab/experiments/E1092-j615-native-display-plus-g15g/RESULT.md`.
 - E1093: `/home/macmac/m3-gpu-lab/experiments/E1093-g15g-prime-to-appledrm/RESULT.md`.
 - E1094: `/home/macmac/m3-gpu-lab/experiments/E1094-native-gnome-appledrm-g15g/RESULT.md`; corrected by the retained Sol/Astra audits referenced above.
+- E1095: `/home/macmac/m3-gpu-lab/experiments/E1095-wayland-timestamp-abca/OFFLINE-QUALIFICATION.md`.
+- E1096: `/home/macmac/m3-gpu-lab/experiments/E1096-mutter-commit-timing-and-dcp-vblank-root-cause/RESULT.md`.
