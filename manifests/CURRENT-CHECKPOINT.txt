@@ -56,21 +56,26 @@ Sol/xhigh audit SHA256: 7d16c74678af90ae885126b729b7081493f1663206a10246c3f9e463
 Astra focused review SHA256: 3cdf801d75fda1cfbf78371f47bec5a5d5e94975e08dcc214249cc5e89a61245
 Astra/xhigh report SHA256: c5253946dc22ea228a4ec99e34ed73400f562fa245ca06ac0882246a8e67da02
 
-E1095 OFFLINE WAYLAND TIMESTAMP-FILTER PROXY & LIVE RUN 1 (A1): PASS
+E1095 LIVE 4-LEG ABCA WAYLAND TIMESTAMP CAUSAL BRACKET: PASS (QUALIFIED TIMESTAMP-PATH SPLIT)
 Proxy source SHA256: 62eb8f328c47f479865f1a59ce06dc1ec41d0c011e3ec46e88d30b11db518668
-ABCA runner SHA256: ffd9dc989155e079628696da8d3a9303089d3ecdc1513d36e7780d01802512a0
+ABCA runner SHA256: 11137512d7df8e9b1df0f1630fda25c9323f1e38ed909ccb7a9bb97c2ab0dfec
+ABCA analyzer SHA256: 299f44f73d6ab3cf2b3bf0e4fa7f7425405c8bf3fa5f296daa786ff2f0709a18
 Offline qualification SHA256: a249c4118e0eb64ca3498d07f23d5f7063d5e87dc38c992f6f402a7701078148
 Live Run 1 A1 RESULT SHA256: 0e12479352de23e4ee6513ab194ed94147b55b7e24655e2b91c47943171f1db9
-Live Run 1 A1 findings: 3-image FIFO swapchain proven (count=3 in both generations); 60 attaches completed (rc=0 in 6.70s, DCP swaps 13->81, failed=0) with 4 stalls (208.8ms, 1024.7ms, 3701.0ms, 258.6ms) all at target_time_us > preceding_presentation_time_us; READY file copy race fixed for full 4-arm ABCA run; auto-recovered to Golden (boot_id 7dc2a6e1-efb8-46c1-bb1e-9f8db521146e).
+Primary 4-Leg Live Run: 20261025T124557Z-b95f18fd (boot_id b95f18fd-c2f2-44cd-9a54-aeafac243186)
+Private RESULT SHA256: a617c8594ba092cf01f5c4498998f6a3f7dabc27fb9da3ce49818ba2f37a9740
+BRACKET.json SHA256: e598c07d9081b555b016b9787aedc1a07e32c4fd015759d96da79212e0ce1600
+BRACKET-SUMMARY.txt SHA256: c3461bd4958e324d60c4dcb5be3afbfa81495afbbfb2dd0fe15353b2adcccd67
+Live 4-Leg ABCA findings: qualified=true; verdict=TIMESTAMP-PATH SPLIT; rcs=A1:0 B:0 C:0 A2:0; stalled=A1:1 B:0 C:0 A2:1; max_steady_gap_ms=A1:10720.039 B:118.778 C:102.728 A2:10096.041; steady_stalls_gt_100ms=A1:4 B:1 C:1 A2:4; last_creation_burst_counts=A1:3 B:3 C:3 A2:3; timestamps=A1:seen=52,drop=0 B:seen=53,drop=53 C:seen=0,drop=0 A2:seen=53,drop=0; fifo=A1:set=60,wait=112 B:set=60,wait=113 C:set=60,wait=60 A2:set=60,wait=113; presented=A1:53 B:50 C:0 A2:51; releases=A1:56 B:56 C:56 A2:56; vsync_warnings=A1:1 B:0 C:0 A2:0; DCP swaps 8->291 (failed=0); auto-recovered to Golden (boot_id a3342496-330a-4b77-a391-c5f1d211ac9c).
 
 E1096 OFFLINE MUTTER 50.1 & APPLE DCP VBLANK ROOT-CAUSE PROOF: PASS
-Result: proves drivers/gpu/drm/apple/dcp.c:127 seq=0 causes libmutter-18.so.0 on_presented (0x16bfa8..0x16c010) once-per-boot VSYNC warning and +1 sequence fallback; executes repro-mutter-commit-timing-stall against libmutter-clutter-18.so.0 proving schedule_update_target_time Bug A (0x67a3c) and Bug B (0x67ae0..0x67b40) on wp_commit_timer_v1 + wp_fifo_v1 while untimed FIFO presents 10/10 frames at 60 Hz with 0 spurious idle dispatches.
+Result: proves drivers/gpu/drm/apple/dcp.c:127 seq=0 causes libmutter-18.so.0 on_presented (0x16bfa8..0x16c010) once-per-boot VSYNC warning and +1 sequence fallback; executes repro-mutter-commit-timing-stall against libmutter-clutter-18.so.0 proving schedule_update_target_time Bug A (0x67a3c) and Bug B (0x67ae0..0x67b40) on wp_commit_timer_v1 + wp_fifo_v1 while untimed FIFO (Test 2) and repaired ClutterFrameClock (Test 4) eliminate all spurious idle dispatches.
 Private RESULT SHA256: c333c3c99997de1cbda12ff16a5f4f500ce2fb35882d0426095f8f43624661e2
 Reproducer source SHA256: 42a6f0db9ddf3e96b389b2d623f724ceafb904f618924fc337a8ab64f3030f3e
 Reproducer output SHA256: 4b61d96ef6ff057b8a0934b0a9cf14251832ec7dae901022a0f6d32f7d638cda
 
 CURRENT FRONTIER
-Native compositor-mediated presentation is crossed; offline root-cause proof (E1096) and transparent Wayland timestamp-filter proxy (E1095) are complete. Run one-session FIFO60 A/B/C/A live confirmation on next scheduled boot; then G15G compositor acceleration and endurance/performance/power/suspend-resume.
+Native compositor-mediated presentation is crossed, and the FIFO60 Wayland presentation stall has been both offline root-caused (E1096) and live-isolated via the 4-leg ABCA causal bracket (E1095, qualified=true, TIMESTAMP-PATH SPLIT). Next: optional Mutter ClutterFrameClock / apple-dcp vblank sequence patches, G15G compositor acceleration, and endurance/performance/power/suspend-resume.
 Do not reopen instruction-0, token5->token7, shader, TA/fragment, Queue/RunCompute/UAT/PagePool/power/parser/MMIO hypotheses without contradictory evidence.
 
 HISTORICAL E1093 RECOVERY: GOLDEN VERIFIED
@@ -81,4 +86,4 @@ Original custom.cfg SHA256: cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e29
 At that recovery: persistent Ubuntu; next Ubuntu; GRUB one-shot empty; owner marker absent; experimental render node / Asahi module absent.
 
 CURRENT OPERATIONAL STATE
-Post-E1094 Golden recovery is verified on macmac (7.1.6-ubuntu-m3-usbpd-gc5037a961e4d, boot ID e5ac1a80-e174-4560-b1cd-f393e384b883); /lib/modules/7.1.12-e1091-t8122-pmp-reordered permissions repaired (0755); E1091-E1094 Linux kernel commit 25da27e55b1f8ea231a55fe64fdf845ad964273c pushed to geocausa/linux (wip/g15-e1091-t8122-pmp-reordered-devices).
+Post-E1095 Golden recovery is verified on macmac (7.1.6-ubuntu-m3-usbpd-gc5037a961e4d, boot ID a3342496-330a-4b77-a391-c5f1d211ac9c, GOLDEN-RECOVERY-AUTO.txt SHA256 2d130dd5960ea0e2429747e4ff0eb34313feb1abb07d91dd7098a960efe0b097); /lib/modules/7.1.12-e1091-t8122-pmp-reordered permissions repaired (0755); E1091-E1094 Linux kernel commit 25da27e55b1f8ea231a55fe64fdf845ad964273c pushed to geocausa/linux (wip/g15-e1091-t8122-pmp-reordered-devices).

@@ -15,7 +15,7 @@ Current authority: `docs/CANONICAL-CHECKPOINT.md`.
 | **E1092** | **Simultaneous native display + G15G** | Native `apple-drm/eDP-1` healthy while Vulkan Render completes 988 runs / 0 wrong | **Combined-device gate crossed.** |
 | **E1093** | **Direct G15G DMA-BUF -> native DCP/KMS** | PRIME import + AddFB2; DCP becomes imported fb44 then restores fb42; no CPU pixel copy | **Direct native GPU-buffer presentation crossed.** |
 | **E1094** | **Native Wayland/Mutter presentation** | Real GPU client buffers, releases and `presented` feedback through Mutter/native Apple DRM/DCP; FIFO10 completes; mailbox60 completes | **Compositor-mediated native presentation crossed; long FIFO pacing remains.** |
-| **E1095** | **Offline Wayland proxy + ABCA isolator** | `wlcommit-proxy` and `run-e1095-abca.sh` offline-qualified on synthetic & captured streams | **Armed for next scheduled live session.** |
+| **E1095** | **Live 4-leg ABCA Wayland timestamp causal bracket** | `runs/20261025T124557Z-b95f18fd` (`qualified=true`): matched 3-image FIFO across all arms; `A1`/`A2` stall (`10.72 s` / `10.10 s` max gap) on future `set_timestamp`; `B` (`drop-timestamps`, `53/53`) finishes 60 frames in `1.06 s` (`56.5 FPS`) | **`TIMESTAMP-PATH SPLIT` proven live on hardware.** |
 | **E1096** | **Offline Mutter 50.1 & DCP vblank root-cause proof** | `repro-mutter-commit-timing-stall` against `libmutter-clutter-18.so.0` proves `schedule_update_target_time` Bugs A & B + `dcp.c:127` `seq=0` fallback | **Root causes of `wp_commit_timer_v1` stall and VSYNC sequence warning proven offline.** |
 
 ## E1094 audited correction set
@@ -35,8 +35,6 @@ The initial E1094 interpretation was independently audited against raw traces. C
 
 Current hard boundary:
 
-`native Wayland presentation PASS -> [timed/FIFO transaction liveness + exact buffer/fence/composition/KMS dependency] -> accelerated compositor -> endurance/performance/power/suspend-resume`
-
-Preferred next live discriminator after exact Golden recovery: prequalified transparent Wayland timestamp-filter proxy, then one-session FIFO60 A/B/C/A = passthrough / drop only `wp_commit_timer_v1.set_timestamp` / passthrough+`nowlts` / passthrough.
+`native Wayland presentation PASS -> E1095/E1096 FIFO60 timestamp-stall root-caused & live-isolated (TIMESTAMP-PATH SPLIT) -> accelerated compositor -> endurance/performance/power/suspend-resume`
 
 Historical E972/E974/E989-E1005 token5->token7 results remain valid for the older failing lineage but are not the repaired-lineage frontier.

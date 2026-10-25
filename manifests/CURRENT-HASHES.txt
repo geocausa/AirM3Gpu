@@ -50,20 +50,24 @@ Astra/xhigh next experiments SHA256: 62550ac0ecd7a8d9e69ba3734fafeafc6b6dbb5c5ff
 E1094 qualification: FIFO10 rc0; FIFO60/30s timeout; mailbox60/30s rc0; real wl_buffer.release + wp_presentation_feedback.presented; DCP progresses.
 E1094 corrections: VSYNC warning persists; fifo_latest_ready invalid; FIFO/mailbox image-count confound; all-images-busy is downstream localization; Mutter software-composites.
 
-E1095 / E1096 OFFLINE QUALIFICATION & ROOT-CAUSE PROOF
+E1095 / E1096 LIVE ABCA CAUSAL PROOF & OFFLINE ROOT-CAUSE PROOF
 E1091-E1094 Linux commit (geocausa/linux wip/g15-e1091-t8122-pmp-reordered-devices): 25da27e55b1f8ea231a55fe64fdf845ad964273c
 E1095 wlcommit-proxy.c SHA256: 62eb8f328c47f479865f1a59ce06dc1ec41d0c011e3ec46e88d30b11db518668
-E1095 run-e1095-abca.sh SHA256: ffd9dc989155e079628696da8d3a9303089d3ecdc1513d36e7780d01802512a0
-E1095 analyze-abca.py SHA256: b1e82a978f124a6589f1f68c1b8cd1102b20b99181ad15bf3cbcbe9d5d5e2bc9
+E1095 run-e1095-abca.sh SHA256: 11137512d7df8e9b1df0f1630fda25c9323f1e38ed909ccb7a9bb97c2ab0dfec
+E1095 analyze-abca.py SHA256: 299f44f73d6ab3cf2b3bf0e4fa7f7425405c8bf3fa5f296daa786ff2f0709a18
 E1095 OFFLINE-QUALIFICATION.md SHA256: a249c4118e0eb64ca3498d07f23d5f7063d5e87dc38c992f6f402a7701078148
 E1095 RESULT-RUN1-A1.md SHA256: 0e12479352de23e4ee6513ab194ed94147b55b7e24655e2b91c47943171f1db9
+E1095 RESULT.md (complete 4-leg ABCA run 20261025T124557Z-b95f18fd) SHA256: a617c8594ba092cf01f5c4498998f6a3f7dabc27fb9da3ce49818ba2f37a9740
+E1095 20261025T124557Z-b95f18fd BRACKET.json SHA256: e598c07d9081b555b016b9787aedc1a07e32c4fd015759d96da79212e0ce1600
+E1095 20261025T124557Z-b95f18fd BRACKET-SUMMARY.txt SHA256: c3461bd4958e324d60c4dcb5be3afbfa81495afbbfb2dd0fe15353b2adcccd67
+E1095 GOLDEN-RECOVERY-AUTO.txt SHA256: 2d130dd5960ea0e2429747e4ff0eb34313feb1abb07d91dd7098a960efe0b097
 E1096 private RESULT SHA256: c333c3c99997de1cbda12ff16a5f4f500ce2fb35882d0426095f8f43624661e2
 E1096 repro-mutter-commit-timing-stall.c SHA256: 42a6f0db9ddf3e96b389b2d623f724ceafb904f618924fc337a8ab64f3030f3e
 E1096 REPRO-OUTPUT.txt SHA256: 4b61d96ef6ff057b8a0934b0a9cf14251832ec7dae901022a0f6d32f7d638cda
 
 CURRENT FRONTIER
-Native Wayland compositor-mediated presentation is proven; E1095 proxy and E1096 offline Mutter/DCP root-cause proof are complete.
-Preferred next discriminator: run prequalified E1095 FIFO60 A/B/C/A in one live session on next user-coordinated boot.
+Native Wayland compositor-mediated presentation is proven, and the FIFO60 Wayland presentation stall has been both offline root-caused (E1096) and live-isolated via the 4-leg ABCA causal bracket (E1095, qualified=true, TIMESTAMP-PATH SPLIT).
+Next: optional Mutter ClutterFrameClock / apple-dcp vblank sequence patches, G15G compositor acceleration, and endurance/performance/power/suspend-resume.
 Do not reopen instruction0, token5->token7, shader, TA/fragment, Queue/RunCompute/UAT/PagePool/power/parser/MMIO without contradictory evidence.
 
 GOLDEN SAFETY
@@ -71,8 +75,9 @@ Historical E1093 recovery Fabric operation: rbt_ff2d704eb89a419799305de2c53d6c91
 Historical E1093 recovery boot ID: db06411a-f5ab-450f-a799-8694ab6d9674
 Post-E1094 Golden recovery boot ID: e5ac1a80-e174-4560-b1cd-f393e384b883
 Post-E1095-Run1 Golden recovery boot ID: 7dc2a6e1-efb8-46c1-bb1e-9f8db521146e
+Post-E1095-Run2 Golden recovery boot ID: a3342496-330a-4b77-a391-c5f1d211ac9c
 Known-good boot.bin SHA256: a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d
 Original custom.cfg SHA256: cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462
-Current post-E1094 host is verified on Golden kernel 7.1.6-ubuntu-m3-usbpd-gc5037a961e4d with Ubuntu persistent/next, empty GRUB one-shot, owner marker absent, and /lib/modules/7.1.12-e1091-t8122-pmp-reordered permissions repaired (0755).
+Current post-E1095 host is verified on Golden kernel 7.1.6-ubuntu-m3-usbpd-gc5037a961e4d with Ubuntu persistent/next, empty GRUB one-shot, owner marker absent, and /lib/modules/7.1.12-e1091-t8122-pmp-reordered permissions repaired (0755).
 
 Historical pre-E718 hash/evidence ledger: manifests/HISTORICAL-HASHES-THROUGH-E717.txt
