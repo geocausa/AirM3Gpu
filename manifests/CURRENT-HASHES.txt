@@ -67,7 +67,7 @@ E1096 REPRO-OUTPUT.txt SHA256: 4b61d96ef6ff057b8a0934b0a9cf14251832ec7dae901022a
 
 E1097 native GNOME compositor private RESULT SHA256: 5e5bed6c23002b502d39190892ffa9e194df3c5e003a3f3ecfa2ec9b4dd7516f
 
-E1098 / E1099 LINUX 7.3
+E1098 / E1099 / E1100 LINUX 7.3
 Linux source commit: 52f5d1cb8f5983131319a3083c0f1597e871a3e9
 Kernel release: 7.3.0-m3-j615-e1098+
 E1098 KERNEL-BUILD-MANIFEST.json SHA256: 05d6a0906201441da7ba81845b9eb8f4a28d773c644368f6430bba449c2e1014
@@ -77,9 +77,15 @@ E1099 corrected run-session.sh SHA256: c17e00e41bf5d83ceb6a09a81edbf64ee111a0ebb
 E1099 boot-control.py SHA256: 4a493995f357265cf39b00050e67ddc124577edcf016d30536658b1260c62c75
 E1099 handoff SHA256: 243bccb1566251bd6214cbc63472a0c03d84412340ade2d2454ab7010b180261
 E1099 result: COMPOSITOR_GPU_AND_FIFO60_BOUNDED_PASS; DCP swaps 3->83 failed0; post-baseline fatal scan empty; Golden auto-recovery.
+E1100 RESULT.md SHA256: 761ea439c508364d29e3fc1015d7ba9245697bea834849d77c2fe2ef32d33d03
+E1100 EVIDENCE-SHA256.txt SHA256: 5a2f7fc587447c0a8d77116c7c07fc0985c29b3f13bafe6d17c32aaa6118d6fc
+E1100 BRACKET-SUMMARY.txt SHA256: 8e08c3481e5183a293e0f78eefc09bcae2689e2b97a7ec81a88936a64bb1c1ca
+E1100 run-e1100-abca.sh SHA256: 82f4a7e317ec13fa5cf6995a3999971074913429c261caa39e06711ffb43090d
+E1100 boot-control.py SHA256: 510d6af7cd51a3f23439f382ca03ef786eb094c894855d7f2cca1384754c2e74
+E1100 result: qualified TIMESTAMP-PATH SPLIT on Linux 7.3; A1/A2 stall/time out, B/C complete, matched 3-image FIFO, all fatal deltas empty, DCP failed0. pstate cap 1 was a control point, not a maximum-frequency claim.
 
 CURRENT FRONTIER
-Linux 7.3 J615 live gate is crossed. Next: endurance/performance/power/suspend-resume/peripheral integration and optional proper timing fixes.
+Linux 7.3 live and timestamp-replay gates are crossed. Next: accelerated endurance at fixed control pstate, then controlled higher-pstate/frequency qualification, suspend/resume, power/peripherals and optional proper timing fixes.
 
 GOLDEN SAFETY
 Historical E1093 recovery Fabric operation: rbt_ff2d704eb89a419799305de2c53d6c91
@@ -89,6 +95,6 @@ Post-E1095-Run1 Golden recovery boot ID: 7dc2a6e1-efb8-46c1-bb1e-9f8db521146e
 Post-E1095-Run2 Golden recovery boot ID: a3342496-330a-4b77-a391-c5f1d211ac9c
 Known-good boot.bin SHA256: a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d
 Original custom.cfg SHA256: cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462
-Current post-E1099 host is verified on Golden kernel 7.1.6-ubuntu-m3-usbpd-gc5037a961e4d with known-good boot.bin a81993b1..., original custom.cfg cf011eee..., empty GRUB one-shot, owner/service absent.
+Current post-E1100 host is verified on Golden kernel 7.1.6-ubuntu-m3-usbpd-gc5037a961e4d with known-good boot.bin a81993b1..., original custom.cfg cf011eee..., empty GRUB one-shot, owner/service absent.
 
 Historical pre-E718 hash/evidence ledger: manifests/HISTORICAL-HASHES-THROUGH-E717.txt

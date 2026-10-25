@@ -27,6 +27,7 @@ The physical MacBook Air M3 has crossed real Compute, graphics execution, native
 - **E1097** proves the GNOME compositor itself can run on G15G through pinned Zink/Honeykrisp: repeated hardware compositor contexts, first Render before the test client, bounded FIFO60 client `rc=0`, DCP `swaps 3 -> 67`, `failed=0`, then verified Golden recovery.
 - **E1098** ports the repaired J615/G15G/display stack to Linux 7.3 in an isolated worktree. Source commit `52f5d1cb8f5983131319a3083c0f1597e871a3e9` builds release `7.3.0-m3-j615-e1098+`; the source is pushed to `geocausa/linux:wip/m3-7.3-j615`.
 - **E1099** closes the first 7.3 hardware gate: the physical J615 boots `7.3.0-m3-j615-e1098+`, GNOME Shell qualifies on `zink ... Apple M3 (G15G C0) (MESA_HONEYKRISP)`, Render and Compute jobs complete, FIFO60 returns `0`, DCP advances `3 -> 83` with `failed=0`, the post-baseline fatal scan is empty, and the guarded controller restores Golden and returns automatically to 7.1.6. See `docs/E1099-LINUX73-LIVE-QUALIFICATION.md`.
+- **E1100** replays the E1095 `A1 -> B -> C -> A2` timestamp bracket on Linux 7.3 with matched 3-image FIFO topology and the pstate held fixed as a control. A1/A2 stall or time out, while timestamp-only suppression B and `nowlts` C complete cleanly; every post-baseline fatal scan is empty and DCP stays `failed=0`. The analyzer again returns **qualified `TIMESTAMP-PATH SPLIT`**, strongly supporting that the timed-FIFO defect is not specific to the older 7.1.x kernel lineage. See `docs/E1100-LINUX73-TIMESTAMP-ABCA.md`.
 
 ### E1094 audit corrections
 
@@ -40,10 +41,10 @@ Independent GPT-6.1 Sol/xhigh and GPT-6 Astra reviews re-read the raw E1094 trac
 - raw KMS sequence `0` remains a real metadata defect, but is not proven sufficient to cause the stalls;
 - Mutter itself is still software-compositing in the historical E1094 qualification path; E1097 later supersedes that limitation by directly qualifying GNOME Shell on G15G/Zink/Honeykrisp.
 
-The FIFO60 timestamp stall is closed diagnostically (`E1095`/`E1096`), native GNOME G15G compositor acceleration is proven (`E1097`), and the repaired stack now boots and passes the same bounded compositor/Render/Compute/FIFO60 path on Linux 7.3 (`E1099`). The active frontier is Linux 7.3 polish: longer stability/endurance, power, suspend/resume, peripheral regressions, unrestricted-frequency qualification, and optional proper Mutter/apple-dcp timing fixes instead of the current `nowlts` workaround.
+The FIFO60 timestamp stall is closed diagnostically (`E1095`/`E1096`) and now independently reproduced on Linux 7.3 (`E1100`); native GNOME G15G compositor acceleration is proven (`E1097`), and the repaired stack boots and passes the bounded compositor/Render/Compute/FIFO60 path on Linux 7.3 (`E1099`). The active frontier is accelerated 7.3 endurance at the known-good control pstate, followed by separately controlled higher-pstate/frequency qualification, suspend/resume, power and peripheral regression work. The current pstate-1/338 MHz point is a qualified control, **not** the hardware maximum.
 
 Historical E972/E974/E989-E1005 token5->token7 failures remain valid for the older failing lineage, but they are not the repaired-lineage wall.
 
-**Operational note:** after the successful E1099 run, `macmac` automatically returned to persistent Golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`; verified Golden `boot.bin` is `a81993b1...`, `custom.cfg` is `cf011eee...`, no one-shot entry/service remains, and Linux 7.3 source commit `52f5d1cb8f5983131319a3083c0f1597e871a3e9` is pushed to `geocausa/linux:wip/m3-7.3-j615`.
+**Operational note:** after the successful E1100 run, `macmac` automatically returned to persistent Golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`; verified Golden `boot.bin` is `a81993b1...`, `custom.cfg` is `cf011eee...`, no one-shot entry/service remains, and Linux 7.3 source commit `52f5d1cb8f5983131319a3083c0f1597e871a3e9` is pushed to `geocausa/linux:wip/m3-7.3-j615`.
 
 Start with `docs/CANONICAL-CHECKPOINT.md`, then `docs/E1094-AUDITED-PRESENTATION.md`, `docs/NEW-CHAT-HANDOFF.md` and `docs/RECENT-EXPERIMENTS.md`.

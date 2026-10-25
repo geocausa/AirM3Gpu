@@ -89,8 +89,15 @@ Evidence-manifest SHA256: 5fe5fe434b369d2d034b8a0137c33836c36e7452304a5b74be8d2d
 Handoff SHA256: 243bccb1566251bd6214cbc63472a0c03d84412340ade2d2454ab7010b180261
 Result: booted 7.3; GNOME Honeykrisp hardware context; Render/Compute/FIFO60 PASS; DCP swaps 3->83 failed=0; post-baseline fatal scan empty; automatic Golden recovery.
 
+E1100 LINUX 7.3 TIMESTAMP ABCA REPLAY: PASS / QUALIFIED
+Private RESULT SHA256: 761ea439c508364d29e3fc1015d7ba9245697bea834849d77c2fe2ef32d33d03
+Evidence-manifest SHA256: 5a2f7fc587447c0a8d77116c7c07fc0985c29b3f13bafe6d17c32aaa6118d6fc
+BRACKET-SUMMARY SHA256: 8e08c3481e5183a293e0f78eefc09bcae2689e2b97a7ec81a88936a64bb1c1ca
+Result: matched 3-image FIFO; A1/A2 stall/time out; B drops 53/53 timestamps and completes; C nowlts completes; per-arm post-baseline fatal scans empty; DCP failed=0; qualified TIMESTAMP-PATH SPLIT persists on 7.3.
+Frequency note: pstate cap 1 / ~338 MHz was held only as the qualified control point; it is not the maximum supported frequency.
+
 CURRENT FRONTIER
-Linux 7.3 J615 first boot and bounded accelerated desktop/GPU qualification are crossed. Next: endurance, power, suspend/resume, peripherals, higher pstates and optional proper timing fixes.
+Linux 7.3 J615 first boot, bounded accelerated desktop/GPU qualification and the cross-kernel timestamp-path replay are crossed. Next: accelerated endurance at fixed control pstate, then controlled higher-pstate/frequency qualification, suspend/resume, power and peripherals.
 
 HISTORICAL E1093 RECOVERY: GOLDEN VERIFIED
 Recovery Fabric operation: rbt_ff2d704eb89a419799305de2c53d6c91
@@ -100,4 +107,4 @@ Original custom.cfg SHA256: cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e29
 At that recovery: persistent Ubuntu; next Ubuntu; GRUB one-shot empty; owner marker absent; experimental render node / Asahi module absent.
 
 CURRENT OPERATIONAL STATE
-Post-E1099 Golden recovery verified: running 7.1.6-ubuntu-m3-usbpd-gc5037a961e4d; boot.bin a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d; custom.cfg cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462; empty one-shot; E1099 service absent; Linux 7.3 source pushed at 52f5d1cb8f5983131319a3083c0f1597e871a3e9.
+Post-E1100 Golden recovery verified: running 7.1.6-ubuntu-m3-usbpd-gc5037a961e4d; boot.bin a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d; custom.cfg cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462; empty one-shot; E1100 service absent; Linux 7.3 source pushed at 52f5d1cb8f5983131319a3083c0f1597e871a3e9.

@@ -26,6 +26,7 @@ Target: MacBook Air M3 J615 / T8122 / G15G C0. Exact reference: macOS 14.8.3 / 2
 - **E1097:** Native GNOME Shell is G15G-accelerated through pinned Zink/Honeykrisp; first compositor Render predates the client; FIFO60 `rc=0`; DCP `3 -> 67`, `failed=0`; Golden recovery verified.
 - **E1098:** Linux 7.3 J615 candidate builds successfully from source commit `52f5d1cb8f5983131319a3083c0f1597e871a3e9` (`geocausa/linux:wip/m3-7.3-j615`) as `7.3.0-m3-j615-e1098+`.
 - **E1099:** Physical J615 boots that 7.3 candidate; GNOME Shell qualifies on Honeykrisp, Render `175041 ns`, Compute `1273875 ns`, FIFO60 `rc=0`, DCP `3 -> 83`, `failed=0`, post-baseline fatal scan empty; automatic exact Golden recovery succeeds.
+- **E1100:** The exact E1095 timestamp ABCA causal topology replayed on Linux 7.3 remains `qualified=true`: A1/A2 stall or time out, B drops all 53/53 commit timestamps and completes, C emits no commit timestamps and completes, all arms retain matched 3-image FIFO topology, every post-baseline fatal scan is empty, and DCP remains `failed=0`. This strongly supports kernel-lineage independence of the timed-FIFO defect.
 
 E1092 private result SHA-256: `7d303dfa0e8e563fcefcc31fd2413be82ea07b0baa52c68138de5590f8151d0c`.
 
@@ -43,16 +44,17 @@ E1093 private result SHA-256: `1180520285949fb309aa2ca099ae48e5ebce6e014715ad308
 
 ## Current boundary
 
-`G15G Compute/Render PASS -> native DCP/KMS PASS -> direct GPU-buffer PASS -> native Wayland PASS -> E1095/E1096 timing diagnosis PASS -> E1097 G15G GNOME compositor PASS -> E1099 Linux 7.3 J615 boot + bounded desktop/GPU PASS -> endurance/power/suspend/peripheral integration`
+`G15G Compute/Render PASS -> native DCP/KMS PASS -> direct GPU-buffer PASS -> native Wayland PASS -> E1095/E1096 timing diagnosis PASS -> E1097 G15G GNOME compositor PASS -> E1099 Linux 7.3 boot/desktop/GPU PASS -> E1100 7.3 TIMESTAMP-PATH SPLIT replay PASS -> accelerated 7.3 endurance -> controlled higher-pstate/frequency qualification -> suspend/power/peripheral integration`
 
 Use E1093 as the direct-presentation control and E1095 Arm B (`drop-timestamps`) / Arm C (`nowlts`) as the proven 60 Hz FIFO controls. Do not reopen instruction-0, token5->token7, shader, TA/fragment, Queue/RunCompute/UAT/PagePool/power/parser/MMIO hypotheses without contradictory evidence.
 
 ## Next follow-ups
 
-1. Extend Linux 7.3 qualification to longer desktop/GPU endurance with latency/fault observation.
-2. Qualify suspend/resume, power management, peripherals and higher GPU pstates before any daily-driver claim.
+1. Run accelerated GNOME endurance on Linux 7.3 using the proven `nowlts` path while holding pstate cap 1 fixed as a control.
+2. After that control passes, qualify higher GPU pstates/frequencies one step at a time; pstate cap 1 / ~338 MHz is **not** the maximum-frequency claim.
+3. Qualify suspend/resume, power management and peripherals before any daily-driver claim.
 3. Optionally replace the `nowlts` workaround with the proven Mutter `ClutterFrameClock` repair and add a monotonic apple-dcp pageflip sequence.
 
 ## Operational state
 
-After E1099, `macmac` is back on persistent Golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`. Golden `boot.bin` SHA-256 is `a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d`; original `custom.cfg` is `cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462`; the one-shot entry and E1099 recovery service are absent. Linux 7.3 source commit `52f5d1cb8f5983131319a3083c0f1597e871a3e9` is pushed to `geocausa/linux:wip/m3-7.3-j615`.
+After E1100, `macmac` is back on persistent Golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`. Golden `boot.bin` SHA-256 is `a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d`; original `custom.cfg` is `cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462`; the one-shot entry and E1100 recovery service are absent. Linux 7.3 source commit `52f5d1cb8f5983131319a3083c0f1597e871a3e9` is pushed to `geocausa/linux:wip/m3-7.3-j615`.

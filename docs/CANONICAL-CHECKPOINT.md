@@ -183,9 +183,15 @@ The repaired J615/G15G/display stack was ported into an isolated Linux 7.3 sourc
 
 The guarded one-shot boot entered `7.3.0-m3-j615-e1098+` on the physical J615. GNOME Shell repeatedly reported `zink Vulkan 1.4(Apple M3 (G15G C0) (MESA_HONEYKRISP))`; no software compositor context was observed. FIFO60 returned `0`; first Render completed in `175041 ns`; first Compute in `1273875 ns`; native DCP advanced `3 -> 83` during the bounded test with `failed=0`; the post-baseline fatal scan was empty. The controller restored Golden assets and automatically returned to `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`. See `docs/E1099-LINUX73-LIVE-QUALIFICATION.md`.
 
+### E1100 — Linux 7.3 timestamp-path causal replay
+
+The E1095 `A1 -> B -> C -> A2` bracket was replayed on Linux 7.3 while retaining its userspace/compositor topology and holding `asahi.t8122_pstate_cap=1` fixed strictly as a known-good control point. A1/A2 stalled and hit their 30-second arm timeouts (`16934.396 ms` / `14141.215 ms` maximum steady attach gaps); B dropped all `53/53` observed commit timestamps and completed (`106.834 ms` maximum gap); C emitted no commit timestamps and completed (`108.869 ms`). All arms used matched 3-image FIFO topology, all post-baseline fatal scans were empty, and DCP stayed `failed=0`. The analyzer again returned `qualified=true` / `TIMESTAMP-PATH SPLIT`. See `docs/E1100-LINUX73-TIMESTAMP-ABCA.md`.
+
+This strongly supports that the timed-FIFO defect is not specific to the older 7.1.x kernel lineage. It does not establish a quantitative 7.3 regression from a single replay.
+
 ### Current hard boundary
 
-`G15G Compute/Render PASS + native DCP/KMS PASS + direct presentation PASS + native Wayland PASS + E1095/E1096 timing diagnosis PASS + E1097 accelerated compositor PASS + E1099 Linux 7.3 J615 boot/desktop/GPU PASS -> endurance/power/suspend/peripheral integration`
+`G15G Compute/Render PASS + native DCP/KMS PASS + direct presentation PASS + native Wayland PASS + E1095/E1096 timing diagnosis PASS + E1097 accelerated compositor PASS + E1099 Linux 7.3 boot/desktop/GPU PASS + E1100 7.3 TIMESTAMP-PATH SPLIT replay PASS -> accelerated 7.3 endurance at fixed control pstate -> controlled higher-pstate/frequency qualification -> suspend/power/peripheral integration`
 
 Basic execution, native presentation, timed-FIFO diagnosis, accelerated GNOME composition and the first Linux 7.3 hardware gate are closed milestones.
 
@@ -208,7 +214,7 @@ Preserve those negatives, but do not present them as the current repaired-lineag
 
 ## 9. Immediate next actions
 
-1. Extend Linux 7.3 into longer bounded desktop/GPU endurance and latency/fault observation.
+1. Run accelerated GNOME endurance on Linux 7.3 using the proven `nowlts` path while holding pstate cap 1 fixed as a control; then qualify higher pstates/frequencies separately so clock escalation is not a confounder.
 2. Qualify suspend/resume, power management, peripheral regressions and higher GPU pstates.
 3. Optionally land the proven Mutter frame-clock repair and monotonic apple-dcp pageflip/vblank sequence instead of relying on `nowlts`.
 
@@ -221,7 +227,7 @@ The E1093 recovery back to Golden was mechanically verified at the time:
 - Known-good m1n1 `boot.bin` SHA-256: `a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d`.
 - Original `/boot/grub/custom.cfg` SHA-256: `cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462`.
 
-Post-E1099 recovery is now the current safety observation: Golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d` is running; known-good `boot.bin` is `a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d`; original `custom.cfg` is `cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462`; no GRUB one-shot or E1099 service remains. Linux 7.3 source is pushed to `geocausa/linux:wip/m3-7.3-j615` at `52f5d1cb8f5983131319a3083c0f1597e871a3e9`.
+Post-E1100 recovery is now the current safety observation: Golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d` is running; known-good `boot.bin` is `a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d`; original `custom.cfg` is `cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462`; no GRUB one-shot or E1100 service remains. Linux 7.3 source is pushed to `geocausa/linux:wip/m3-7.3-j615` at `52f5d1cb8f5983131319a3083c0f1597e871a3e9`.
 
 ## Evidence pointers
 
@@ -240,3 +246,4 @@ Post-E1099 recovery is now the current safety observation: Golden `7.1.6-ubuntu-
 - E1097: `/home/macmac/m3-gpu-lab/experiments/E1097-desktop-acceleration-preparation/RESULT.md`.
 - E1098: `/home/macmac/m3-gpu-lab/experiments/E1098-ubuntu-2610-linux-73-migration-audit/`.
 - E1099: public summary `docs/E1099-LINUX73-LIVE-QUALIFICATION.md`; raw evidence remains machine-local.
+- E1100: public summary `docs/E1100-LINUX73-TIMESTAMP-ABCA.md`; raw bracket evidence remains machine-local.
