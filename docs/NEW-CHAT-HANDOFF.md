@@ -6,7 +6,7 @@ Generated: **2026-10-25**
 
 ## One-sentence state
 
-**The physical J615 boots the repaired stack on Linux 7.3, passes bounded accelerated GNOME/Render/Compute/FIFO60, and E1100 proves the E1095 timed-FIFO `TIMESTAMP-PATH SPLIT` persists on 7.3; E1101 passed the accelerated 7.3 endurance control and E1102 has now qualified pstate 2 / 618 MHz; the next clean gate is pstate 3 / 796 MHz, followed by states 4 and 5 one at a time.**
+**The physical J615 boots the repaired stack on Linux 7.3, passes bounded accelerated GNOME/Render/Compute/FIFO60, and E1100 proves the E1095 timed-FIFO `TIMESTAMP-PATH SPLIT` persists on 7.3; E1101 passed the accelerated 7.3 endurance control and E1102 and E1103 have qualified 618 and 796 MHz; the next clean gate is pstate 4 / 928 MHz, then state 5 / 1056 MHz if it passes.**
 
 ## Hard facts
 
@@ -25,6 +25,7 @@ Generated: **2026-10-25**
 - E1100 Linux 7.3 ABCA replay PASS (`qualified=true`): matched 3-image FIFO topology; A1/A2 timed FIFO stall/time out, B drops all 53/53 commit timestamps and completes, C `nowlts` emits zero timestamps and completes; all post-baseline fatal scans empty, DCP `failed=0`; same `TIMESTAMP-PATH SPLIT` as E1095.
 - E1101 accelerated GNOME endurance PASS: 8×600-frame `nowlts` rounds, all rc0, same hardware Shell PID, DCP failed0/progress every round, all fault deltas empty, exact Golden recovery.
 - E1102 pstate2/618 MHz PASS: firmware genuinely reaches state 2; 2×300 frames rc0; DCP progress/failed0; all fatal deltas empty; exact Golden recovery.
+- E1103 pstate3/796 MHz PASS: firmware genuinely reaches state 3; 2×300 frames rc0; DCP progress/failed0; all fatal deltas empty; exact Golden recovery.
 
 ## Audit corrections that must travel with E1094
 
@@ -38,12 +39,12 @@ Generated: **2026-10-25**
 
 ## Current boundary
 
-`Linux 7.3 J615 live PASS -> E1100 timestamp-path replay PASS -> E1101 accelerated endurance PASS -> E1102 pstate2/618 MHz PASS -> controlled higher-pstate/frequency qualification -> suspend/power/peripheral qualification`
+`Linux 7.3 J615 live PASS -> E1100 timestamp-path replay PASS -> E1101 accelerated endurance PASS -> E1102 618 MHz PASS -> E1103 796 MHz PASS -> controlled higher-pstate/frequency qualification -> suspend/power/peripheral qualification`
 
 ## Next action
 
-1. Test pstate 3 / 796 MHz with the same short recovery-guarded accelerated-GNOME workload.
-2. If it passes, step through 928 and 1056 MHz separately; do not conflate the admitted cap-5 ceiling with the hardware table maximum of 1338 MHz.
+1. Test pstate 4 / 928 MHz with the same short recovery-guarded accelerated-GNOME workload.
+2. If it passes, test 1056 MHz separately; do not conflate the admitted cap-5 ceiling with the hardware table maximum of 1338 MHz.
 3. Qualify suspend/resume, power management and peripherals before persistent daily-driver use.
 3. Optionally land the already-proven Mutter frame-clock repair and monotonic apple-dcp vblank/pageflip sequence instead of relying on `nowlts`.
 
@@ -51,4 +52,4 @@ Do **not** reopen instruction-0, token5->token7, shader, TA/fragment, generic Qu
 
 ## Operational safety
 
-After E1102 the machine is verified back on Golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`; `boot.bin=a81993b1...`, `custom.cfg=cf011eee...`, GRUB one-shot empty, E1102 service/owner absent. The 7.3 source is off-machine on `geocausa/linux:wip/m3-7.3-j615` at `52f5d1cb8f5983131319a3083c0f1597e871a3e9`.
+After E1103 the machine is verified back on Golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`; `boot.bin=a81993b1...`, `custom.cfg=cf011eee...`, GRUB one-shot empty, E1103 service/owner absent. The 7.3 source is off-machine on `geocausa/linux:wip/m3-7.3-j615` at `52f5d1cb8f5983131319a3083c0f1597e871a3e9`.

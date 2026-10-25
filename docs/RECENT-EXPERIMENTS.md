@@ -23,6 +23,7 @@ Current authority: `docs/CANONICAL-CHECKPOINT.md`.
 | **E1100** | **Linux 7.3 replay of E1095 timestamp ABCA** | Matched 3-image FIFO; A1/A2 stall/time out; B drops 53/53 timestamps and completes; C `nowlts` completes; fatal deltas empty; DCP failed0 | **Qualified `TIMESTAMP-PATH SPLIT` persists on 7.3.** |
 | **E1101** | **Accelerated GNOME endurance control** | One Honeykrisp Shell PID, 8×600-frame `nowlts` clients all rc0; DCP progresses every round failed0; all fatal deltas empty | **Bounded 7.3 accelerated-desktop endurance control PASS.** |
 | **E1102** | **pstate 2 / 618 MHz qualification** | Firmware peak/actual/current state 2 observed; 2×300 frames rc0; DCP progress failed0; fault deltas empty | **618 MHz bounded accelerated-GNOME PASS.** |
+| **E1103** | **pstate 3 / 796 MHz qualification** | Firmware peak/actual/current state 3 observed; 2×300 frames rc0; DCP progress failed0; fault deltas empty | **796 MHz bounded accelerated-GNOME PASS.** |
 
 ## E1094 audited correction set
 
@@ -37,10 +38,10 @@ The initial E1094 interpretation was independently audited against raw traces. C
 
 ## Current interpretation
 
-`E056 HwDataA reduction -> E1075 firmware-running -> E1076 Compute -> E1077 Render -> E1091 native DCP/KMS -> E1093 direct native presentation -> E1094 Wayland presentation -> E1095/E1096 timing diagnosis -> E1097 accelerated GNOME compositor -> E1098 Linux 7.3 port/build -> E1099 Linux 7.3 live qualification -> E1100 Linux 7.3 timestamp causal replay -> E1101 accelerated GNOME endurance control -> E1102 pstate2/618 MHz qualification`
+`E056 HwDataA reduction -> E1075 firmware-running -> E1076 Compute -> E1077 Render -> E1091 native DCP/KMS -> E1093 direct native presentation -> E1094 Wayland presentation -> E1095/E1096 timing diagnosis -> E1097 accelerated GNOME compositor -> E1098 Linux 7.3 port/build -> E1099 Linux 7.3 live qualification -> E1100 Linux 7.3 timestamp causal replay -> E1101 accelerated GNOME endurance control -> E1102 pstate2/618 MHz qualification -> E1103 pstate3/796 MHz qualification`
 
 Current hard boundary:
 
-`Linux 7.3 boot/GPU/compositor PASS + E1100 TIMESTAMP-PATH SPLIT replay PASS -> E1101 accelerated endurance PASS -> E1102 618 MHz PASS -> controlled higher-pstate/frequency qualification -> suspend/power/peripheral integration`
+`Linux 7.3 boot/GPU/compositor PASS + E1100 TIMESTAMP-PATH SPLIT replay PASS -> E1101 accelerated endurance PASS -> E1102 618 MHz PASS -> E1103 796 MHz PASS -> controlled higher-pstate/frequency qualification -> suspend/power/peripheral integration`
 
 Historical E972/E974/E989-E1005 token5->token7 results remain valid for the older failing lineage but are not the repaired-lineage frontier.
