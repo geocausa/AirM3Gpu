@@ -6,7 +6,7 @@ Generated: **2026-10-25**
 
 ## One-sentence state
 
-**The physical J615 boots the repaired stack on Linux 7.3, passes bounded accelerated GNOME/Render/Compute/FIFO60, and E1100 proves the E1095 timed-FIFO `TIMESTAMP-PATH SPLIT` persists on 7.3; the next clean gate is accelerated 7.3 endurance at the fixed control pstate, then separate higher-pstate/frequency qualification.**
+**The physical J615 boots the repaired stack on Linux 7.3, passes bounded accelerated GNOME/Render/Compute/FIFO60, and E1100 proves the E1095 timed-FIFO `TIMESTAMP-PATH SPLIT` persists on 7.3; E1101 has now passed the accelerated 7.3 endurance control; the next clean gate is pstate 2 / 618 MHz, followed by one-state-at-a-time higher-pstate qualification.**
 
 ## Hard facts
 
@@ -23,6 +23,7 @@ Generated: **2026-10-25**
 - E1098 Linux 7.3 port/build PASS: `7.3.0-m3-j615-e1098+`, source `52f5d1cb8f5983131319a3083c0f1597e871a3e9`, pushed as `geocausa/linux:wip/m3-7.3-j615`.
 - E1099 Linux 7.3 live PASS: physical boot succeeds; GNOME Honeykrisp hardware contexts; Render 175041 ns; Compute 1273875 ns; FIFO60 rc0; DCP swaps 3->83 failed0; no new post-baseline fatal signature; exact Golden recovery.
 - E1100 Linux 7.3 ABCA replay PASS (`qualified=true`): matched 3-image FIFO topology; A1/A2 timed FIFO stall/time out, B drops all 53/53 commit timestamps and completes, C `nowlts` emits zero timestamps and completes; all post-baseline fatal scans empty, DCP `failed=0`; same `TIMESTAMP-PATH SPLIT` as E1095.
+- E1101 accelerated GNOME endurance PASS: 8×600-frame `nowlts` rounds, all rc0, same hardware Shell PID, DCP failed0/progress every round, all fault deltas empty, exact Golden recovery.
 
 ## Audit corrections that must travel with E1094
 
@@ -36,12 +37,12 @@ Generated: **2026-10-25**
 
 ## Current boundary
 
-`Linux 7.3 J615 live PASS -> E1100 timestamp-path replay PASS -> accelerated 7.3 endurance at fixed control pstate -> controlled higher-pstate/frequency qualification -> suspend/power/peripheral qualification`
+`Linux 7.3 J615 live PASS -> E1100 timestamp-path replay PASS -> E1101 accelerated endurance PASS -> controlled higher-pstate/frequency qualification -> suspend/power/peripheral qualification`
 
 ## Next action
 
-1. Run accelerated GNOME endurance on Linux 7.3 with `nowlts`, holding `asahi.t8122_pstate_cap=1` fixed as the known-good control.
-2. Then raise GPU pstates/frequencies in a separate one-step-at-a-time qualification; ~338 MHz is **not** treated as the hardware maximum.
+1. Test pstate 2 / 618 MHz with a short recovery-guarded accelerated-GNOME workload.
+2. If it passes, step through 796, 928 and 1056 MHz separately; do not conflate the admitted cap-5 ceiling with the hardware table maximum of 1338 MHz.
 3. Qualify suspend/resume, power management and peripherals before persistent daily-driver use.
 3. Optionally land the already-proven Mutter frame-clock repair and monotonic apple-dcp vblank/pageflip sequence instead of relying on `nowlts`.
 
@@ -49,4 +50,4 @@ Do **not** reopen instruction-0, token5->token7, shader, TA/fragment, generic Qu
 
 ## Operational safety
 
-After E1100 the machine is verified back on Golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`; `boot.bin=a81993b1...`, `custom.cfg=cf011eee...`, GRUB one-shot empty, E1100 service/owner absent. The 7.3 source is off-machine on `geocausa/linux:wip/m3-7.3-j615` at `52f5d1cb8f5983131319a3083c0f1597e871a3e9`.
+After E1101 the machine is verified back on Golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`; `boot.bin=a81993b1...`, `custom.cfg=cf011eee...`, GRUB one-shot empty, E1101 service/owner absent. The 7.3 source is off-machine on `geocausa/linux:wip/m3-7.3-j615` at `52f5d1cb8f5983131319a3083c0f1597e871a3e9`.

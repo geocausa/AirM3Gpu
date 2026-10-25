@@ -21,6 +21,7 @@ Current authority: `docs/CANONICAL-CHECKPOINT.md`.
 | **E1098** | **Linux 7.3 J615 port/build** | Source commit `52f5d1cb...` builds `7.3.0-m3-j615-e1098+` with J615 DTB, Asahi, Apple DRM and PMP artifacts | **7.3 candidate built and packaged.** |
 | **E1099** | **Physical Linux 7.3 first boot + bounded desktop/GPU test** | Boots 7.3; Honeykrisp GNOME; Render/Compute complete; FIFO60 rc0; DCP 3->83 failed0; post-baseline fatal scan empty; Golden auto-recovery | **Linux 7.3 J615 live gate crossed.** |
 | **E1100** | **Linux 7.3 replay of E1095 timestamp ABCA** | Matched 3-image FIFO; A1/A2 stall/time out; B drops 53/53 timestamps and completes; C `nowlts` completes; fatal deltas empty; DCP failed0 | **Qualified `TIMESTAMP-PATH SPLIT` persists on 7.3.** |
+| **E1101** | **Accelerated GNOME endurance control** | One Honeykrisp Shell PID, 8×600-frame `nowlts` clients all rc0; DCP progresses every round failed0; all fatal deltas empty | **Bounded 7.3 accelerated-desktop endurance control PASS.** |
 
 ## E1094 audited correction set
 
@@ -35,10 +36,10 @@ The initial E1094 interpretation was independently audited against raw traces. C
 
 ## Current interpretation
 
-`E056 HwDataA reduction -> E1075 firmware-running -> E1076 Compute -> E1077 Render -> E1091 native DCP/KMS -> E1093 direct native presentation -> E1094 Wayland presentation -> E1095/E1096 timing diagnosis -> E1097 accelerated GNOME compositor -> E1098 Linux 7.3 port/build -> E1099 Linux 7.3 live qualification -> E1100 Linux 7.3 timestamp causal replay`
+`E056 HwDataA reduction -> E1075 firmware-running -> E1076 Compute -> E1077 Render -> E1091 native DCP/KMS -> E1093 direct native presentation -> E1094 Wayland presentation -> E1095/E1096 timing diagnosis -> E1097 accelerated GNOME compositor -> E1098 Linux 7.3 port/build -> E1099 Linux 7.3 live qualification -> E1100 Linux 7.3 timestamp causal replay -> E1101 accelerated GNOME endurance control`
 
 Current hard boundary:
 
-`Linux 7.3 boot/GPU/compositor PASS + E1100 TIMESTAMP-PATH SPLIT replay PASS -> accelerated endurance at fixed control pstate -> controlled higher-pstate/frequency qualification -> suspend/power/peripheral integration`
+`Linux 7.3 boot/GPU/compositor PASS + E1100 TIMESTAMP-PATH SPLIT replay PASS -> E1101 accelerated endurance PASS -> controlled higher-pstate/frequency qualification -> suspend/power/peripheral integration`
 
 Historical E972/E974/E989-E1005 token5->token7 results remain valid for the older failing lineage but are not the repaired-lineage frontier.

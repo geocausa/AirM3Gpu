@@ -189,9 +189,15 @@ The E1095 `A1 -> B -> C -> A2` bracket was replayed on Linux 7.3 while retaining
 
 This strongly supports that the timed-FIFO defect is not specific to the older 7.1.x kernel lineage. It does not establish a quantitative 7.3 regression from a single replay.
 
+### E1101 — accelerated GNOME endurance control on 7.3
+
+One hardware-qualified GNOME Shell PID survived 8 consecutive 600-frame FIFO/`nowlts` rounds (4,800 requested frames, 80.536783 s summed client intervals). Every client returned 0 and selected Apple M3/G15G; every round advanced DCP with `failed=0`; all eight per-round and the global post-baseline fatal scans were empty. DCP progressed `3 -> 4872` before cleanup; final Shell RSS was only +432 kB versus pre-run. Exact Golden recovery succeeded. See `docs/E1101-LINUX73-ACCELERATED-GNOME-ENDURANCE.md`.
+
+The live J615 table publishes states 1–8 at 338/618/796/928/1056/1170/1278/1338 MHz. The current T8122 experiment intentionally admits caps only 1–5; J615 presently has no SoC-die thermal zone for this governor, so higher-cap qualification is short and one state at a time.
+
 ### Current hard boundary
 
-`G15G Compute/Render PASS + native DCP/KMS PASS + direct presentation PASS + native Wayland PASS + E1095/E1096 timing diagnosis PASS + E1097 accelerated compositor PASS + E1099 Linux 7.3 boot/desktop/GPU PASS + E1100 7.3 TIMESTAMP-PATH SPLIT replay PASS -> accelerated 7.3 endurance at fixed control pstate -> controlled higher-pstate/frequency qualification -> suspend/power/peripheral integration`
+`G15G Compute/Render PASS + native DCP/KMS PASS + direct presentation PASS + native Wayland PASS + E1095/E1096 timing diagnosis PASS + E1097 accelerated compositor PASS + E1099 Linux 7.3 boot/desktop/GPU PASS + E1100 7.3 TIMESTAMP-PATH SPLIT replay PASS -> E1101 accelerated 7.3 endurance PASS -> controlled higher-pstate/frequency qualification -> suspend/power/peripheral integration`
 
 Basic execution, native presentation, timed-FIFO diagnosis, accelerated GNOME composition and the first Linux 7.3 hardware gate are closed milestones.
 
@@ -214,7 +220,7 @@ Preserve those negatives, but do not present them as the current repaired-lineag
 
 ## 9. Immediate next actions
 
-1. Run accelerated GNOME endurance on Linux 7.3 using the proven `nowlts` path while holding pstate cap 1 fixed as a control; then qualify higher pstates/frequencies separately so clock escalation is not a confounder.
+1. Qualify pstate 2 / 618 MHz first, then states 3–5 only one at a time after each prior state passes; keep these no-temperature-feedback tests short and recovery-guarded.
 2. Qualify suspend/resume, power management, peripheral regressions and higher GPU pstates.
 3. Optionally land the proven Mutter frame-clock repair and monotonic apple-dcp pageflip/vblank sequence instead of relying on `nowlts`.
 
@@ -227,7 +233,7 @@ The E1093 recovery back to Golden was mechanically verified at the time:
 - Known-good m1n1 `boot.bin` SHA-256: `a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d`.
 - Original `/boot/grub/custom.cfg` SHA-256: `cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462`.
 
-Post-E1100 recovery is now the current safety observation: Golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d` is running; known-good `boot.bin` is `a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d`; original `custom.cfg` is `cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462`; no GRUB one-shot or E1100 service remains. Linux 7.3 source is pushed to `geocausa/linux:wip/m3-7.3-j615` at `52f5d1cb8f5983131319a3083c0f1597e871a3e9`.
+Post-E1101 recovery is now the current safety observation: Golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d` is running; known-good `boot.bin` is `a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d`; original `custom.cfg` is `cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462`; no GRUB one-shot or E1101 service remains. Linux 7.3 source is pushed to `geocausa/linux:wip/m3-7.3-j615` at `52f5d1cb8f5983131319a3083c0f1597e871a3e9`.
 
 ## Evidence pointers
 
@@ -247,3 +253,4 @@ Post-E1100 recovery is now the current safety observation: Golden `7.1.6-ubuntu-
 - E1098: `/home/macmac/m3-gpu-lab/experiments/E1098-ubuntu-2610-linux-73-migration-audit/`.
 - E1099: public summary `docs/E1099-LINUX73-LIVE-QUALIFICATION.md`; raw evidence remains machine-local.
 - E1100: public summary `docs/E1100-LINUX73-TIMESTAMP-ABCA.md`; raw bracket evidence remains machine-local.
+- E1101: public summary `docs/E1101-LINUX73-ACCELERATED-GNOME-ENDURANCE.md`; raw endurance evidence remains machine-local.
