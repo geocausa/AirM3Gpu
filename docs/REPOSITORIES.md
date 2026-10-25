@@ -10,7 +10,7 @@ It intentionally does **not** contain Apple firmware, kernelcaches, extracted pr
 
 ## `geocausa/linux` — kernel implementation fork
 
-This is a fork of the Asahi Linux kernel tree used to retain compilable J615/G15 source history. Experimental kernel branches such as `wip/g15-e274-working-body-order` and `wip/g15-e278-cdm-shared-rw` live here because they must preserve Linux kernel ancestry and cannot sensibly be represented as the AirM3Gpu project repository itself.
+This is a fork of the Asahi Linux kernel tree used to retain compilable J615/G15 source history. Experimental kernel branches live here because they must preserve Linux kernel ancestry. The current Linux 7.3 J615 port is `wip/m3-7.3-j615` at `52f5d1cb8f5983131319a3083c0f1597e871a3e9`; earlier repaired-lineage display/GPU source remains on its historical branches.
 
 This repository is subordinate to AirM3Gpu: it is implementation history, not a second project.
 
@@ -28,9 +28,9 @@ Active Ubuntu-side locations include:
 
 When the macOS endpoint is online, retained evidence lives primarily under `/Users/Shared/`, including `m3-gpu-native`, `e280-run`, the exact-version IOGPU/AGX reductions, and later profiler/parser bundles. These paths contain raw or machine-specific material and remain local.
 
-`/home/macmac/m3-gpu-lab` is a **historical** private-workspace path recorded by earlier checkpoints; do not assume it is the active location on the current Ubuntu endpoint.
+`/home/macmac/m3-gpu-lab` is the active private Ubuntu-side lab workspace for the current J615 work. It contains high-volume/raw experiment evidence and is not the same Git history as this curated public repository; public conclusions are copied here deliberately.
 
-As of 2026-10-24 the public research history is consolidated through the E972 replay frontier, while the Linux implementation fork retains diagnostic observer history through E828. Machine-local evidence remains the authority for raw captures, exact-binary analysis and experiment-level evidence. Historical preservation details remain in `manifests/LOCAL-LAB-STATUS-20260902.txt`.
+As of 2026-10-25 the public checkpoint is consolidated through E1099, while the Linux implementation fork retains the compilable Linux 7.3 J615 source at `52f5d1cb...`. Machine-local evidence remains the authority for raw captures, exact-binary analysis and experiment-level evidence. Historical preservation details remain in `manifests/LOCAL-LAB-STATUS-20260902.txt`.
 
 ## Rule going forward
 

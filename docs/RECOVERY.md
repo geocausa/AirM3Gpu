@@ -14,11 +14,9 @@ Golden kernel image SHA-256:
 
 Original known-good M3 m1n1 `boot.bin` SHA-256:
 
-`8c538fc2c161d47cb2b275b650afd0c6b5dfd74fe1bd0c9343cf1c40d8602c9a`
+`a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d`
 
-GRUB persistent selection:
-
-`GRUB_DEFAULT=0`
+GRUB persistent selection is pinned to the exact Golden 7.1.6 entry by the local Golden configuration; experimental boots use a one-shot entry and must never replace the persistent default.
 
 Experimental kernels are entered with a one-shot `grub-reboot`; `next_entry` must be empty again after the boot.
 
@@ -39,3 +37,7 @@ If an experimental stage needs to be abandoned:
    - no `/dev/dri/renderD*` node was created by the experimental work.
 
 Do not overwrite the last known-good rollback copy when staging a new experimental boot artifact.
+
+## Latest verified recovery
+
+E1099 exercised this contract twice on 2026-10-25. The successful second run booted Linux 7.3, restored Golden assets before the bounded desktop/GPU test completed, then automatically rebooted to Golden. After return, `boot.bin` matched `a81993b1...`, `custom.cfg` matched `cf011eee...`, GRUB `next_entry` was empty, and the E1099 service was absent.

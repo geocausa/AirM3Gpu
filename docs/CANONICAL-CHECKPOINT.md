@@ -171,11 +171,23 @@ See `docs/E1094-AUDITED-PRESENTATION.md` for the corrected evidence model and ne
   1. **Exact mechanism of `"Invalid sequence for VSYNC frame info"` (`vsync_warnings = A1:1 B:0 C:0 A2:0` in `E1095`) and `+1` presentation sequence deltas across stalls:** In `drivers/gpu/drm/apple/dcp.c:127` (`dcp_crtc_send_page_flip_event`), the Apple DCP driver hardcodes `unsigned int seq = 0` when calling `send_vblank_event(dev, e, seq, flip)`. In `libmutter-18.so.0` (`on_presented` at `0x16bfa8..0x16c010`), `frame_info->sequence == 0` with `COGL_FRAME_INFO_FLAG_VSYNC` logs `Invalid sequence for VSYNC frame info` once per boot (`+433`) and falls back to `wayland_output->presentation_sequence += 1` instead of `frame_info->sequence - last_sequence` (`0x16c154`).
   2. **Full `E1094` `VKCUBE.txt` timeline reconstruction & `ClutterFrameClock` state-machine defects:** Executing `repro-mutter-commit-timing-stall` against `/usr/lib/aarch64-linux-gnu/mutter-18/libmutter-clutter-18.so.0` demonstrated two `schedule_update_target_time` (`0x67908..0x67b40`) defects: **Bug A (`0x67a3c`)** sets `fc->pending_reschedule_now = 1` when `state == DISPATCHED_ONE (5)`, causing `notify_presented` to call `clutter_frame_clock_schedule_update_now` which zeroes `fc->has_next_presentation_time = 0`; **Bug B (`0x67ae0..0x67b40`)** transitions `IDLE (1) -> SCHEDULED_LATER (4)` in fixed refresh-rate mode (`vrr_mode == 0`) without updating `fc->has_next_presentation_time` or `fc->next_presentation_time_us`, leaving `fc->next_presentation_time_us` at `0` or at the stale presentation timestamp of the preceding frame and blocking the timed transaction across spurious idle dispatches (`Test 1 PASS`). Untimed FIFO (`Test 2 PASS`, `E1095` Arm B / Arm C) and repairing Bugs A & B (`Test 4 PASS`) eliminate all spurious idle dispatches.
 
+### E1097 — native GNOME compositor acceleration
+
+GNOME Shell itself was qualified on the pinned Zink/Honeykrisp Apple M3 path before the test client ran. The first compositor Render completed independently of the later client; FIFO60 returned 0; DCP advanced `3 -> 67` with `failed=0`; automatic Golden recovery was verified. Private `RESULT.md` SHA-256: `5e5bed6c23002b502d39190892ffa9e194df3c5e003a3f3ecfa2ec9b4dd7516f`.
+
+### E1098 — Linux 7.3 J615 port/build
+
+The repaired J615/G15G/display stack was ported into an isolated Linux 7.3 source tree. Source commit `52f5d1cb8f5983131319a3083c0f1597e871a3e9` builds release `7.3.0-m3-j615-e1098+`, including the J615 DTB, Asahi GPU, Apple DRM and PMP modules. The source is pushed to `geocausa/linux:wip/m3-7.3-j615`. The older local `PROGRESS.md`/build manifest predate package installation and the first hardware run; E1099 supersedes their `hardware_tested=false` bookkeeping.
+
+### E1099 — Linux 7.3 physical first boot and bounded desktop/GPU qualification
+
+The guarded one-shot boot entered `7.3.0-m3-j615-e1098+` on the physical J615. GNOME Shell repeatedly reported `zink Vulkan 1.4(Apple M3 (G15G C0) (MESA_HONEYKRISP))`; no software compositor context was observed. FIFO60 returned `0`; first Render completed in `175041 ns`; first Compute in `1273875 ns`; native DCP advanced `3 -> 83` during the bounded test with `failed=0`; the post-baseline fatal scan was empty. The controller restored Golden assets and automatically returned to `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`. See `docs/E1099-LINUX73-LIVE-QUALIFICATION.md`.
+
 ### Current hard boundary
 
-`G15G Compute/Render PASS + native DCP/KMS PASS + direct GPU-buffer presentation PASS + native Wayland/Mutter presentation PASS + E1095/E1096 FIFO60 timestamp-stall root-caused & live-isolated (TIMESTAMP-PATH SPLIT) -> G15G compositor acceleration -> endurance/performance/power/suspend-resume`
+`G15G Compute/Render PASS + native DCP/KMS PASS + direct presentation PASS + native Wayland PASS + E1095/E1096 timing diagnosis PASS + E1097 accelerated compositor PASS + E1099 Linux 7.3 J615 boot/desktop/GPU PASS -> endurance/power/suspend/peripheral integration`
 
-Basic execution, direct native presentation, compositor-mediated native presentation, and the FIFO60 `wp_commit_timer_v1.set_timestamp` stall diagnosis are closed milestones for the repaired lineage.
+Basic execution, native presentation, timed-FIFO diagnosis, accelerated GNOME composition and the first Linux 7.3 hardware gate are closed milestones.
 
 ## 7. Historical execution localization retained
 
@@ -196,9 +208,9 @@ Preserve those negatives, but do not present them as the current repaired-lineag
 
 ## 9. Immediate next actions
 
-1. **Wayland FIFO60 presentation pacing (closed in `E1095` + `E1096`):** Use `MESA_VK_WSI_DEBUG=fifo` / `nowlts` or apply the 2-line `ClutterFrameClock` fix in `clutter_frame_clock_schedule_update_target_time` (`Bug A` + `Bug B`, verified in `E1096` Test 4) when running timed `VK_PRESENT_MODE_FIFO_KHR` clients under Mutter 50.1.
-2. **Optional Kernel KMS Enhancement (`apple-dcp`):** Supply a monotonic vblank/pageflip sequence counter in `drivers/gpu/drm/apple/dcp.c:127` (`dcp_crtc_send_page_flip_event`) so `DRM_EVENT_FLIP_COMPLETE` delivers nonzero sequence numbers to Mutter.
-3. **Broaden to G15G compositor acceleration and endurance/performance/power/suspend-resume.**
+1. Extend Linux 7.3 into longer bounded desktop/GPU endurance and latency/fault observation.
+2. Qualify suspend/resume, power management, peripheral regressions and higher GPU pstates.
+3. Optionally land the proven Mutter frame-clock repair and monotonic apple-dcp pageflip/vblank sequence instead of relying on `nowlts`.
 
 ## 10. Recovery state
 
@@ -209,7 +221,7 @@ The E1093 recovery back to Golden was mechanically verified at the time:
 - Known-good m1n1 `boot.bin` SHA-256: `a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d`.
 - Original `/boot/grub/custom.cfg` SHA-256: `cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462`.
 
-Post-E1095 recovery to persistent Golden has also been automatically verified (`7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`, boot ID `a3342496-330a-4b77-a391-c5f1d211ac9c`, `GOLDEN-RECOVERY-AUTO.txt` SHA-256 `2d130dd5960ea0e2429747e4ff0eb34313feb1abb07d91dd7098a960efe0b097`), `/lib/modules/7.1.12-e1091-t8122-pmp-reordered` permissions have been repaired (`0755`), and the compilable `E1091`–`E1094` Linux kernel source (`25da27e55b1f8ea231a55fe64fdf845ad964273c`) has been pushed to `geocausa/linux` (`wip/g15-e1091-t8122-pmp-reordered-devices` and `wip/e1091-t8122-pmp-reordered-devices`).
+Post-E1099 recovery is now the current safety observation: Golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d` is running; known-good `boot.bin` is `a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d`; original `custom.cfg` is `cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462`; no GRUB one-shot or E1099 service remains. Linux 7.3 source is pushed to `geocausa/linux:wip/m3-7.3-j615` at `52f5d1cb8f5983131319a3083c0f1597e871a3e9`.
 
 ## Evidence pointers
 
@@ -224,3 +236,7 @@ Post-E1095 recovery to persistent Golden has also been automatically verified (`
 - E1094: `/home/macmac/m3-gpu-lab/experiments/E1094-native-gnome-appledrm-g15g/RESULT.md`; corrected by the retained Sol/Astra audits referenced above.
 - E1095: `/home/macmac/m3-gpu-lab/experiments/E1095-wayland-timestamp-abca/RESULT.md`.
 - E1096: `/home/macmac/m3-gpu-lab/experiments/E1096-mutter-commit-timing-and-dcp-vblank-root-cause/RESULT.md`.
+
+- E1097: `/home/macmac/m3-gpu-lab/experiments/E1097-desktop-acceleration-preparation/RESULT.md`.
+- E1098: `/home/macmac/m3-gpu-lab/experiments/E1098-ubuntu-2610-linux-73-migration-audit/`.
+- E1099: public summary `docs/E1099-LINUX73-LIVE-QUALIFICATION.md`; raw evidence remains machine-local.

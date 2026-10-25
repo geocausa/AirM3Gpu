@@ -65,10 +65,21 @@ E1096 private RESULT SHA256: c333c3c99997de1cbda12ff16a5f4f500ce2fb35882d0426095
 E1096 repro-mutter-commit-timing-stall.c SHA256: 42a6f0db9ddf3e96b389b2d623f724ceafb904f618924fc337a8ab64f3030f3e
 E1096 REPRO-OUTPUT.txt SHA256: 4b61d96ef6ff057b8a0934b0a9cf14251832ec7dae901022a0f6d32f7d638cda
 
+E1097 native GNOME compositor private RESULT SHA256: 5e5bed6c23002b502d39190892ffa9e194df3c5e003a3f3ecfa2ec9b4dd7516f
+
+E1098 / E1099 LINUX 7.3
+Linux source commit: 52f5d1cb8f5983131319a3083c0f1597e871a3e9
+Kernel release: 7.3.0-m3-j615-e1098+
+E1098 KERNEL-BUILD-MANIFEST.json SHA256: 05d6a0906201441da7ba81845b9eb8f4a28d773c644368f6430bba449c2e1014
+E1099 RESULT-LIVE.md SHA256: 2dccd8ce5acf55999bd51c610a014f6789dd2453d16cf9166b088caaeea13a48
+E1099 EVIDENCE-SHA256.txt SHA256: 5fe5fe434b369d2d034b8a0137c33836c36e7452304a5b74be8d2de54615fb4e
+E1099 corrected run-session.sh SHA256: c17e00e41bf5d83ceb6a09a81edbf64ee111a0ebbd1cc24728e839dd9009956f
+E1099 boot-control.py SHA256: 4a493995f357265cf39b00050e67ddc124577edcf016d30536658b1260c62c75
+E1099 handoff SHA256: 243bccb1566251bd6214cbc63472a0c03d84412340ade2d2454ab7010b180261
+E1099 result: COMPOSITOR_GPU_AND_FIFO60_BOUNDED_PASS; DCP swaps 3->83 failed0; post-baseline fatal scan empty; Golden auto-recovery.
+
 CURRENT FRONTIER
-Native Wayland compositor-mediated presentation is proven, and the FIFO60 Wayland presentation stall has been both offline root-caused (E1096) and live-isolated via the 4-leg ABCA causal bracket (E1095, qualified=true, TIMESTAMP-PATH SPLIT).
-Next: optional Mutter ClutterFrameClock / apple-dcp vblank sequence patches, G15G compositor acceleration, and endurance/performance/power/suspend-resume.
-Do not reopen instruction0, token5->token7, shader, TA/fragment, Queue/RunCompute/UAT/PagePool/power/parser/MMIO without contradictory evidence.
+Linux 7.3 J615 live gate is crossed. Next: endurance/performance/power/suspend-resume/peripheral integration and optional proper timing fixes.
 
 GOLDEN SAFETY
 Historical E1093 recovery Fabric operation: rbt_ff2d704eb89a419799305de2c53d6c91
@@ -78,6 +89,6 @@ Post-E1095-Run1 Golden recovery boot ID: 7dc2a6e1-efb8-46c1-bb1e-9f8db521146e
 Post-E1095-Run2 Golden recovery boot ID: a3342496-330a-4b77-a391-c5f1d211ac9c
 Known-good boot.bin SHA256: a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d
 Original custom.cfg SHA256: cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462
-Current post-E1095 host is verified on Golden kernel 7.1.6-ubuntu-m3-usbpd-gc5037a961e4d with Ubuntu persistent/next, empty GRUB one-shot, owner marker absent, and /lib/modules/7.1.12-e1091-t8122-pmp-reordered permissions repaired (0755).
+Current post-E1099 host is verified on Golden kernel 7.1.6-ubuntu-m3-usbpd-gc5037a961e4d with known-good boot.bin a81993b1..., original custom.cfg cf011eee..., empty GRUB one-shot, owner/service absent.
 
 Historical pre-E718 hash/evidence ledger: manifests/HISTORICAL-HASHES-THROUGH-E717.txt

@@ -6,7 +6,7 @@ Generated: **2026-10-25**
 
 ## One-sentence state
 
-**The physical J615 has verified G15G Compute/Render, native Apple DCP/KMS, direct GPU-produced DMA-BUF presentation, and native Wayland/Mutter presentation; the current wall is repeated FIFO/timed transaction liveness and exact buffer/fence/KMS ownership, not GPU execution.**
+**The physical J615 now boots the repaired stack on Linux 7.3 and passes bounded native GNOME/Honeykrisp compositor, Render, Compute, FIFO60 and DCP progression with automatic Golden recovery; the frontier is longer stability, power, suspend/resume and peripheral integration.**
 
 ## Hard facts
 
@@ -19,6 +19,9 @@ Generated: **2026-10-25**
 - E1094 native Wayland presentation PASS: Honeykrisp selects Apple M3/G15G, real GPU jobs occur, Wayland buffers are committed/released, real `wp_presentation_feedback.presented` events occur, and DCP progresses. FIFO10 completes; mailbox60 completes.
 - E1095 live 4-leg `ABCA` timestamp causal bracket PASS (`runs/20261025T124557Z-b95f18fd`, boot `b95f18fd-c2f2-44cd-9a54-aeafac243186`, `RESULT.md` SHA-256 `a617c8594ba092cf01f5c4498998f6a3f7dabc27fb9da3ce49818ba2f37a9740`, `qualified=true`): proves a clean **`TIMESTAMP-PATH SPLIT`** under matched 3-image FIFO topology (`last_creation_burst_counts = A1:3 B:3 C:3 A2:3`). Both passthrough controls stall (`A1`: `13.55 s` span, `max_steady_attach_gap_ms = 10,720.039 ms`; `A2`: `12.27 s` span, `max_steady_attach_gap_ms = 10,096.041 ms`) on the exact frames where `wp_commit_timer_v1.set_timestamp` catches up to a future vblank (`target_ns - last_presented_ns = +32.8 ms`), while dropping only `wp_commit_timer_v1.set_timestamp` (`Arm B`, `53/53` dropped) finishes 60 frames in **`1,061.2 ms`** (`56.5 FPS` at 60 Hz, `max_steady_attach_gap_ms = 118.778 ms`).
 - E1096 offline Mutter/DCP root-cause proof PASS: `repro-mutter-commit-timing-stall.c` dynamically loads `libmutter-clutter-18.so.0` and proves `schedule_update_target_time` `Bug A` (`0x67a3c`) and `Bug B` (`0x67ae0..0x67b40`) plus `drivers/gpu/drm/apple/dcp.c:127` (`seq = 0`) VSYNC warning/+1 sequence fallback (`vsync_warnings = A1:1 B:0 C:0 A2:0` in `E1095`) in `libmutter-18.so.0` (`on_presented` at `0x16bfa8..0x16c010`).
+- E1097 accelerated compositor PASS: GNOME Shell itself uses pinned Zink/Honeykrisp Apple M3, first compositor Render predates the client, FIFO60 rc0, DCP 3->67 failed0, then Golden recovery.
+- E1098 Linux 7.3 port/build PASS: `7.3.0-m3-j615-e1098+`, source `52f5d1cb8f5983131319a3083c0f1597e871a3e9`, pushed as `geocausa/linux:wip/m3-7.3-j615`.
+- E1099 Linux 7.3 live PASS: physical boot succeeds; GNOME Honeykrisp hardware contexts; Render 175041 ns; Compute 1273875 ns; FIFO60 rc0; DCP swaps 3->83 failed0; no new post-baseline fatal signature; exact Golden recovery.
 
 ## Audit corrections that must travel with E1094
 
@@ -28,20 +31,20 @@ Generated: **2026-10-25**
 4. All-images-busy is a downstream state. Determine who owns the oldest blocked buffer/transaction before calling it a release bug.
 5. Reconstructed future targets are only ~16-18 ms ahead before stalls of ~0.69 s, ~1.00 s and >=2.73 s; investigate wakeup/dependency liveness rather than a gross far-future timestamp.
 6. Raw sequence=0 is not yet a proven blocking input. Separate sequence, timestamp and completion-event questions.
-7. Mutter itself is still software-compositing; the proven path is a G15G client presented through Mutter, not a G15G-rendered desktop.
+7. Mutter was still software-compositing in E1094; E1097 later supersedes this historical limitation by qualifying GNOME Shell itself on G15G/Zink/Honeykrisp.
 
 ## Current boundary
 
-`G15G Compute/Render -> native DCP/KMS -> direct DMA-BUF native present -> Wayland/Mutter native present -> E1095/E1096 FIFO60 timestamp-stall root-caused & live-isolated (TIMESTAMP-PATH SPLIT) -> accelerated compositor -> endurance/performance`
+`Linux 7.3 J615 live PASS -> longer endurance/performance/power/suspend-resume/peripheral qualification`
 
 ## Next action
 
-1. **Wayland FIFO60 presentation pacing (closed in `E1095` + `E1096`):** Use `MESA_VK_WSI_DEBUG=fifo` / `nowlts` or apply the 2-line `ClutterFrameClock` fix in `clutter_frame_clock_schedule_update_target_time` (`Bug A` + `Bug B`, verified in `E1096` Test 4) when running timed `VK_PRESENT_MODE_FIFO_KHR` clients under Mutter 50.1.
-2. **Optional Kernel KMS Enhancement (`apple-dcp`):** Supply a monotonic vblank/pageflip sequence counter in `drivers/gpu/drm/apple/dcp.c:127` (`dcp_crtc_send_page_flip_event`).
-3. **Broaden to G15G compositor acceleration and endurance/performance/power/suspend-resume.**
+1. Extend E1099 on Linux 7.3 into a longer bounded desktop/GPU endurance run with fault/latency capture.
+2. Qualify suspend/resume, power management, peripherals and higher GPU pstates before persistent daily-driver use.
+3. Optionally land the already-proven Mutter frame-clock repair and monotonic apple-dcp vblank/pageflip sequence instead of relying on `nowlts`.
 
 Do **not** reopen instruction-0, token5->token7, shader, TA/fragment, generic Queue/RunCompute/UAT/PagePool/power/parser/MMIO hypotheses without contradictory evidence.
 
 ## Operational safety
 
-`macmac` has been automatically recovered to and verified on persistent Golden (`7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`, boot ID `a3342496-330a-4b77-a391-c5f1d211ac9c`), with known-good `boot.bin` (`a81993b1...`), original `custom.cfg` (`cf011eee...`), `/lib/modules/7.1.12-e1091-t8122-pmp-reordered` permissions repaired (`0755`), and the `E1091`–`E1094` kernel branch (`25da27e55b1f8ea231a55fe64fdf845ad964273c`) pushed to `geocausa/linux` (`wip/g15-e1091-t8122-pmp-reordered-devices`).
+After E1099 the machine is verified back on Golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`; `boot.bin=a81993b1...`, `custom.cfg=cf011eee...`, GRUB one-shot empty, E1099 service/owner absent. The 7.3 source is off-machine on `geocausa/linux:wip/m3-7.3-j615` at `52f5d1cb8f5983131319a3083c0f1597e871a3e9`.

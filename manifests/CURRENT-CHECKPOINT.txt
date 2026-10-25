@@ -74,9 +74,23 @@ Private RESULT SHA256: c333c3c99997de1cbda12ff16a5f4f500ce2fb35882d0426095f8f436
 Reproducer source SHA256: 42a6f0db9ddf3e96b389b2d623f724ceafb904f618924fc337a8ab64f3030f3e
 Reproducer output SHA256: 4b61d96ef6ff057b8a0934b0a9cf14251832ec7dae901022a0f6d32f7d638cda
 
+E1097 NATIVE GNOME G15G COMPOSITOR: PASS
+Private RESULT SHA256: 5e5bed6c23002b502d39190892ffa9e194df3c5e003a3f3ecfa2ec9b4dd7516f
+
+E1098 LINUX 7.3 J615 PORT/BUILD: PASS
+Linux source commit: 52f5d1cb8f5983131319a3083c0f1597e871a3e9
+Linux branch: geocausa/linux wip/m3-7.3-j615
+Kernel release: 7.3.0-m3-j615-e1098+
+Build-manifest SHA256: 05d6a0906201441da7ba81845b9eb8f4a28d773c644368f6430bba449c2e1014
+
+E1099 LINUX 7.3 J615 LIVE QUALIFICATION: PASS
+Private RESULT-LIVE SHA256: 2dccd8ce5acf55999bd51c610a014f6789dd2453d16cf9166b088caaeea13a48
+Evidence-manifest SHA256: 5fe5fe434b369d2d034b8a0137c33836c36e7452304a5b74be8d2de54615fb4e
+Handoff SHA256: 243bccb1566251bd6214cbc63472a0c03d84412340ade2d2454ab7010b180261
+Result: booted 7.3; GNOME Honeykrisp hardware context; Render/Compute/FIFO60 PASS; DCP swaps 3->83 failed=0; post-baseline fatal scan empty; automatic Golden recovery.
+
 CURRENT FRONTIER
-Native compositor-mediated presentation is crossed, and the FIFO60 Wayland presentation stall has been both offline root-caused (E1096) and live-isolated via the 4-leg ABCA causal bracket (E1095, qualified=true, TIMESTAMP-PATH SPLIT). Next: optional Mutter ClutterFrameClock / apple-dcp vblank sequence patches, G15G compositor acceleration, and endurance/performance/power/suspend-resume.
-Do not reopen instruction-0, token5->token7, shader, TA/fragment, Queue/RunCompute/UAT/PagePool/power/parser/MMIO hypotheses without contradictory evidence.
+Linux 7.3 J615 first boot and bounded accelerated desktop/GPU qualification are crossed. Next: endurance, power, suspend/resume, peripherals, higher pstates and optional proper timing fixes.
 
 HISTORICAL E1093 RECOVERY: GOLDEN VERIFIED
 Recovery Fabric operation: rbt_ff2d704eb89a419799305de2c53d6c91
@@ -86,4 +100,4 @@ Original custom.cfg SHA256: cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e29
 At that recovery: persistent Ubuntu; next Ubuntu; GRUB one-shot empty; owner marker absent; experimental render node / Asahi module absent.
 
 CURRENT OPERATIONAL STATE
-Post-E1095 Golden recovery is verified on macmac (7.1.6-ubuntu-m3-usbpd-gc5037a961e4d, boot ID a3342496-330a-4b77-a391-c5f1d211ac9c, GOLDEN-RECOVERY-AUTO.txt SHA256 2d130dd5960ea0e2429747e4ff0eb34313feb1abb07d91dd7098a960efe0b097); /lib/modules/7.1.12-e1091-t8122-pmp-reordered permissions repaired (0755); E1091-E1094 Linux kernel commit 25da27e55b1f8ea231a55fe64fdf845ad964273c pushed to geocausa/linux (wip/g15-e1091-t8122-pmp-reordered-devices).
+Post-E1099 Golden recovery verified: running 7.1.6-ubuntu-m3-usbpd-gc5037a961e4d; boot.bin a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d; custom.cfg cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462; empty one-shot; E1099 service absent; Linux 7.3 source pushed at 52f5d1cb8f5983131319a3083c0f1597e871a3e9.

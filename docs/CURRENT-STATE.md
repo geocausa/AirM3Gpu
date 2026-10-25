@@ -8,7 +8,7 @@ Target: MacBook Air M3 J615 / T8122 / G15G C0. Exact reference: macOS 14.8.3 / 2
 
 ## Headline
 
-**J615 GPU execution, native Apple DCP/KMS, direct GPU-buffer presentation, and compositor-mediated native Wayland presentation are mechanically proven. The current defect is repeated FIFO/timed presentation liveness, not basic GPU execution or native scanout.**
+**J615 GPU execution, native Apple DCP/KMS, direct GPU-buffer presentation, native Wayland presentation, G15G-accelerated GNOME composition, and the first Linux 7.3 J615 boot are mechanically proven. The active frontier is Linux 7.3 stability/integration, not basic execution, scanout, compositor acceleration, or first boot.**
 
 ## Closed repaired-lineage milestones
 
@@ -23,6 +23,9 @@ Target: MacBook Air M3 J615 / T8122 / G15G C0. Exact reference: macOS 14.8.3 / 2
 - **E1094:** Honeykrisp/G15G -> Wayland -> Mutter -> native Apple DRM/DCP presentation is proven by real buffer releases, presentation feedback, GPU Render activity and DCP progression. FIFO 10-frame completes; mailbox 60-frame completes; long FIFO runs expose intermittent release/pacing stalls.
 - **E1095:** Live one-session 4-leg `A1 -> B -> C -> A2` Wayland timestamp causal bracket (`runs/20261025T124557Z-b95f18fd`, boot `b95f18fd-c2f2-44cd-9a54-aeafac243186`, `RESULT.md` SHA-256 `a617c8594ba092cf01f5c4498998f6a3f7dabc27fb9da3ce49818ba2f37a9740`, `qualified=true`) achieves a clean **`TIMESTAMP-PATH SPLIT`**: all 4 arms allocate identical **`3`-image** swapchains (`500x500`, `XRGB8888`, `stride=4096`, `modifier=0x0`), both passthrough controls (`A1`: `13.55 s`, `max_steady_attach_gap_ms = 10,720.039 ms`; `A2`: `12.27 s`, `max_steady_attach_gap_ms = 10,096.041 ms`) stall whenever `wp_commit_timer_v1.set_timestamp` catches up to a future vblank, and dropping only `wp_commit_timer_v1.set_timestamp` (`Arm B`, `53/53` dropped while keeping `wp_fifo_v1` `set=60, wait=113` and `wp_presentation` `presented=50` intact) eliminates the stalls completely (`1.06 s` for 60 frames = **`56.5 FPS`**, `max_steady_attach_gap_ms = 118.778 ms`).
 - **E1096:** Offline binary + dynamic execution harness (`repro-mutter-commit-timing-stall.c`) against installed `libmutter-clutter-18.so.0` and `libmutter-18.so.0` proves the `drivers/gpu/drm/apple/dcp.c:127` `seq = 0` VSYNC warning/+1 sequence fallback (`vsync_warnings = A1:1 B:0 C:0 A2:0` in `E1095`) and reproduces two `ClutterFrameClock` `schedule_update_target_time` state-machine defects (`Bug A` at `0x67a3c` and `Bug B` at `0x67ae0..0x67b40`) when `wp_commit_timer_v1` is used alongside `wp_fifo_v1`, while confirming that untimed FIFO (`Test 2 PASS`) and repairing Bugs A & B (`Test 4 PASS`) eliminate all spurious idle dispatches.
+- **E1097:** Native GNOME Shell is G15G-accelerated through pinned Zink/Honeykrisp; first compositor Render predates the client; FIFO60 `rc=0`; DCP `3 -> 67`, `failed=0`; Golden recovery verified.
+- **E1098:** Linux 7.3 J615 candidate builds successfully from source commit `52f5d1cb8f5983131319a3083c0f1597e871a3e9` (`geocausa/linux:wip/m3-7.3-j615`) as `7.3.0-m3-j615-e1098+`.
+- **E1099:** Physical J615 boots that 7.3 candidate; GNOME Shell qualifies on Honeykrisp, Render `175041 ns`, Compute `1273875 ns`, FIFO60 `rc=0`, DCP `3 -> 83`, `failed=0`, post-baseline fatal scan empty; automatic exact Golden recovery succeeds.
 
 E1092 private result SHA-256: `7d303dfa0e8e563fcefcc31fd2413be82ea07b0baa52c68138de5590f8151d0c`.
 
@@ -40,15 +43,16 @@ E1093 private result SHA-256: `1180520285949fb309aa2ca099ae48e5ebce6e014715ad308
 
 ## Current boundary
 
-`G15G Compute/Render PASS -> native DCP/KMS PASS -> direct imported GPU-buffer PASS -> native Wayland/Mutter presentation PASS -> E1095/E1096 FIFO60 timestamp-stall root-caused & live-isolated (TIMESTAMP-PATH SPLIT) -> G15G compositor acceleration -> endurance/performance/power/suspend-resume`
+`G15G Compute/Render PASS -> native DCP/KMS PASS -> direct GPU-buffer PASS -> native Wayland PASS -> E1095/E1096 timing diagnosis PASS -> E1097 G15G GNOME compositor PASS -> E1099 Linux 7.3 J615 boot + bounded desktop/GPU PASS -> endurance/power/suspend/peripheral integration`
 
 Use E1093 as the direct-presentation control and E1095 Arm B (`drop-timestamps`) / Arm C (`nowlts`) as the proven 60 Hz FIFO controls. Do not reopen instruction-0, token5->token7, shader, TA/fragment, Queue/RunCompute/UAT/PagePool/power/parser/MMIO hypotheses without contradictory evidence.
 
 ## Next follow-ups
 
-1. Apply the 2-line `ClutterFrameClock` `schedule_update_target_time` fix in Mutter (or use `MESA_VK_WSI_DEBUG=fifo` / `nowlts`) for timed `VK_PRESENT_MODE_FIFO_KHR` clients under Mutter 50.1, and optionally wire a monotonic vblank sequence counter in `drivers/gpu/drm/apple/dcp.c:127`.
-2. Advance to G15G compositor acceleration and endurance/performance/power/suspend-resume.
+1. Extend Linux 7.3 qualification to longer desktop/GPU endurance with latency/fault observation.
+2. Qualify suspend/resume, power management, peripherals and higher GPU pstates before any daily-driver claim.
+3. Optionally replace the `nowlts` workaround with the proven Mutter `ClutterFrameClock` repair and add a monotonic apple-dcp pageflip sequence.
 
 ## Operational state
 
-`macmac` has been automatically recovered to and verified on the persistent Golden Ubuntu kernel (`7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`, boot ID `a3342496-330a-4b77-a391-c5f1d211ac9c`), with known-good `boot.bin` (`a81993b1...`), original `custom.cfg` (`cf011eee...`), `/lib/modules/7.1.12-e1091-t8122-pmp-reordered` permissions repaired (`0755`), and the compilable `E1091`–`E1094` kernel branch (`25da27e55b1f8ea231a55fe64fdf845ad964273c`) pushed to `geocausa/linux` (`wip/g15-e1091-t8122-pmp-reordered-devices`).
+After E1099, `macmac` is back on persistent Golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`. Golden `boot.bin` SHA-256 is `a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d`; original `custom.cfg` is `cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462`; the one-shot entry and E1099 recovery service are absent. Linux 7.3 source commit `52f5d1cb8f5983131319a3083c0f1597e871a3e9` is pushed to `geocausa/linux:wip/m3-7.3-j615`.
