@@ -102,8 +102,13 @@ Evidence-manifest SHA256: 4a6e478c333e8b790e29c473af260343ad0e8b7d51e86afeee4880
 Result: one hardware-qualified Shell PID; 8x600 requested frames, all clients rc0; DCP progress each round failed0; all per-round/global fatal scans empty; exact Golden recovery.
 J615 live table: 338/618/796/928/1056/1170/1278/1338 MHz; current T8122 experimental caps accepted only 1..5.
 
+E1102 PSTATE 2 / 618 MHZ: PASS
+Private RESULT SHA256: e8140a21e127616be971ea74490cfcdf23ed4059bb8be8e15082d783e6c854f4
+Evidence-manifest SHA256: b7dee881f8577e894bdc038d9f9ce748f61db7afd1ff3e7b72f28d7354e07950
+Result: firmware actual/current/peak state2 observed; 2x300-frame clients rc0; DCP progress failed0; all fault deltas empty; exact Golden recovery.
+
 CURRENT FRONTIER
-Linux 7.3 J615 first boot, bounded accelerated desktop/GPU qualification and the cross-kernel timestamp-path replay are crossed. E1101 closes the accelerated-endurance control. Next: pstate 2 / 618 MHz, then controlled one-state-at-a-time qualification through the currently admitted cap-5 ceiling, followed by suspend/resume, power and peripherals.
+Linux 7.3 J615 first boot, bounded accelerated desktop/GPU qualification and the cross-kernel timestamp-path replay are crossed. E1101 closes the accelerated-endurance control and E1102 qualifies 618 MHz. Next: pstate 3 / 796 MHz, then one-state-at-a-time 928 and 1056 MHz through the currently admitted cap-5 ceiling, followed by suspend/resume, power and peripherals.
 
 HISTORICAL E1093 RECOVERY: GOLDEN VERIFIED
 Recovery Fabric operation: rbt_ff2d704eb89a419799305de2c53d6c91
@@ -113,4 +118,4 @@ Original custom.cfg SHA256: cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e29
 At that recovery: persistent Ubuntu; next Ubuntu; GRUB one-shot empty; owner marker absent; experimental render node / Asahi module absent.
 
 CURRENT OPERATIONAL STATE
-Post-E1101 Golden recovery verified: running 7.1.6-ubuntu-m3-usbpd-gc5037a961e4d; boot.bin a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d; custom.cfg cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462; empty one-shot; E1101 service absent; Linux 7.3 source pushed at 52f5d1cb8f5983131319a3083c0f1597e871a3e9.
+Post-E1102 Golden recovery verified: running 7.1.6-ubuntu-m3-usbpd-gc5037a961e4d; boot.bin a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d; custom.cfg cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462; empty one-shot; E1102 service absent; Linux 7.3 source pushed at 52f5d1cb8f5983131319a3083c0f1597e871a3e9.
