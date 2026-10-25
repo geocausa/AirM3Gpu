@@ -9,20 +9,32 @@ Current authority: `docs/CANONICAL-CHECKPOINT.md`.
 | E1075 | Same-J615 live causal pass | Exact T8122 HwDataA `+0x418c..+0x41db` crosses startup barrier; firmware-running; render node | Startup barrier crossed. |
 | E1076 | Physical J615 Compute/readback | 788 runs / 0 wrong; first Compute 773625 ns | Real Compute crossed. |
 | E1077 | Physical J615 Vulkan Render/readback | 1174 runs / 0 wrong pixels; first Render 127875 ns; non-zero TA/fragment | Real graphics crossed. |
-| E1078 | Active-panel framebuffer bridge | Exact GPU triangle copied to simpledrm panel and framebuffer restored | Visible GPU-derived pixels, but CPU-copy only. |
-| E1086 | Native-presentation differential | Vulkan/Zink remain correct; simpledrm Wayland path localizes cross-device presentation/VSYNC wall | Display/presentation problem, not GPU execution. |
-| E1091 | Native J615 DCP/KMS live pass | PMP ack; DCP RTKit/DCPLink + PIODMA; `apple-drm`; `eDP-1`; `appledrmfb`; simpledrm displaced | Native display ownership crossed. |
-| **E1092** | **Simultaneous native display + G15G** | Native `apple-drm/eDP-1` healthy while Vulkan Render completes 988 runs / 0 wrong; first Render 168708 ns | **Combined-device gate crossed.** |
-| **E1093** | **Direct G15G DMA-BUF -> native DCP/KMS** | Linear full-mode GPU DMA-BUF offset0/pitch11520; PRIME import + AddFB2 PASS; DCP `7/fb42/imported0 -> 8/fb44/imported1 -> 9/fb42/imported0`; no CPU pixel copy | **Direct one-buffer native presentation crossed.** |
+| E1078 | Active-panel framebuffer bridge | Exact GPU triangle copied to simpledrm panel and framebuffer restored | Visible GPU-derived pixels, CPU-copy only. |
+| E1086 | Presentation differential | Vulkan/Zink remain correct; simpledrm Wayland localizes presentation/VSYNC wall | Display/presentation problem, not GPU execution. |
+| E1091 | Native J615 DCP/KMS live pass | PMP/DCP/PIODMA; `apple-drm`; `eDP-1`; `appledrmfb`; simpledrm displaced | Native display ownership crossed. |
+| **E1092** | **Simultaneous native display + G15G** | Native `apple-drm/eDP-1` healthy while Vulkan Render completes 988 runs / 0 wrong | **Combined-device gate crossed.** |
+| **E1093** | **Direct G15G DMA-BUF -> native DCP/KMS** | PRIME import + AddFB2; DCP becomes imported fb44 then restores fb42; no CPU pixel copy | **Direct native GPU-buffer presentation crossed.** |
+| **E1094** | **Native Wayland/Mutter presentation** | Real GPU client buffers, releases and `presented` feedback through Mutter/native Apple DRM/DCP; FIFO10 completes; mailbox60 completes | **Compositor-mediated native presentation crossed; long FIFO pacing remains.** |
+
+## E1094 audited correction set
+
+The initial E1094 interpretation was independently audited against raw traces. Canonical corrections:
+
+- Mutter's `Invalid sequence for VSYNC frame info` warning persists in E1094; the original negative search used a failed journal capture.
+- `fifo_latest_ready` is not a valid result because the selector was rejected.
+- mailbox and FIFO are not presently a single-variable comparison: inspected WSI policy uses 4 images for true mailbox and 3 for FIFO unless measured creation counts say otherwise.
+- long FIFO waits are release/image-availability stalls at the client boundary, but exact server-side ownership remains unproven.
+- targets immediately before the long pauses are only about one refresh ahead; the pauses are orders of magnitude longer.
+- sequence-zero is a metadata defect, not yet a demonstrated blocking cause.
 
 ## Current interpretation
 
-`E056 Apple HwDataA reduction -> E1075 firmware-running -> E1076 correct Compute -> E1077 correct Render/triangle -> E1078 panel-visible CPU-copy bridge -> E1086 presentation localization -> E1091 native DCP/KMS -> E1092 simultaneous GPU+display -> E1093 direct native GPU-buffer presentation`
+`E056 HwDataA reduction -> E1075 firmware-running -> E1076 Compute -> E1077 Render -> E1078 panel-visible CPU bridge -> E1086 presentation localization -> E1091 native DCP/KMS -> E1092 simultaneous GPU+display -> E1093 direct native GPU-buffer presentation -> E1094 native Wayland/Mutter presentation`
 
 Current hard boundary:
 
-`G15G Render PASS + native DCP/KMS PASS + simultaneous operation PASS + direct native GPU-buffer presentation PASS -> [compositor/window-system + repeated sync/pageflip/vblank/VSYNC] -> endurance/performance`
+`native Wayland presentation PASS -> [timed/FIFO transaction liveness + exact buffer/fence/composition/KMS dependency] -> accelerated compositor -> endurance/performance/power/suspend-resume`
 
-Historical E972/E974/E989-E1005 token5->token7 results remain valid for the older failing lineage, but they are not the current repaired-lineage frontier.
+Preferred next live discriminator after exact Golden recovery: prequalified transparent Wayland timestamp-filter proxy, then one-session FIFO60 A/B/C/A = passthrough / drop only `wp_commit_timer_v1.set_timestamp` / passthrough+`nowlts` / passthrough.
 
-Current next sequence: **bounded native compositor/window-system qualification -> repeated fence/pageflip/vblank/VSYNC presentation -> desktop integration -> endurance/performance qualification**.
+Historical E972/E974/E989-E1005 token5->token7 results remain valid for the older failing lineage but are not the repaired-lineage frontier.

@@ -1,5 +1,6 @@
 === CURRENT 2026-10-25 CHECKPOINT ===
 Canonical state: docs/CANONICAL-CHECKPOINT.md
+Audited E1094: docs/E1094-AUDITED-PRESENTATION.md
 Canonical handoff: docs/NEW-CHAT-HANDOFF.md
 Target: J615 / T8122 / G15G C0
 Exact ABI authority: macOS 14.8.3 / 23J220
@@ -39,15 +40,27 @@ E1093 observed helper binary SHA256: f7bbfcb075c9457a8be3fc16343eff9ede903f40d4e
 E1093 DCP oracle: before swaps7 active_fb42 imported0; present swaps8 active_fb44 imported1; restore swaps9 active_fb42 imported0
 E1093 classification: direct G15G DMA-BUF -> apple-drm PRIME -> synchronous native DCP swap -> restore; no CPU pixel copy
 
+E1094 NATIVE WAYLAND PRESENTATION + AUDIT
+E1094 initial private RESULT SHA256: a61a762a673600944bf0b49dd3a0cdef798c3efe3ec05d244e32d23e4f8001cf
+Sol/xhigh independent audit SHA256: 7d16c74678af90ae885126b729b7081493f1663206a10246c3f9e463d4e720a0
+Astra focused review SHA256: 3cdf801d75fda1cfbf78371f47bec5a5d5e94975e08dcc214249cc5e89a61245
+Astra/xhigh report SHA256: c5253946dc22ea228a4ec99e34ed73400f562fa245ca06ac0882246a8e67da02
+Astra/xhigh decision tree SHA256: dbfd94e90b3514439214f135cc4bdd0c1aba20f6001669329e78c676e063404b
+Astra/xhigh next experiments SHA256: 62550ac0ecd7a8d9e69ba3734fafeafc6b6dbb5c5ffd6e922ab8aa52981676f3
+E1094 qualification: FIFO10 rc0; FIFO60/30s timeout; mailbox60/30s rc0; real wl_buffer.release + wp_presentation_feedback.presented; DCP progresses.
+E1094 corrections: VSYNC warning persists; fifo_latest_ready invalid; FIFO/mailbox image-count confound; all-images-busy is downstream localization; Mutter software-composites.
+
 CURRENT FRONTIER
-Native compositor/window-system integration and repeated synchronization/pageflip/VSYNC qualification on the proven E1093 direct-presentation path.
+Native Wayland compositor-mediated presentation is proven. Localize FIFO/timed transaction liveness and exact buffer/fence/composition/KMS ownership before compositor acceleration.
+Preferred next discriminator: prequalified transparent Wayland timestamp-filter proxy, FIFO60 A/B/C/A in one session.
 Do not reopen instruction0, token5->token7, shader, TA/fragment, Queue/RunCompute/UAT/PagePool/power/parser/MMIO without contradictory evidence.
 
-RECOVERY
-Recovery Fabric operation: rbt_ff2d704eb89a419799305de2c53d6c91
-Recovery boot ID: db06411a-f5ab-450f-a799-8694ab6d9674
+GOLDEN SAFETY
+Historical E1093 recovery Fabric operation: rbt_ff2d704eb89a419799305de2c53d6c91
+Historical E1093 recovery boot ID: db06411a-f5ab-450f-a799-8694ab6d9674
 Known-good boot.bin SHA256: a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d
 Original custom.cfg SHA256: cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462
-Golden verified: Ubuntu persistent/next, empty GRUB one-shot, owner marker absent, no experimental render node / Asahi module.
+Historical E1093 recovery verified Ubuntu persistent/next, empty GRUB one-shot, owner marker absent, no experimental render node / Asahi module.
+Current post-E1094 host remains on experimental kernel; exact Golden recovery is pending and mandatory before another live GPU experiment.
 
 Historical pre-E718 hash/evidence ledger: manifests/HISTORICAL-HASHES-THROUGH-E717.txt

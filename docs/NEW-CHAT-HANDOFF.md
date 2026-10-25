@@ -2,34 +2,47 @@
 
 Generated: **2026-10-25**
 
-**First read:** `docs/CANONICAL-CHECKPOINT.md`.
+**First read:** `docs/CANONICAL-CHECKPOINT.md` and `docs/E1094-AUDITED-PRESENTATION.md`.
 
 ## One-sentence state
 
-**The physical J615 now has mechanically verified G15G Compute/Render, native Apple DCP/KMS, simultaneous GPU+display operation, and direct GPU-produced DMA-BUF presentation through native DCP; the remaining major wall is compositor/window-system synchronization and repeated native presentation.**
+**The physical J615 has verified G15G Compute/Render, native Apple DCP/KMS, direct GPU-produced DMA-BUF presentation, and native Wayland/Mutter presentation; the current wall is repeated FIFO/timed transaction liveness and exact buffer/fence/KMS ownership, not GPU execution.**
 
 ## Hard facts
 
-- E1075 startup: exact T8122 HwDataA `+0x418c..+0x41db` plus identity-capable handoff reaches `firmware-running` and `renderD128`.
+- E1075 startup: exact T8122 HwDataA `+0x418c..+0x41db` reaches `firmware-running` and `renderD128`.
 - E1076 Compute: `788 runs / 0 wrong`; first Compute `773625 ns`.
 - E1077 Render: `1174 runs / 0 wrong pixels`; first Render `127875 ns`.
-- E1091 native display: PMP request `0x20080` -> ack `0x200f0`; `apple-drm`, `eDP-1`, 2880x1800@60, `appledrmfb`; Asahi intentionally blacklisted for the display-only proof.
-- E1092 combined-device PASS: native `apple-drm/eDP-1` and G15G `firmware-running/renderD128` coexist; Vulkan Render `988 runs / 0 wrong pixels`; first Render `168708 ns`. Result SHA-256 `7d303dfa0e8e563fcefcc31fd2413be82ea07b0baa52c68138de5590f8151d0c`.
-- E1093 direct-native-present PASS: GPU clears an exportable 2880x1800 linear DMA-BUF, Apple DRM PRIME-import/AddFB2 succeeds, and DCP records `7/fb42/imported0 -> 8/fb44/imported1 -> 9/fb42/imported0` across present/restore. No CPU pixel copy. Result SHA-256 `1180520285949fb309aa2ca099ae48e5ebce6e014715ad308b1645c457ecac38`.
+- E1091 native display: `apple-drm`, `eDP-1`, 2880x1800@60, `appledrmfb`.
+- E1092 combined-device PASS: native display and G15G coexist; Vulkan Render `988 runs / 0 wrong pixels`.
+- E1093 direct-native-present PASS: GPU DMA-BUF -> Apple DRM PRIME/AddFB2 -> DCP imported framebuffer; exact restore; no CPU pixel copy.
+- E1094 native Wayland presentation PASS: Honeykrisp selects Apple M3/G15G, real GPU jobs occur, Wayland buffers are committed/released, real `wp_presentation_feedback.presented` events occur, and DCP progresses. FIFO10 completes; mailbox60 completes.
+
+## Audit corrections that must travel with E1094
+
+1. `Invalid sequence for VSYNC frame info` still occurs; do not claim it disappeared.
+2. `fifo_latest_ready` was rejected and is not evidence.
+3. Mailbox likely uses 4 images while FIFO uses 3 in the inspected WSI; measure actual counts before treating the mode differential as causal.
+4. All-images-busy is a downstream state. Determine who owns the oldest blocked buffer/transaction before calling it a release bug.
+5. Reconstructed future targets are only ~16-18 ms ahead before stalls of ~0.69 s, ~1.00 s and >=2.73 s; investigate wakeup/dependency liveness rather than a gross far-future timestamp.
+6. Raw sequence=0 is not yet a proven blocking input. Separate sequence, timestamp and completion-event questions.
+7. Mutter itself is still software-compositing; the proven path is a G15G client presented through Mutter, not a G15G-rendered desktop.
 
 ## Current boundary
 
-`G15G Compute/Render PASS + native DCP/KMS PASS + simultaneous operation PASS + direct imported GPU-buffer presentation PASS -> [native compositor/window-system + repeated sync/pageflip/vblank/VSYNC] -> endurance/performance`
+`G15G Compute/Render -> native DCP/KMS -> direct DMA-BUF native present -> Wayland/Mutter native present -> [FIFO/timed liveness + exact ownership/sync/KMS dependency] -> accelerated compositor -> endurance/performance`
 
 ## Next action
 
-1. Keep E1092/E1093 as fixed controls; do not repeat them unless later work needs regression qualification.
-2. Run one bounded native compositor/window-system test on `apple-drm` using the qualified G15G userspace path.
-3. Record DCP `swaps/active_fb/imported`, pageflip/vblank/fence behavior and any WSI/compositor errors around each bounded present.
-4. Only after repeated native presentation is mechanically stable, broaden into desktop acceleration and endurance/performance.
+1. **First restore and verify exact Golden.** Current host is still on the E1094 experimental kernel.
+2. Offline-build and prequalify a transparent Wayland proxy that forwards bytes/FDs/object lifetimes unchanged and can drop only `wp_commit_timer_v1.set_timestamp` for the test surface.
+3. Re-arm the qualified E1094 stack only after Golden is clean.
+4. In one compositor session run FIFO60 A/B/C/A: passthrough / timestamp-only removal / passthrough+`nowlts` / passthrough. Require both A controls to reproduce.
+5. Record requested/effective mode, actual image count, format/modifier, generation, API/image state, releases/presented/discarded, valid journal cursor and DCP state.
+6. If a long wait reproduces, identify the oldest Mutter dependency across timed/FIFO state, reservation fence, composition use, KMS submit/event/frame-clock, and release/flush/receipt. Stop once one complete dependency-to-release chain is known.
 
 Do **not** reopen instruction-0, token5->token7, shader, TA/fragment, generic Queue/RunCompute/UAT/PagePool/power/parser/MMIO hypotheses without contradictory evidence.
 
-## Recovery
+## Operational safety
 
-Golden Linux is active: `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`, boot ID `db06411a-f5ab-450f-a799-8694ab6d9674`, exact known-good m1n1 and original GRUB hash-verified, Ubuntu persistent/next, empty GRUB one-shot, no owner marker, no experimental render node.
+Historical E1093 Golden recovery was verified, but it is no longer the current live state. At this checkpoint `macmac` remains on experimental kernel `7.1.12-e1091-t8122-pmp-reordered`; Golden recovery is pending. Do not call the host Golden until boot.bin/custom.cfg, GRUB, bless targets, owner marker and kernel are all re-verified.

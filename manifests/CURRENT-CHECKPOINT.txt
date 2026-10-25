@@ -47,17 +47,26 @@ Interpretation: dcp_v14_present updates swaps/active_fb only after synchronous f
 Private RESULT SHA256: 1180520285949fb309aa2ca099ae48e5ebce6e014715ad308b1645c457ecac38
 Evidence manifest SHA256: 013b8d032f407445efcc694d02d945de8a703d20c9d824f6f4801ddc9a772f8e
 
+E1094 NATIVE WAYLAND/MUTTER PRESENTATION: PASS WITH FIFO-LIVENESS FRONTIER
+Result: G15G/Honeykrisp buffers cross Wayland/Mutter into native Apple DRM/DCP; wl_buffer releases and wp_presentation_feedback.presented observed; real GPU Render and DCP progression.
+Qualified controls: FIFO10 completes; mailbox60/30s completes; FIFO60/30s times out while DCP remains healthy.
+Audit corrections: VSYNC sequence warning persists; fifo_latest_ready test invalid; mailbox/FIFO image-count confound must be measured; Mutter software-composites.
+Initial private RESULT SHA256: a61a762a673600944bf0b49dd3a0cdef798c3efe3ec05d244e32d23e4f8001cf
+Sol/xhigh audit SHA256: 7d16c74678af90ae885126b729b7081493f1663206a10246c3f9e463d4e720a0
+Astra focused review SHA256: 3cdf801d75fda1cfbf78371f47bec5a5d5e94975e08dcc214249cc5e89a61245
+Astra/xhigh report SHA256: c5253946dc22ea228a4ec99e34ed73400f562fa245ca06ac0882246a8e67da02
+
 CURRENT FRONTIER
-Bounded native compositor/window-system qualification using E1093 as the direct-presentation control; observe DCP swaps/active_fb/imported plus pageflip/vblank/fence/VSYNC behavior, then repeated presentation and only afterward endurance/performance.
+Native compositor-mediated presentation is crossed. Localize repeated FIFO/timed transaction liveness and the exact oldest buffer/fence/composition/KMS dependency; then G15G compositor acceleration and endurance/performance/power/suspend-resume.
+Preferred next discriminator after Golden recovery: offline-qualified transparent Wayland timestamp-filter proxy; one-session FIFO60 A/B/C/A = passthrough / drop only wp_commit_timer_v1.set_timestamp / passthrough+nowlts / passthrough.
 Do not reopen instruction-0, token5->token7, shader, TA/fragment, Queue/RunCompute/UAT/PagePool/power/parser/MMIO hypotheses without contradictory evidence.
 
-RECOVERY AFTER E1093: GOLDEN VERIFIED
+HISTORICAL E1093 RECOVERY: GOLDEN VERIFIED
 Recovery Fabric operation: rbt_ff2d704eb89a419799305de2c53d6c91
 Recovery boot ID: db06411a-f5ab-450f-a799-8694ab6d9674
 Known-good boot.bin SHA256: a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d
 Original custom.cfg SHA256: cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462
-Persistent boot: Ubuntu
-Next boot: Ubuntu
-GRUB one-shot: empty
-Owner marker: absent
-Experimental render node / Asahi module on Golden: absent
+At that recovery: persistent Ubuntu; next Ubuntu; GRUB one-shot empty; owner marker absent; experimental render node / Asahi module absent.
+
+CURRENT OPERATIONAL STATE
+After E1094, macmac remains on experimental kernel 7.1.12-e1091-t8122-pmp-reordered. Exact Golden recovery and re-verification of boot.bin/custom.cfg, GRUB, bless targets, owner marker and Golden kernel is mandatory before another live GPU experiment.

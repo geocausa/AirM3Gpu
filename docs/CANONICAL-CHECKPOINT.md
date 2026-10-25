@@ -136,13 +136,33 @@ No GPU image mmap or CPU pixel copy is used. The native panel remains connected 
 
 Private E1093 `RESULT.md` SHA-256: `1180520285949fb309aa2ca099ae48e5ebce6e014715ad308b1645c457ecac38`. Evidence manifest SHA-256: `013b8d032f407445efcc694d02d945de8a703d20c9d824f6f4801ddc9a772f8e`.
 
+## 6. E1094 — native Wayland/Mutter presentation, audited
+
+E1094 keeps the qualified E1092/E1093 native-display + G15G stack and moves one layer upward into the ordinary GNOME/Mutter Wayland path. Real Honeykrisp/G15G buffers are committed as Wayland DMA-BUF buffers, released by the compositor, and receive real `wp_presentation_feedback.presented(...)` events while native Apple DRM/DCP remains active. A short FIFO run completes, and a 60-frame mailbox run completes. This mechanically crosses compositor-mediated native presentation.
+
+Independent Sol/xhigh and Astra reviews then re-read the retained raw traces and corrected several initial interpretations:
+
+- Mutter's `Invalid sequence for VSYNC frame info` warning **persists** in E1094, including a successful short FIFO run. The first negative search used a failed journal capture and must not be used as evidence.
+- The attempted `fifo_latest_ready` comparison is invalid because Mesa rejected the selector.
+- Mailbox vs FIFO is not yet a one-variable present-mode control: the inspected Wayland WSI defaults FIFO to three images and true mailbox to four unless actual creation counts prove otherwise.
+- The long client waits are localized to delayed release/image availability, but all-images-busy is a downstream state rather than a root cause.
+- Before the long waits, the next timed target is only about one refresh (~16-18 ms) beyond the previous presentation, yet retained waits are about 0.69 s, 1.00 s and at least 2.73 s. A grossly far-future target therefore does not explain the observed delay.
+- Native sequence-zero metadata remains a real defect, but sequence validity, timestamp quality and KMS completion-event liveness must be separated; sequence zero alone is not mechanically linked to the blocking predicate.
+- Mutter is still software-compositing on this qualification path. E1094 proves a G15G client is presented through Mutter, not that GNOME itself is rendered by G15G.
+
+The leading working model is a timed/FIFO liveness interaction: older work drains, a modestly future/due transaction or another dependency on its critical path is not advanced promptly, the three-image FIFO ring fills, and later compositor/fence/KMS activity releases a burst. This is a hypothesis, not a proven Mutter bug.
+
+Private E1094 initial `RESULT.md` SHA-256: `a61a762a673600944bf0b49dd3a0cdef798c3efe3ec05d244e32d23e4f8001cf`. Sol/xhigh audit SHA-256: `7d16c74678af90ae885126b729b7081493f1663206a10246c3f9e463d4e720a0`. Astra focused review SHA-256: `3cdf801d75fda1cfbf78371f47bec5a5d5e94975e08dcc214249cc5e89a61245`.
+
+See `docs/E1094-AUDITED-PRESENTATION.md` for the corrected evidence model and next discriminator.
+
 ### Current hard boundary
 
-`G15G Compute/Render PASS + native DCP/KMS PASS + simultaneous operation PASS + direct imported GPU-buffer presentation PASS -> [native compositor/window-system integration + repeated fence/pageflip/vsync qualification] -> endurance/performance`
+`G15G Compute/Render PASS + native DCP/KMS PASS + direct GPU-buffer presentation PASS + native Wayland/Mutter presentation PASS -> [FIFO/timed transaction liveness + exact buffer/fence/composition/KMS dependency] -> G15G compositor acceleration -> endurance/performance/power/suspend-resume`
 
-Basic execution and one-buffer native presentation are closed milestones for the repaired lineage.
+Basic execution, direct native presentation and compositor-mediated native presentation are closed milestones for the repaired lineage.
 
-## 6. Historical execution localization retained
+## 7. Historical execution localization retained
 
 E972/E974/E989–E1005 remain valid for the older E933/E950-style failing lineage:
 
@@ -152,29 +172,32 @@ E972/E974/E989–E1005 remain valid for the older E933/E950-style failing lineag
 
 Preserve those negatives, but do not present them as the current repaired-lineage frontier.
 
-## 7. Do not repeat
+## 8. Do not repeat
 
 - Do not reopen instruction-0, token5→token7, shader, TA/fragment, Queue/RunCompute/UAT/PagePool/power/parser/MMIO hypotheses without contradictory evidence.
 - Do not use the legacy manager-backend `G15Debug::SelfTest` bit47 as a current qualification gate.
 - Do not interpret `Cannot find any display!`, softpipe Wayland EGL, or Xwayland no-DRI3 as GPU Render failures.
 - Do not replace system Mesa merely to continue the display investigation; the isolated G15G userspace path is already qualified.
 
-## 8. Immediate next actions
+## 9. Immediate next actions
 
-1. Keep E1092/E1093 as the fixed subsystem and direct-presentation controls; do not repeat them unless a later change needs regression qualification.
-2. Build one bounded native compositor/window-system discriminator on `apple-drm` using the qualified G15G render path, while observing DCP `swaps/active_fb/imported` plus pageflip/fence timing.
-3. Distinguish explicit/implicit synchronization failures from compositor policy or WSI issues before broad desktop enablement.
-4. Only after repeated native presentation is stable, broaden into compositor/desktop acceleration and then endurance/performance qualification.
+1. Restore and verify exact Golden before another live GPU experiment. The current host is still on the E1094 experimental kernel.
+2. Offline-build and prequalify a transparent Wayland proxy that preserves bytes/FDs/object lifetimes and can drop only `wp_commit_timer_v1.set_timestamp` for the test surface.
+3. In one qualified compositor session run FIFO60 A/B/C/A: passthrough / timestamp-only removal / passthrough+`nowlts` / passthrough. Require both A controls to reproduce before causal interpretation.
+4. Record actual requested/effective mode, image count, format/modifier, swapchain generation, API/image ownership, releases/feedback, valid journal cursor and DCP state.
+5. If a long gap reproduces, identify the oldest Mutter dependency across timed/FIFO state, reservation-fence readiness, composition use, KMS submit/event/frame-clock and release/flush/receipt. Stop when one complete dependency-to-release chain is established.
+6. Only then choose a targeted intervention; broaden into G15G compositor acceleration and endurance/performance afterward.
 
-## 9. Recovery state
+## 10. Recovery state
 
-After E1093, the machine was recovered back to Golden:
+The E1093 recovery back to Golden was mechanically verified at the time:
 
 - Golden kernel: `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`.
-- Current verified Golden boot ID after E1093 recovery: `db06411a-f5ab-450f-a799-8694ab6d9674`.
+- E1093 recovery boot ID: `db06411a-f5ab-450f-a799-8694ab6d9674`.
 - Known-good m1n1 `boot.bin` SHA-256: `a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d`.
 - Original `/boot/grub/custom.cfg` SHA-256: `cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462`.
-- Persistent and next boot are Ubuntu; no pending GRUB one-shot entry and no experimental render node.
+
+That is now historical, not the current live state. After E1094, `macmac` remains on experimental kernel `7.1.12-e1091-t8122-pmp-reordered`. Exact Golden recovery is pending. Before any new live GPU experiment, verify the known-good `boot.bin`, original `custom.cfg`, empty GRUB one-shot, Ubuntu bless targets, absent owner marker, and Golden kernel.
 
 ## Evidence pointers
 
@@ -186,3 +209,4 @@ After E1093, the machine was recovered back to Golden:
 - E1091: `/home/macmac/m3-gpu-lab/experiments/E1091-t8122-pmp-reordered-devices/RESULT.md`.
 - E1092: `/home/macmac/m3-gpu-lab/experiments/E1092-j615-native-display-plus-g15g/RESULT.md`.
 - E1093: `/home/macmac/m3-gpu-lab/experiments/E1093-g15g-prime-to-appledrm/RESULT.md`.
+- E1094: `/home/macmac/m3-gpu-lab/experiments/E1094-native-gnome-appledrm-g15g/RESULT.md`; corrected by the retained Sol/Astra audits referenced above.
