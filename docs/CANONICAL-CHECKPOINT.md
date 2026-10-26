@@ -1,6 +1,6 @@
 # Canonical project checkpoint — J615 / G15
 
-Updated: **2026-10-25**
+Updated: **2026-10-26**
 
 This file is the single resume point for the AirM3Gpu project. Older “current frontier” statements are historical only.
 
@@ -193,7 +193,7 @@ This strongly supports that the timed-FIFO defect is not specific to the older 7
 
 One hardware-qualified GNOME Shell PID survived 8 consecutive 600-frame FIFO/`nowlts` rounds (4,800 requested frames, 80.536783 s summed client intervals). Every client returned 0 and selected Apple M3/G15G; every round advanced DCP with `failed=0`; all eight per-round and the global post-baseline fatal scans were empty. DCP progressed `3 -> 4872` before cleanup; final Shell RSS was only +432 kB versus pre-run. Exact Golden recovery succeeded. See `docs/E1101-LINUX73-ACCELERATED-GNOME-ENDURANCE.md`.
 
-The live J615 table publishes states 1–8 at 338/618/796/928/1056/1170/1278/1338 MHz. The current T8122 experiment intentionally admits caps only 1–5; J615 presently has no SoC-die thermal zone for this governor, so higher-cap qualification is short and one state at a time.
+The live J615 table publishes states 1–8 at 338/618/796/928/1056/1170/1278/1338 MHz. At the E1101 checkpoint the T8122 experiment admitted caps only 1–5; E1106–E1108 later widened that explicit experiment gate one state at a time through 8. J615 still has no effective SoC-die thermal zone for this governor, so the high-state qualifications remain deliberately short.
 
 ### E1102 — pstate 2 / 618 MHz qualification
 
@@ -203,9 +203,23 @@ The first frequency escalation passes. J615 InitData published cap/boot request 
 
 The next single-variable escalation also passes: cap/boot request 3 = 796 MHz, firmware peak/actual/current state 3 observed, both 300-frame clients rc0, DCP progress with failed0, all fault deltas empty, exact Golden recovery. See `docs/E1103-PSTATE3-796MHZ-QUALIFICATION.md`.
 
+### E1104–E1105 — pstate 4 / 928 MHz and pstate 5 / 1056 MHz
+
+Both one-state-at-a-time escalations pass under the same short accelerated-GNOME envelope. Firmware genuinely exercises the requested state, both 300-frame rounds return 0, DCP advances with `failed=0`, fatal deltas remain empty and Golden recovery is exact. State 4 is 928 MHz (755 mV core / 790 mV SRAM); state 5 is 1056 MHz (805 mV core / SRAM). See `docs/E1104-PSTATE4-928MHZ-QUALIFICATION.md` and `docs/E1105-PSTATE5-1056MHZ-QUALIFICATION.md`.
+
+### E1106–E1107 — explicit gate widening to 1170 and 1278 MHz
+
+The armed T8122 experiment ceiling is deliberately widened one state at a time while ordinary non-experimental M3 policy remains unchanged. E1106 source `a922ef259ba...` admits state 6 and qualifies 1170 MHz / 850 mV. E1107 source `beeec2e1a3201b44577d1990c795c1203d6b2ff3` admits state 7 and qualifies 1278 MHz / 890 mV. Firmware actual/current/peak evidence confirms each state is genuinely reached; 2×300-frame workloads, DCP/fault gates and exact Golden recovery all pass.
+
+### E1108 — pstate 8 / 1338 MHz, highest current J615 table state
+
+Source `2866b256c82f5c71e5a9205f7cfcf7ab44a89460` widens only the armed T8122 experiment to state 8 and is pushed to `geocausa/linux:wip/m3-7.3-j615`. Before hardware, 8/8 knob tests, 86/86 air-gpu tests (19 expected skips), and 46/46 release tests (29 expected skips) pass. Live InitData exposes 8 performance states, state 8 = 1338 MHz at 915 mV core/SRAM. Firmware repeatedly reports actual/current state 8 and peak state 8; both 300-frame clients return 0; DCP progresses `3 -> 635` (`failed=0`) and reaches 641 after cleanup; fatal scan is empty; Honeykrisp GNOME remains qualified; exact Golden recovery succeeds. See `docs/E1108-PSTATE8-1338MHZ-QUALIFICATION.md`.
+
+Linux still has no effective J615 SoC-die temperature zone for these runs. Therefore E1102–E1108 are bounded execution qualifications, not thermal-soak results. State 8 is the highest state in the current live J615 table, not a universal physical silicon-maximum claim.
+
 ### Current hard boundary
 
-`G15G Compute/Render PASS + native DCP/KMS PASS + direct presentation PASS + native Wayland PASS + E1095/E1096 timing diagnosis PASS + E1097 accelerated compositor PASS + E1099 Linux 7.3 boot/desktop/GPU PASS + E1100 7.3 TIMESTAMP-PATH SPLIT replay PASS -> E1101 accelerated 7.3 endurance PASS -> E1102 pstate2/618 MHz PASS -> E1103 pstate3/796 MHz PASS -> controlled higher-pstate/frequency qualification -> suspend/power/peripheral integration`
+`G15G Compute/Render PASS + native DCP/KMS PASS + direct/Wayland presentation PASS + timing diagnosis PASS + accelerated GNOME PASS + Linux 7.3 PASS + timestamp replay/endurance PASS + states 1..8 through 1338 MHz bounded PASS -> telemetry/sustained thermal qualification -> suspend/performance/power/peripherals`
 
 Basic execution, native presentation, timed-FIFO diagnosis, accelerated GNOME composition and the first Linux 7.3 hardware gate are closed milestones.
 
@@ -228,9 +242,9 @@ Preserve those negatives, but do not present them as the current repaired-lineag
 
 ## 9. Immediate next actions
 
-1. Qualify pstate 4 / 928 MHz next, then state 5 / 1056 MHz only after state 4 passes; keep these no-temperature-feedback tests short and recovery-guarded.
-2. Qualify suspend/resume, power management, peripheral regressions and higher GPU pstates.
-3. Optionally land the proven Mutter frame-clock repair and monotonic apple-dcp pageflip/vblank sequence instead of relying on `nowlts`.
+1. Establish reliable J615 GPU/SoC thermal and power telemetry; use the macOS oracle when Apple sensor behavior or mapping is required.
+2. Extend state-8 from a short bounded pass to sustained/thermal-soak qualification and characterize performance/power scaling across states 1–8.
+3. Qualify suspend/resume and focused peripheral regressions. Optional Mutter ClutterFrameClock and Apple-DCP vblank-sequence repairs remain useful but are no longer blockers for the proven `nowlts` qualification path.
 
 ## 10. Recovery state
 
@@ -241,7 +255,7 @@ The E1093 recovery back to Golden was mechanically verified at the time:
 - Known-good m1n1 `boot.bin` SHA-256: `a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d`.
 - Original `/boot/grub/custom.cfg` SHA-256: `cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462`.
 
-Post-E1103 recovery is now the current safety observation: Golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d` is running; known-good `boot.bin` is `a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d`; original `custom.cfg` is `cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462`; no GRUB one-shot or E1103 service remains. Linux 7.3 source is pushed to `geocausa/linux:wip/m3-7.3-j615` at `52f5d1cb8f5983131319a3083c0f1597e871a3e9`.
+Latest recovery is post-E1108: Golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d` is running at boot `ca57148f-281e-49ca-85ae-029c2798cf53`; `boot.bin` and `custom.cfg` match known-good hashes; GRUB one-shot, owner marker and E1108 service are absent. State-8 source `2866b256c82f5c71e5a9205f7cfcf7ab44a89460` is pushed to `geocausa/linux:wip/m3-7.3-j615`.
 
 ## Evidence pointers
 
@@ -264,3 +278,8 @@ Post-E1103 recovery is now the current safety observation: Golden `7.1.6-ubuntu-
 - E1101: public summary `docs/E1101-LINUX73-ACCELERATED-GNOME-ENDURANCE.md`; raw endurance evidence remains machine-local.
 - E1102: public summary `docs/E1102-PSTATE2-618MHZ-QUALIFICATION.md`; raw pstate evidence remains machine-local.
 - E1103: public summary `docs/E1103-PSTATE3-796MHZ-QUALIFICATION.md`; raw pstate evidence remains machine-local.
+- E1104: `docs/E1104-PSTATE4-928MHZ-QUALIFICATION.md`.
+- E1105: `docs/E1105-PSTATE5-1056MHZ-QUALIFICATION.md`.
+- E1106: `docs/E1106-PSTATE6-1170MHZ-QUALIFICATION.md`.
+- E1107: `docs/E1107-PSTATE7-1278MHZ-QUALIFICATION.md`.
+- E1108: `docs/E1108-PSTATE8-1338MHZ-QUALIFICATION.md`; raw pstate evidence remains machine-local.

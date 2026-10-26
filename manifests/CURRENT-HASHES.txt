@@ -67,9 +67,10 @@ E1096 REPRO-OUTPUT.txt SHA256: 4b61d96ef6ff057b8a0934b0a9cf14251832ec7dae901022a
 
 E1097 native GNOME compositor private RESULT SHA256: 5e5bed6c23002b502d39190892ffa9e194df3c5e003a3f3ecfa2ec9b4dd7516f
 
-E1098 / E1099 / E1100 / E1101 / E1102 / E1103 LINUX 7.3
-Linux source commit: 52f5d1cb8f5983131319a3083c0f1597e871a3e9
-Kernel release: 7.3.0-m3-j615-e1098+
+E1098 / E1099 / E1100-E1108 LINUX 7.3
+Linux 7.3 base-port source commit: 52f5d1cb8f5983131319a3083c0f1597e871a3e9
+Current state-8 admission source commit: 2866b256c82f5c71e5a9205f7cfcf7ab44a89460
+Qualified kernel releases include 7.3.0-m3-j615-e1098+, e1106+, e1107+ and e1108+
 E1098 KERNEL-BUILD-MANIFEST.json SHA256: 05d6a0906201441da7ba81845b9eb8f4a28d773c644368f6430bba449c2e1014
 E1099 RESULT-LIVE.md SHA256: 2dccd8ce5acf55999bd51c610a014f6789dd2453d16cf9166b088caaeea13a48
 E1099 EVIDENCE-SHA256.txt SHA256: 5fe5fe434b369d2d034b8a0137c33836c36e7452304a5b74be8d2de54615fb4e
@@ -87,16 +88,34 @@ E1101 RESULT.md SHA256: afa5cba950d5508a7b6fad528e4a7adebf73a26f73e5bb71c8e816e7
 E1101 EVIDENCE-SHA256.txt SHA256: 4a6e478c333e8b790e29c473af260343ad0e8b7d51e86afeee488027fe44a381
 E1101 run-session.sh SHA256: 1061b6d9e2eae6f77170854007b9368e2515fb8ed07f21d880b577c1ceeec5ea
 E1101 result: 8x600-frame accelerated GNOME control PASS; all clients rc0; DCP progresses/failed0; all fault deltas empty; exact Golden recovery.
-J615 table MHz by state: 1=338, 2=618, 3=796, 4=928, 5=1056, 6=1170, 7=1278, 8=1338; current T8122 start experiment accepts cap 1..5.
+J615 table MHz by state: 1=338, 2=618, 3=796, 4=928, 5=1056, 6=1170, 7=1278, 8=1338; every current table state is now short-workload qualified. 1338 MHz is the highest table state, not a universal silicon-maximum claim.
 E1102 RESULT.md SHA256: e8140a21e127616be971ea74490cfcdf23ed4059bb8be8e15082d783e6c854f4
 E1102 EVIDENCE-SHA256.txt SHA256: b7dee881f8577e894bdc038d9f9ce748f61db7afd1ff3e7b72f28d7354e07950
 E1102 result: pstate2 / 618 MHz genuinely exercised; 2x300 frames rc0; DCP progress failed0; all fault deltas empty; exact Golden recovery.
 E1103 RESULT.md SHA256: 27b4bc9b07f89325e3fd7a348e8826fcfe643173c016be6d6b1e558db2af8b18
 E1103 EVIDENCE-SHA256.txt SHA256: 4ec8305ff8e1f01a1594cfeb8a53d599ec6d9f570f7c9c667b3b8b8679c2a8d8
 E1103 result: pstate3 / 796 MHz genuinely exercised; 2x300 frames rc0; DCP progress failed0; fault deltas empty; exact Golden recovery.
+E1104 RESULT.md SHA256: 4e5b9e67b1c844b328fc8df9e1c728888c4777d58ef207026b6ce6c78d71b1e7
+E1104 EVIDENCE-SHA256.txt SHA256: 7d7716c427d2205c2429cb5144b05519e178d0393a4c5d308fb30e7b511f53b4
+E1104 result: pstate4 / 928 MHz genuinely exercised; 2x300 rc0; DCP progress failed0; fault deltas empty; exact recovery.
+E1105 RESULT.md SHA256: e845b38abcdfc54aab0cdce858d1e623be27ca386e5a52525477a6f54b27a258
+E1105 EVIDENCE-SHA256.txt SHA256: 66caf49a5c25c4562d4e3a2bb47ba492c26f61ea3b90da60290d88be8879fd0a
+E1105 result: pstate5 / 1056 MHz genuinely exercised; workload/recovery clean.
+E1106 source commit: a922ef259ba (bounded T8122 pstate6 admission)
+E1106 RESULT.md SHA256: 1cbcf10bda5b44a5958e1ee626d1ecaecbdf6fdbf19b77e03298cb214c15dd7a
+E1106 EVIDENCE-SHA256.txt SHA256: d7822ba4d39dd7fa11ec0015dafa1f9b732b2e9f4941809d5b1e78df30031b56
+E1106 result: pstate6 / 1170 MHz genuinely exercised; workload/recovery clean.
+E1107 source commit: beeec2e1a3201b44577d1990c795c1203d6b2ff3
+E1107 RESULT.md SHA256: 1c1dd97ee0359114a9b2355310b83c25feb4bf98f44f8580fc72d5aa7af80e73
+E1107 EVIDENCE-SHA256.txt SHA256: 1c755a6b6cfa13a5f3c86b8401ec2960a85c16837676105c8f4fc2209ebffabf
+E1107 result: pstate7 / 1278 MHz genuinely exercised; workload/recovery clean.
+E1108 source commit: 2866b256c82f5c71e5a9205f7cfcf7ab44a89460
+E1108 RESULT.md SHA256: 593b1260ac58c5646d23f8d1568ac1b96a42e8dd389ff966bd1f78b3cb16f22e
+E1108 EVIDENCE-SHA256.txt SHA256: e50d8f4007139fc76911902e08324bed41ba7b43ebb06f75054e663fad73d2b3
+E1108 result: pstate8 / 1338 MHz, highest current live J615 table state, genuinely exercised; 2x300 rc0; DCP 3->635 failed0; fatal scan empty; exact Golden recovery.
 
 CURRENT FRONTIER
-Linux 7.3 live and timestamp-replay gates are crossed. E1101 endurance control is crossed and E1102 qualifies 618 MHz. Next: pstate 4 / 928 MHz then one-state-at-a-time qualification through the currently admitted cap range, followed by suspend/resume, power/peripherals and optional proper timing fixes.
+Current J615 table states 1..8 through 1338 MHz are bounded-qualified. Next: establish useful temperature/power telemetry, then sustained/thermal qualification, suspend/resume, performance/power characterization and peripheral regression.
 
 GOLDEN SAFETY
 Historical E1093 recovery Fabric operation: rbt_ff2d704eb89a419799305de2c53d6c91
@@ -106,6 +125,6 @@ Post-E1095-Run1 Golden recovery boot ID: 7dc2a6e1-efb8-46c1-bb1e-9f8db521146e
 Post-E1095-Run2 Golden recovery boot ID: a3342496-330a-4b77-a391-c5f1d211ac9c
 Known-good boot.bin SHA256: a81993b122b7f990bc99ccab42decab7ef92adb94741dadf0ee79d24fdda3e0d
 Original custom.cfg SHA256: cf011eee536420c6b32fa5b311345f507ae260d06c7f30777e2951e683b73462
-Current post-E1103 host is verified on Golden kernel 7.1.6-ubuntu-m3-usbpd-gc5037a961e4d with known-good boot.bin a81993b1..., original custom.cfg cf011eee..., empty GRUB one-shot, owner/service absent.
+Current post-E1108 host is verified on Golden kernel 7.1.6-ubuntu-m3-usbpd-gc5037a961e4d (boot ca57148f-281e-49ca-85ae-029c2798cf53) with known-good boot.bin a81993b1..., original custom.cfg cf011eee..., empty GRUB one-shot, owner/E1108 service absent; state-8 source 2866b256c82f5c71e5a9205f7cfcf7ab44a89460 is pushed to geocausa/linux:wip/m3-7.3-j615.
 
 Historical pre-E718 hash/evidence ledger: manifests/HISTORICAL-HASHES-THROUGH-E717.txt

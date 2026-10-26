@@ -1,12 +1,12 @@
 # New-chat handoff — J615 / G15G
 
-Generated: **2026-10-25**
+Generated: **2026-10-26**
 
 **First read:** `docs/CANONICAL-CHECKPOINT.md` and `docs/E1094-AUDITED-PRESENTATION.md`.
 
 ## One-sentence state
 
-**The physical J615 boots the repaired stack on Linux 7.3, passes bounded accelerated GNOME/Render/Compute/FIFO60, and E1100 proves the E1095 timed-FIFO `TIMESTAMP-PATH SPLIT` persists on 7.3; E1101 passed the accelerated 7.3 endurance control and E1102 and E1103 have qualified 618 and 796 MHz; the next clean gate is pstate 4 / 928 MHz, then state 5 / 1056 MHz if it passes.**
+**The physical J615 now passes Linux 7.3 accelerated GNOME and the full current firmware-table pstate ladder through state 8 / 1338 MHz under short recovery-guarded workloads; the next frontier is telemetry plus sustained/thermal, suspend/resume, performance/power and peripheral qualification.**
 
 ## Hard facts
 
@@ -26,6 +26,10 @@ Generated: **2026-10-25**
 - E1101 accelerated GNOME endurance PASS: 8×600-frame `nowlts` rounds, all rc0, same hardware Shell PID, DCP failed0/progress every round, all fault deltas empty, exact Golden recovery.
 - E1102 pstate2/618 MHz PASS: firmware genuinely reaches state 2; 2×300 frames rc0; DCP progress/failed0; all fatal deltas empty; exact Golden recovery.
 - E1103 pstate3/796 MHz PASS: firmware genuinely reaches state 3; 2×300 frames rc0; DCP progress/failed0; all fatal deltas empty; exact Golden recovery.
+- E1104 pstate4/928 MHz and E1105 pstate5/1056 MHz PASS: each requested firmware state is genuinely exercised; both 300-frame rounds rc0; DCP progress/failed0; fatal deltas empty; exact recovery.
+- E1106 pstate6/1170 MHz PASS after explicit T8122 admission-gate widening; source `a922ef259ba...`. Ordinary non-experimental M3 policy remains unchanged.
+- E1107 pstate7/1278 MHz PASS; source `beeec2e1a3201b44577d1990c795c1203d6b2ff3`; actual/current/peak state 7 observed.
+- E1108 pstate8/1338 MHz PASS; source `2866b256c82f5c71e5a9205f7cfcf7ab44a89460`; actual/current state 8 observed repeatedly; 2×300 frames rc0; DCP `3 -> 635`, failed0; fatal scan empty; exact Golden recovery. State 8 is highest in the current live J615 table, not asserted as a universal silicon maximum.
 
 ## Audit corrections that must travel with E1094
 
@@ -39,17 +43,16 @@ Generated: **2026-10-25**
 
 ## Current boundary
 
-`Linux 7.3 J615 live PASS -> E1100 timestamp-path replay PASS -> E1101 accelerated endurance PASS -> E1102 618 MHz PASS -> E1103 796 MHz PASS -> controlled higher-pstate/frequency qualification -> suspend/power/peripheral qualification`
+`Linux 7.3 J615 live PASS -> timestamp replay PASS -> accelerated endurance PASS -> states 2..8 / 618..1338 MHz bounded PASS -> telemetry/sustained thermal qualification -> suspend/performance/power/peripherals`
 
 ## Next action
 
-1. Test pstate 4 / 928 MHz with the same short recovery-guarded accelerated-GNOME workload.
-2. If it passes, test 1056 MHz separately; do not conflate the admitted cap-5 ceiling with the hardware table maximum of 1338 MHz.
-3. Qualify suspend/resume, power management and peripherals before persistent daily-driver use.
-3. Optionally land the already-proven Mutter frame-clock repair and monotonic apple-dcp vblank/pageflip sequence instead of relying on `nowlts`.
+1. Identify and validate J615 GPU/SoC temperature and power telemetry; use a one-shot macOS oracle boot whenever Apple behavior or sensor mapping is needed.
+2. With useful telemetry, run sustained pstate-8 and cross-pstate performance/power qualification.
+3. Qualify suspend/resume and focused peripheral regressions; keep the proven Golden-first recovery transaction. Optional Mutter/KMS timing repairs remain useful but orthogonal.
 
 Do **not** reopen instruction-0, token5->token7, shader, TA/fragment, generic Queue/RunCompute/UAT/PagePool/power/parser/MMIO hypotheses without contradictory evidence.
 
 ## Operational safety
 
-After E1103 the machine is verified back on Golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d`; `boot.bin=a81993b1...`, `custom.cfg=cf011eee...`, GRUB one-shot empty, E1103 service/owner absent. The 7.3 source is off-machine on `geocausa/linux:wip/m3-7.3-j615` at `52f5d1cb8f5983131319a3083c0f1597e871a3e9`.
+After E1108 the machine is verified back on Golden `7.1.6-ubuntu-m3-usbpd-gc5037a961e4d` (boot `ca57148f-281e-49ca-85ae-029c2798cf53`); `boot.bin=a81993b1...`, `custom.cfg=cf011eee...`, GRUB one-shot empty, owner/E1108 service absent. State-8 source commit `2866b256c82f5c71e5a9205f7cfcf7ab44a89460` is pushed to `geocausa/linux:wip/m3-7.3-j615`.

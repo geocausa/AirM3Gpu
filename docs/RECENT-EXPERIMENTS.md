@@ -2,7 +2,7 @@
 
 Current authority: `docs/CANONICAL-CHECKPOINT.md`.
 
-## 2026-10-24/25 — repaired-lineage progression
+## 2026-10-24/26 — repaired-lineage progression
 
 | Experiment | Evidence class | Result | Decision |
 |---|---|---|---|
@@ -24,6 +24,11 @@ Current authority: `docs/CANONICAL-CHECKPOINT.md`.
 | **E1101** | **Accelerated GNOME endurance control** | One Honeykrisp Shell PID, 8×600-frame `nowlts` clients all rc0; DCP progresses every round failed0; all fatal deltas empty | **Bounded 7.3 accelerated-desktop endurance control PASS.** |
 | **E1102** | **pstate 2 / 618 MHz qualification** | Firmware peak/actual/current state 2 observed; 2×300 frames rc0; DCP progress failed0; fault deltas empty | **618 MHz bounded accelerated-GNOME PASS.** |
 | **E1103** | **pstate 3 / 796 MHz qualification** | Firmware peak/actual/current state 3 observed; 2×300 frames rc0; DCP progress failed0; fault deltas empty | **796 MHz bounded accelerated-GNOME PASS.** |
+| **E1104** | **pstate 4 / 928 MHz qualification** | Firmware state 4 observed; 2×300 frames rc0; DCP failed0; fault deltas empty | **928 MHz bounded PASS.** |
+| **E1105** | **pstate 5 / 1056 MHz qualification** | Firmware state 5 observed; 2×300 frames rc0; DCP failed0; fault deltas empty | **1056 MHz bounded PASS.** |
+| **E1106** | **pstate 6 / 1170 MHz qualification** | Explicit T8122 gate widened; actual/current/peak state 6 observed; workload and recovery clean | **1170 MHz bounded PASS.** |
+| **E1107** | **pstate 7 / 1278 MHz qualification** | Explicit gate widened; actual/current/peak state 7 observed; workload and recovery clean | **1278 MHz bounded PASS.** |
+| **E1108** | **pstate 8 / 1338 MHz qualification** | Highest current table state genuinely exercised; 2×300 rc0; DCP failed0; fatal scan empty; exact recovery | **1338 MHz bounded PASS.** |
 
 ## E1094 audited correction set
 
@@ -38,10 +43,10 @@ The initial E1094 interpretation was independently audited against raw traces. C
 
 ## Current interpretation
 
-`E056 HwDataA reduction -> E1075 firmware-running -> E1076 Compute -> E1077 Render -> E1091 native DCP/KMS -> E1093 direct native presentation -> E1094 Wayland presentation -> E1095/E1096 timing diagnosis -> E1097 accelerated GNOME compositor -> E1098 Linux 7.3 port/build -> E1099 Linux 7.3 live qualification -> E1100 Linux 7.3 timestamp causal replay -> E1101 accelerated GNOME endurance control -> E1102 pstate2/618 MHz qualification -> E1103 pstate3/796 MHz qualification`
+`E056 HwDataA reduction -> E1075 firmware-running -> E1076 Compute -> E1077 Render -> E1091 native DCP/KMS -> E1093 direct native presentation -> E1094 Wayland presentation -> E1095/E1096 timing diagnosis -> E1097 accelerated GNOME -> E1099 Linux 7.3 -> E1100 cross-kernel timing replay -> E1101 endurance -> E1102..E1108 state-by-state qualification through 1338 MHz`
 
 Current hard boundary:
 
-`Linux 7.3 boot/GPU/compositor PASS + E1100 TIMESTAMP-PATH SPLIT replay PASS -> E1101 accelerated endurance PASS -> E1102 618 MHz PASS -> E1103 796 MHz PASS -> controlled higher-pstate/frequency qualification -> suspend/power/peripheral integration`
+`Linux 7.3 GPU/compositor/endurance PASS + current J615 table states 1..8 bounded-qualified -> telemetry and sustained/thermal qualification -> suspend/performance/power/peripheral integration`
 
 Historical E972/E974/E989-E1005 token5->token7 results remain valid for the older failing lineage but are not the repaired-lineage frontier.
